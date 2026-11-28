@@ -25,7 +25,6 @@ function globBody(glob: string): string {
   return out;
 }
 
-/** Matches repository-relative POSIX paths against globs with `**`, `*`, `?`, and `{a,b}`. */
 export function globMatcher(globs: string[] = []) {
   const patterns = globs.map((glob) => new RegExp(`^${globBody(glob)}$`));
   return (file: string) => patterns.some((pattern) => pattern.test(file));
@@ -35,22 +34,16 @@ const EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"
 const BUILTINS = new Set(builtinModules);
 
 export interface ImportTarget {
-  /** A layer name, `unlayered`, `unresolved`, `builtin`, `pkg:<workspace>`, or `3p:<package>`. */
   target: string;
   specifier: string;
 }
 
 export interface Workspace {
-  /** Absolute repository root; config globs are relative to it. */
   root: string;
   isFile: (path: string) => boolean;
   workspacePackages: ReadonlySet<string>;
 }
 
-/**
- * Puts files into layers and import specifiers into targets, the way the architecture
- * scanner does. The first matching layer wins.
- */
 export function layerModel(
   config: ArchitectureConfig,
   { root, isFile, workspacePackages }: Workspace,
@@ -87,7 +80,6 @@ export function layerModel(
   return {
     layerNames: new Set(layers.map((layer) => layer.name)),
 
-    /** The repository-relative file and its layer, or undefined for files outside the config. */
     fileLayer(filename: string) {
       const file = relativePath(filename);
       if (!included(file) || ignored(file)) return undefined;

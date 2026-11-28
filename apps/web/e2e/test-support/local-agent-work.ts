@@ -3,11 +3,6 @@ import type { AgentHomedHere, AgentWorkChange } from "@substrate/contracts/agent
 
 import { isolateContext, type Client } from "./fixtures";
 
-/**
- * The home desktop's local transcripts, for a browser that has no native host. Server work comes
- * from the real backend; this bridge only says the agent is homed here and serves the turn's
- * transcript. Keep its context isolated from pooled clients.
- */
 export async function localAgentWork(
   client: Client,
   input: { agentId: string; turnId: string; text: string },

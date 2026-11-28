@@ -7,10 +7,6 @@ import { cn } from "cn";
 import { ArrowLeft } from "lucide-react";
 import { Slot } from "radix-ui";
 
-/**
- * Back navigation directly above a page header, on the title's left edge. `children` is the link
- * element (a router `Link`); its text follows the arrow.
- */
 export function BackLink({ children }: { children: ReactNode }) {
   return (
     <Button variant="link" size="sm" className="-ml-1.5" asChild>
@@ -23,12 +19,9 @@ export function BackLink({ children }: { children: ReactNode }) {
 const pageHeaderVariants = cva("flex shrink-0 justify-between gap-x-4", {
   variants: {
     variant: {
-      // Full pages: Notifications, Settings, a project. Sits inside the page's p-6 inset.
       page: "flex-wrap items-start gap-y-2",
-      // Panes and sidebars: one 48px line with icon-sm tools.
       pane: "h-12 items-center gap-2 px-4",
     },
-    // A pane header's bottom border. A sidebar header drops it: the sidebar background separates it.
     bordered: { true: "", false: "" },
   },
   compoundVariants: [{ variant: "pane", bordered: true, className: "border-b" }],
@@ -58,10 +51,7 @@ const pageHeaderTitleVariants = cva("min-w-0", {
     },
     withIcon: { true: "", false: "" },
   },
-  compoundVariants: [
-    // The caller sizes a page icon, such as a size-6 project image.
-    { variant: "page", withIcon: true, className: "flex items-center gap-2" },
-  ],
+  compoundVariants: [{ variant: "page", withIcon: true, className: "flex items-center gap-2" }],
   defaultVariants: { variant: "page", withIcon: false },
 });
 
@@ -95,10 +85,6 @@ const pageHeaderActionsVariants = cva("flex items-center", {
   defaultVariants: { variant: "page" },
 });
 
-/**
- * The title row of a page or pane: title, an optional description, and actions on the right.
- * Pane actions are ghost `icon-sm` buttons with tooltips; page actions may be labelled buttons.
- */
 export function PageHeader({
   title,
   description,
@@ -112,11 +98,9 @@ export function PageHeader({
 }: {
   title: ReactNode;
   description?: ReactNode;
-  /** A kind icon before a pane title (Hash for a channel), or a record icon before a page title. */
   icon?: ReactNode;
   actions?: ReactNode;
   variant?: "page" | "pane";
-  /** A pane header's bottom border; `PageSidebarHeader` turns it off. */
   bordered?: boolean;
   className?: string;
   leading?: ReactNode;

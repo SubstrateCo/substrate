@@ -23,7 +23,6 @@ export function AcceptInvitationScreen({ invitationId }: { invitationId: string 
   const now = useExpiryTime(invitation.data ? [invitation.data.expiresAt] : undefined);
   const activate = useActivateOrganization(isDesktop() ? "/messages" : "/setup/complete");
   const accept = useAcceptInvitation(invitationId);
-  // After declining, open the current workspace, or choose one when there is none.
   const decline = useDeclineInvitationConfirm({
     onDeclined: () =>
       void navigate({

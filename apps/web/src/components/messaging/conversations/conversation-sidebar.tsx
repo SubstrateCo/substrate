@@ -15,7 +15,6 @@ import {
 import type { Conversation } from "@/lib/messaging/conversations";
 import type { ResourceStatus } from "@/lib/resource-state";
 
-/** ArrowUp and ArrowDown move focus between conversations, across sections. */
 function moveBetweenConversations(event: KeyboardEvent<HTMLDivElement>) {
   const move = { ArrowDown: 1, ArrowUp: -1 }[event.key];
   const current = event.target;
@@ -46,7 +45,6 @@ export function ConversationSidebar({
   renderSectionActions: ConversationSectionActions;
   loading?: boolean;
 }) {
-  // With no conversations to show, the main pane shows the load error.
   const showList = state !== "unavailable" && state !== "error";
   return (
     <PageSidebar id={sidebarId} aria-label="Conversations" aria-busy={loading}>

@@ -4,21 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "cn";
 
-/** The class of a row that holds `RowActions`, so they show while the row is hovered or focused. */
 export const actionRow = "group/row";
 
-/**
- * The icon actions of a list row: edit, delete, remove. They show when the pointer is over the
- * row, when focus is inside it, and while one of them has a menu open; touch screens always show
- * them. The row must have the `actionRow` class. Labelled buttons, such as "Approve", stay
- * outside and visible.
- */
 export function RowActions({
   label,
   className,
   children,
 }: {
-  /** Names the group, such as "Actions for Weekly summary". */
   label: string;
   className?: string;
   children: ReactNode;
@@ -37,7 +29,6 @@ export function RowActions({
   );
 }
 
-/** One icon button of a row, with a tooltip that says what it does. */
 export function RowAction({
   label,
   destructive = false,

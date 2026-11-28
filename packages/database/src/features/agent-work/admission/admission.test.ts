@@ -221,7 +221,6 @@ test("an owner follow-up that admits work is never passive context too", () => {
   ).toEqual(admitted(thread));
 });
 
-// Request and host items parse their session keys, which hold real IDs.
 const rootId = crypto.randomUUID();
 const dmId = crypto.randomUUID();
 const request = {
@@ -277,7 +276,6 @@ test("host items are admitted only from the agent's home device", () => {
       type: "deny",
       reason: "not_homed",
     });
-  // The server's own resume note for a lost turn needs no device.
   const resume: HostTrigger = {
     ...epoch,
     source: "recovery",

@@ -20,12 +20,23 @@ import { useReadNotifications } from "@/queries/context/notification-mutations";
 import { useFirstPageOnLeave } from "@/queries/first-page";
 import { toast } from "sonner";
 
+function firstOccurrenceOfEachGroup(
+  pages: readonly { items: readonly NotificationGroup[] }[],
+  tasksEnabled: boolean,
+) {
+  const groups = new Map<string, NotificationGroup>();
+  for (const page of pages)
+    for (const item of page.items)
+      if (!groups.has(item.groupKey) && showsNotification(item, tasksEnabled))
+        groups.set(item.groupKey, item);
+  return groups;
+}
+
 export function NotificationList({ onClose }: { onClose?: () => void }) {
   const { organizationId } = useWorkspaceScope();
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const apps = useOrganizationApps();
   const feed = useInfiniteQuery(notificationGroupsOptions(organizationId, filter));
-  // Switching filters keeps each feed's loaded pages; closing the panel keeps only the first.
   useFirstPageOnLeave(notificationGroupsOptions(organizationId, "all").queryKey);
   useFirstPageOnLeave(notificationGroupsOptions(organizationId, "unread").queryKey);
   const resource = resourceState(feed);
@@ -35,12 +46,7 @@ export function NotificationList({ onClose }: { onClose?: () => void }) {
       onError: (error) =>
         toast.error(actionErrorMessage(error, "Couldn’t mark notifications as read. Try again.")),
     });
-  // A group can move above a saved cursor while older pages load. Keep its first occurrence.
-  const groups = new Map<string, NotificationGroup>();
-  for (const page of resource.data?.pages ?? [])
-    for (const item of page.items)
-      if (!groups.has(item.groupKey) && showsNotification(item, apps.enabled("tasks")))
-        groups.set(item.groupKey, item);
+  const groups = firstOccurrenceOfEachGroup(resource.data?.pages ?? [], apps.enabled("tasks"));
   const items = [...groups.values()].map((item) => ({
     ...notificationPresentation(organizationId, item),
     id: item.groupKey,

@@ -20,16 +20,13 @@ const viewOptions = [
   { value: "work", label: "Work" },
 ] as const satisfies readonly { value: AgentView; label: string }[];
 
-/** Live work shows in the header avatar's mood, so only problems get an icon. */
 function HeaderStatusIcon({ status }: { status: AgentHeaderStatus }) {
   if (status.mood) return null;
   if (status.tone === "attention")
     return <CircleAlert aria-hidden="true" className="size-3.5 shrink-0 text-warning" />;
-  // No desktop, or the desktop is offline.
   return <MonitorOff aria-hidden="true" className="size-3.5 shrink-0" />;
 }
 
-/** What the agent does as a whole. Idle shows nothing; the activity stays in the timeline. */
 function HeaderStatus({
   status,
   elsewhere,
@@ -56,10 +53,6 @@ function HeaderStatus({
   );
 }
 
-/**
- * One agent: its conversation or its work, with settings in a sheet over either. There are no
- * tabs; the view switch and the Settings button sit in the header.
- */
 export function AgentPageView({
   name,
   avatar,
@@ -75,7 +68,6 @@ export function AgentPageView({
   name: ReactNode;
   avatar: AgentAvatarCode;
   status?: AgentHeaderStatus | null;
-  /** The conversation where the agent works now, when it is not this page's conversation. */
   elsewhere?: { link: RecordLink; label: string };
   view: AgentView;
   onViewChange: (view: AgentView) => void;

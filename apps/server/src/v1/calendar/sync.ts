@@ -12,7 +12,6 @@ import type { CommittedPublisher } from "../../shared/committed";
 import type { CalendarProviders } from "./providers";
 import { CalendarSyncWorker } from "./sync-worker";
 
-// Longer than one provider sync, so a lease outlives its run.
 const leaseMs = 5 * 60_000;
 const pollMs = 60_000;
 const endedMeetingBatch = 50;

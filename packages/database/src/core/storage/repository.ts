@@ -38,7 +38,6 @@ async function requireScope(
   requireMemberRole(purpose, membership?.admin ?? null, manage);
 }
 
-// Whether the scope is an owner or admin of its organization, or NULL for a non-member.
 function memberAdmin(scope: StorageScope) {
   if (!scope.organizationId) return sql<boolean | null>`null`;
   return sql<boolean | null>`(select ${adminRoleCondition(member.role)} from ${member}
@@ -68,7 +67,6 @@ export function createStorageRepository(
       if (purpose === "avatar" && ownerId === scope.userId) return true;
       if (!scope.organizationId) return false;
       if (purpose === "organization-logo" && ownerId !== scope.organizationId) return false;
-      // An avatar needs both the viewer and its owner in the organization.
       const people = purpose === "avatar" ? [scope.userId, ownerId] : [scope.userId];
       const members = await db
         .select({ userId: member.userId })
@@ -81,7 +79,6 @@ export function createStorageRepository(
     async createUpload(scope: StorageScope, input: CreateUploadInput, id: string, expiresAt: Date) {
       return db.transaction(async (tx) => {
         if (input.purpose === "file") {
-          // Approximate across parallel requests, but shared across the uploader's workspaces.
           const outstanding = await tx
             .select({ id: fileUploads.id })
             .from(fileUploads)
@@ -184,14 +181,11 @@ export function createStorageRepository(
             size: verified.size,
             sha256: verified.sha256,
           })
-          // No target: a concurrent completion can hit any unique index that contains the ID.
           .onConflictDoNothing()
           .returning();
         const [completed] = file
           ? [file]
           : await tx.select().from(storedFiles).where(eq(storedFiles.id, id));
-        // A deletion can commit after the first read of the upload. It sets the marker in the
-        // transaction that removes the file, so this read sees it and the insert rolls back.
         const [current] = await tx
           .select({ deletedAt: fileUploads.deletedAt })
           .from(fileUploads)

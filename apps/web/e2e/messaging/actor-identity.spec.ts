@@ -6,14 +6,12 @@ import { captureScreenshot } from "../test-support/screenshots";
 import { project } from "../test-support/tasks";
 import { expect, type Locator } from "@playwright/test";
 
-/** An agent's avatar box, holding the body that the agent avatar package draws. */
 const agentAvatar = (container: Locator) =>
   container.locator("[data-slot=agent-avatar]:has([data-part=body])");
 
 async function expectIdentity(container: Locator, agent: boolean, letters?: string) {
   const avatar = container.locator("[data-slot=avatar]");
   if (agent) {
-    // An agent draws its own animated body instead of a person's circle.
     await expect(agentAvatar(container)).toBeVisible();
     await expect(avatar).toHaveCount(0);
     return;
@@ -122,7 +120,6 @@ test("missing photos keep humans and agents distinct in search, selections, memb
       body: replyBody,
       to: { conversationId: channel.id },
     });
-    // The agent shows as itself both while its turn is live (in a working mood) and after.
     const reply = page.getByRole("article").filter({ hasText: replyBody });
     await expectIdentity(reply, true);
     await finishTurn(actors.sender, turn, { status: "completed", outcome: "replied" });

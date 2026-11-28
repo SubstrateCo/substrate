@@ -13,7 +13,6 @@ export function TaskFilterLayout({
     <div
       role={toolbar ? "toolbar" : undefined}
       aria-label={toolbar ? "Task filters" : undefined}
-      // Top-aligned, so a wrapped row keeps its controls on the first line.
       className={cn(
         "flex shrink-0 flex-wrap items-start gap-2 border-b px-3 py-2 @md:px-6",
         toolbar && "@3xl:flex-nowrap",

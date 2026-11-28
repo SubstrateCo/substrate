@@ -9,7 +9,6 @@ import { FormSheet } from "@/features/records/ui/sheet";
 
 const outcomes: DealOutcome[] = ["open", "won", "lost"];
 
-/** Moves a deal to another stage, or closes it as won or lost. */
 export function DealTransitionForm({
   stages,
   stageId,

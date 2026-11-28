@@ -5,11 +5,9 @@ export type RoutineFilter = "all" | "needsYou" | "active" | "paused";
 
 const day = 24 * 60 * 60 * 1000;
 
-/** A routine the agent wrote or changed runs only after the owner approves this revision. */
 export const needsApproval = (routine: Pick<AgentRoutineView, "revision" | "approvedRevision">) =>
   routine.approvedRevision !== routine.revision;
 
-/** Where a routine sits in the list. Approval comes first, because nothing else runs it. */
 function routineGroup(routine: AgentRoutineView, now: number): RoutineGroup {
   if (needsApproval(routine)) return "needsYou";
   if (!routine.enabled) return "paused";
@@ -24,17 +22,12 @@ const filterGroups: Record<RoutineFilter, readonly RoutineGroup[]> = {
   paused: ["paused"],
 };
 
-/** Soonest run first; routines without a next run go last, by name. */
 function byNextRun(a: AgentRoutineView, b: AgentRoutineView) {
   const next = (routine: AgentRoutineView) =>
     routine.nextFireAt ? Date.parse(routine.nextFireAt) : Number.POSITIVE_INFINITY;
   return next(a) - next(b) || a.name.localeCompare(b.name);
 }
 
-/**
- * The routines that match the search and filter, in display groups. Empty groups are left out.
- * The search matches the name and the prompt, ignoring case.
- */
 export function groupRoutines(
   routines: readonly AgentRoutineView[],
   { now, query = "", filter = "all" }: { now: number; query?: string; filter?: RoutineFilter },
@@ -54,7 +47,6 @@ export function groupRoutines(
     .filter((entry) => entry.routines.length > 0);
 }
 
-/** The overview's short list: everything that needs the owner, then the next runs. */
 export function routineHighlights(
   routines: readonly AgentRoutineView[],
   { now, upcoming = 2 }: { now: number; upcoming?: number },

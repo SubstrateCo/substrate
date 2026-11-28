@@ -8,7 +8,6 @@ export interface HandoffInput {
   references: string[];
 }
 
-/** What each epoch of a server session handed to the next one. */
 export function handoffRepository(run: RunTransaction) {
   return {
     save: (

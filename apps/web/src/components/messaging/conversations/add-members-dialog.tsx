@@ -11,10 +11,6 @@ import { useAddMembers } from "@/queries/messaging/conversations";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 import { workspacePeopleQueryOptions } from "@/queries/organizations/people";
 
-/**
- * Managers add people; members add their own agents. Admins may manage conversations they cannot
- * read: pass the `name` and `memberUserIds` from their managed list to exclude current members.
- */
 export function AddMembersDialog({
   organizationId,
   conversationId,
@@ -25,12 +21,9 @@ export function AddMembersDialog({
 }: {
   organizationId: string;
   conversationId: string;
-  /** The conversation as running text, from `conversationLabel`. */
   name?: string;
-  /** Current members, when the viewer cannot read the conversation to tell. */
   memberUserIds?: readonly string[];
   onClose: () => void;
-  /** Focus the control that opened the dialog, which the dialog cannot find by itself. */
   onRestoreFocus?: () => void;
 }) {
   const conversation = useQuery(conversationsQueryOptions(organizationId)).data?.find(

@@ -45,7 +45,6 @@ import { join } from "node:path";
 
 export const agentId = "00000000-0000-4000-8000-0000000000a1";
 export const organizationId = "org-1";
-/** ACP `session/request_permission` params with one allow and one reject option. */
 export const permissionRequest = {
   sessionId: "native",
   toolCall: { toolCallId: "call-1", title: "ls", rawInput: { command: "ls" } },
@@ -64,7 +63,6 @@ const noCapabilities: AdapterCapabilities = {
   interruptReceipt: false,
 };
 
-/** A harness failure with a fixed code, as the controller reports them. */
 export class CodeError extends Error {
   readonly code: HarnessErrorCode;
   constructor(code: HarnessErrorCode) {
@@ -75,10 +73,8 @@ export class CodeError extends Error {
 
 export type HostResult = Awaited<ReturnType<RuntimeHarnessHost["execute"]>>;
 
-/** A host API call as the fake server received it. */
 type HostCall = { method: keyof HostApi; turnId?: string; itemId?: string; body: unknown };
 
-/** A promise that the test settles. */
 export function deferred<T = unknown>() {
   let resolve!: (value: T) => void;
   let reject!: (cause: unknown) => void;
@@ -89,7 +85,6 @@ export function deferred<T = unknown>() {
   return { promise, resolve, reject };
 }
 
-/** Test overrides of the controller and the device server. */
 interface FixtureHooks {
   /**
    * Replaces the controller's result of a command. Return undefined to keep the default. next
@@ -102,29 +97,24 @@ interface FixtureHooks {
   openRequest?: () => Promise<{ id: string; status: string }>;
 }
 
-/** A native session of the fake adapter. Tests end its turn and stream its events. */
 interface FakeNative {
   context: AdapterContext;
   finish?: (result: TurnResult) => void;
 }
 
-/** A server turn as the fake control plane keeps it. */
 interface ServerTurn extends HostTurn {
-  /** This device holds the lease. */
   leased: boolean;
   finished?: HostFinish;
 }
 
 const live = (turn: ServerTurn) => liveTurnStatuses.includes(turn.turn.status);
 
-/** Where a session's work comes from: a DM conversation, or a thread root. */
 function placeOf(kind: AgentSessionKind, id: string) {
   if (kind === "dm") return { conversationId: id, threadId: null };
   if (kind === "thread") return { conversationId: crypto.randomUUID(), threadId: id };
   return null;
 }
 
-/** The server's recovery rule for a started turn that is not stopping. */
 function attentionReason(turn: ServerTurn, unfinishedTool: boolean) {
   const unconfirmed = turn.items.some(
     (entry) => (entry.steered && entry.status === "submitted") || entry.status === "uncertain",
@@ -136,20 +126,12 @@ function attentionReason(turn: ServerTurn, unfinishedTool: boolean) {
 }
 const iso = (time: number) => new Date(time).toISOString();
 
-/**
- * A small fake of the server's control plane. It keeps the turns the test queued and applies the
- * server's rules for the calls the host makes: start, progress, finish with item settlement,
- * retry-later, recovery decisions and steering. Claim rules are the test's: claim hands out the
- * turns the test queued.
- */
 function fakeControlPlane(clock: () => number) {
   const sessions = new Map<string, HostSession>();
   const turns = new Map<string, ServerTurn>();
   const claimQueue: string[] = [];
-  /** Items waiting for a busy folder, by session. */
   const waiting: HostItem[] = [];
   const calls: HostCall[] = [];
-  /** The control plane is unreachable: every call fails as a network failure. */
   const outage = { host: false };
   const recoveryItems: { turnId: string; body: string }[] = [];
 
@@ -251,7 +233,6 @@ function fakeControlPlane(clock: () => number) {
     if (outage.host) throw new TypeError("fetch failed");
   }
 
-  /** The turn is live, in this attempt, and leased here; otherwise the call conflicts. */
   function held(turnId: string, attempt: number) {
     const turn = turns.get(turnId);
     const holds = turn?.leased === true && live(turn) && turn.turn.attempt === attempt;
@@ -269,7 +250,6 @@ function fakeControlPlane(clock: () => number) {
     for (const entry of turn.items) if (!entry.steered) entry.status = "pending";
   }
 
-  /** Waiting decisions of the turn's session that a held call already returned are consumed. */
   function receiveInline(turn: ServerTurn, requestIds: string[] = []) {
     const decided = waiting.filter(
       (entry) =>
@@ -498,7 +478,6 @@ function fakeControlPlane(clock: () => number) {
       turn.turn.status = "interrupted";
       turn.turn.interruption = "moved";
     },
-    /** The owner resets the session's context. */
     reset(sessionId: string, reason: "new_topic" | "start_fresh" = "start_fresh") {
       const owner = sessions.get(sessionId)!;
       owner.resetGeneration += 1;
@@ -515,11 +494,6 @@ function fakeControlPlane(clock: () => number) {
   };
 }
 
-/**
- * The host process's record of the worker's sessions, as the desktop keeps it: an open counts
- * from when it is sent until the worker refuses it, and a worker exit closes every session with
- * session.closed { reason: "worker_exited" }, ending its live turn.
- */
 function workerSessionView() {
   type Entry = { org: string; confirmed: boolean; live?: { turnId: string; generation: number } };
   const entries = new Map<string, Entry>();
@@ -581,7 +555,6 @@ export async function runtimeFixture(
     inbox?: AgentInbox;
   } = {},
 ) {
-  // A restart reuses the given file. Other tests need no file.
   const path = options.path ?? ":memory:";
   const store = await AgentWorkStore.open(path);
   await mkdir(join(tmpdir(), "opencode"), { recursive: true });
@@ -601,14 +574,11 @@ export async function runtimeFixture(
   const catalog: CatalogAgent[] = options.agents ?? [
     { id: agentId, name: "Scout", harness: "claude", enabled: true, disabledApps: [], home: true },
   ];
-  /** catalogLookup: reading one agent from the catalog fails, as when its cache expired offline. */
   const outage = { sources: false, openRequest: false, catalogLookup: false };
   const hooks: FixtureHooks = {};
   const closedRequests: CloseRequestStatus[] = [];
-  /** The organization the controller verified. Commands for another one fail. */
   const harness = { activeOrganizationId: organizationId };
   const closedOrganizations: string[] = [];
-  /** How often the runtime wrote agent folders through the controller. */
   const synchronizations = { count: 0 };
 
   const server: AgentWorkServer = {
@@ -649,7 +619,6 @@ export async function runtimeFixture(
     };
   }
 
-  /** Native sessions by native session ID, and the ones open in the host by session ID. */
   const natives = new Map<string, FakeNative>();
   const open = new Map<string, FakeNative>();
   let nativeCount = 0;
@@ -667,7 +636,6 @@ export async function runtimeFixture(
       compact: async () => {},
       interrupt: async () => ({ stillQueuedInputIds: [...stillQueued] }),
       respond: async () => {},
-      // A native adapter ends its live turn as failed when it disconnects.
       disconnect: async () =>
         native.finish?.({ status: "failed", error: "The native session closed." }),
     };
@@ -675,7 +643,6 @@ export async function runtimeFixture(
     return adapter;
   };
 
-  /** Main's view of the sessions open in the worker, which ends them when the worker exits. */
   const workerSessions = workerSessionView();
   let host: RuntimeHarnessHost;
   let unsubscribe = () => {};
@@ -686,7 +653,6 @@ export async function runtimeFixture(
     runtime.onHarnessEvent(event);
   }
 
-  /** A new harness worker: its host has the organization's configuration. */
   async function startHost() {
     host = await createHarnessHost({
       accountDirectory,
@@ -712,7 +678,6 @@ export async function runtimeFixture(
     );
   }
 
-  /** The worker process exits: its events stop, and main closes every session it had open. */
   async function workerExited() {
     unsubscribe();
     const closed = workerSessions.exited();
@@ -722,7 +687,6 @@ export async function runtimeFixture(
     for (const event of closed) deliver({ ...event, timestamp: now });
   }
 
-  /** Host commands on their way. The host does file work, so settle waits for them. */
   const inflight = new Set<Promise<HostResult>>();
   function hostCommand(command: HarnessCommand): Promise<HostResult> {
     const pending = sendToHost(command);
@@ -732,7 +696,6 @@ export async function runtimeFixture(
     return pending;
   }
 
-  /** The command reaches the host, and fails with a registered code as the worker reports it. */
   async function sendToHost(command: HarnessCommand): Promise<HostResult> {
     try {
       if (command.type !== "open") return await host.execute(command);
@@ -829,7 +792,6 @@ export async function runtimeFixture(
     visible?: boolean;
   }
 
-  /** An owner message, as the server's admission records it, in its dm or thread session. */
   function ownerItem(input: OwnerMessageInput = {}) {
     const messageId = crypto.randomUUID();
     const conversationId = input.conversationId ?? crypto.randomUUID();
@@ -857,7 +819,6 @@ export async function runtimeFixture(
     return { item: entry, session: owner, messageId, conversationId };
   }
 
-  /** The latest turn command for the turn: a continued turn has a new generation. */
   function turnCommand(turnId: string) {
     const matching = commands.filter(
       (command): command is Extract<HarnessCommand, { type: "turn" }> =>
@@ -893,16 +854,13 @@ export async function runtimeFixture(
     switchOrganization(id: string) {
       harness.activeOrganizationId = id;
     },
-    /** Sessions open in the host. */
     nativeSessions: () => [...open.keys()],
     toolEndpoint: (sessionId: string) => open.get(sessionId)?.context.lease?.endpoint,
     synchronizations,
-    /** Runs the runtime's 30 s cycle tick once. */
     async tick() {
       intervals.get(30_000)?.();
       await settle();
     },
-    /** Runs the runtime's heartbeat once. */
     async heartbeat() {
       intervals.get(60_000)?.();
       await settle();
@@ -934,10 +892,8 @@ export async function runtimeFixture(
           : [],
       ),
     turnCommand,
-    /** Host API calls of one method, in order. */
     hostCalls: <M extends keyof HostApi>(method: M) =>
       control.calls.filter((call) => call.method === method),
-    /** What the host reported when it ended the turn. */
     finished: (turnId: string) => control.turns.get(turnId)?.finished,
     status: (turnId: string) => control.turns.get(turnId)?.turn.status,
     /**

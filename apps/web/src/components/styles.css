@@ -14,7 +14,6 @@
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans: "Geist Variable", sans-serif;
-  /* Dense archive cells, calendar entries, and the period heading on a year map. */
   --text-compact: 0.8125rem;
   --text-compact--line-height: 1.25rem;
   --text-micro: 0.6875rem;
@@ -68,7 +67,6 @@
   --color-row-highlight: var(--row-highlight);
   --color-row-selected: var(--row-selected);
   --color-row-selected-foreground: var(--row-selected-foreground);
-  /* Motion: strong ease-out for every enter, exit, and press. See apps/web/DESIGN.md § 6. */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --animate-collapsible-down: collapsible-down 180ms var(--ease-out);
@@ -78,12 +76,9 @@
   --shadow-floating: var(--elevation-floating);
   --spacing-overlay-width: calc(100% - 2rem);
   --spacing-overlay-height: calc(100dvh - 2rem);
-  /* Dialogs hang from a fixed top edge, so growing content extends downward and the title stays put. */
   --spacing-dialog-top: min(12dvh, 6rem);
   --spacing-dialog-height: calc(100dvh - min(12dvh, 6rem) - 1rem);
-  /* The crop preview shrinks on short windows so the dialog footer stays visible. */
   --spacing-crop-preview: min(20rem, max(5rem, calc(100dvh - 22rem)));
-  /* The desktop title-bar search results: 32rem, with a 12px margin on narrow windows. */
   --spacing-search-panel: min(32rem, calc(100vw - 24px));
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -102,7 +97,6 @@
   --card-foreground: var(--foreground);
   --popover: oklch(1 0 0);
   --popover-foreground: var(--foreground);
-  /* Ink cobalt: the one accent. Primary action, focus, selection, and the key figure. */
   --primary: oklch(0.48 0.14 255);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.945 0.003 255);
@@ -115,11 +109,9 @@
   --destructive-foreground: oklch(1 0 0);
   --overlay: oklch(0 0 0 / 40%);
   --border: oklch(0.9 0.004 255);
-  /* Field boundary: clear against the page. Outline buttons use the quieter control border. */
   --input: oklch(0.64 0.006 255);
   --control-border: oklch(0.82 0.005 255);
   --ring: oklch(0.6 0.12 255);
-  /* chart-1 is the accent series; the others are distinct hues for series that must read apart. */
   --chart-1: oklch(0.55 0.14 255);
   --chart-2: oklch(0.61 0.09 180);
   --chart-3: oklch(0.62 0.1 145);
@@ -141,7 +133,6 @@
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
   --surface: oklch(0.994 0.001 255);
-  /* Recessed fills: code, quotes, callouts, card footers, board columns. */
   --inset: oklch(0.968 0.003 255);
   --success: oklch(0.43 0.1 165);
   --warning: oklch(0.6 0.15 62);
@@ -150,12 +141,10 @@
   --rail-foreground: oklch(0.38 0.01 255);
   --destructive-solid: oklch(0.54 0.21 27);
   --row-hover: oklch(0.25 0.01 255 / 5%);
-  /* The keyboard cursor in a palette or picker: neutral, so it never reads as a chosen row. */
   --row-highlight: oklch(0.25 0.01 255 / 8%);
   --row-selected: oklch(0.93 0.03 255);
   --row-selected-foreground: oklch(0.38 0.12 255);
   --surface-highlight: oklch(1 0 0 / 25%);
-  /* The thin edge of an agent avatar (@substrate/agent-avatars): only dark grounds need one. */
   --agent-avatar-outline: oklch(1 0 0 / 0%);
   --elevation-surface: 0 1px 2px oklch(0.2 0.01 255 / 5%);
   --elevation-raised: 0 1px 3px oklch(0.2 0.01 255 / 6%), 0 4px 12px -4px oklch(0.2 0.01 255 / 8%);
@@ -231,7 +220,6 @@
   * {
     @apply border-border outline-ring/50;
   }
-  /* Charts keep keyboard focus visible without outlining the plot after pointer selection. */
   [data-chart-input="pointer"] .ts-chart:focus {
     outline: none;
   }
@@ -252,11 +240,9 @@
   [data-scrolling]::-webkit-scrollbar-thumb {
     background-color: color-mix(in oklch, var(--muted-foreground) 45%, transparent);
   }
-  /* Main page outlet beside any page sidebar. Overlays anchor to it to center on page content. */
   [data-page-outlet] {
     anchor-name: --page-outlet;
   }
-  /* The date picker's grid: a 28px cell and a soft corner. */
   [data-slot="calendar"] {
     --cell-radius: var(--radius-md);
     --cell-size: calc(var(--spacing) * 7);
@@ -274,7 +260,6 @@
   }
 }
 
-/* Disclosures open and close with their measured height; Radix sets the variable. */
 @keyframes collapsible-down {
   from {
     height: 0;
@@ -297,7 +282,6 @@
   }
 }
 
-/* Spans the main page outlet (or the container without one), with the 0.75rem page gutter. */
 @utility inset-x-page-outlet {
   left: calc(anchor(--page-outlet left, 0px) + 0.75rem);
   right: calc(anchor(--page-outlet right, 0px) + 0.75rem);

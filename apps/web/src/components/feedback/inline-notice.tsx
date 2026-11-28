@@ -3,11 +3,6 @@ import type { ReactNode } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { LucideIcon } from "lucide-react";
 
-/**
- * A banner above content that says what state it is in and offers the one action that changes
- * it: reconnect a calendar, restore a project, join a channel. `warning` asks for attention and
- * is announced as an alert; `neutral` is a status. An action's failure shows under the text.
- */
 export function InlineNotice({
   icon: Icon,
   tone = "neutral",
@@ -19,7 +14,6 @@ export function InlineNotice({
   icon: LucideIcon;
   tone?: "neutral" | "warning";
   action?: ReactNode;
-  /** Reviewed copy for a failed action. */
   error?: ReactNode;
   className?: string;
   children: ReactNode;

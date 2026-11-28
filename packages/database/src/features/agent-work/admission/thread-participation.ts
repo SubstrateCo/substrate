@@ -7,10 +7,6 @@ import type { MessageTrigger } from "./admission";
 import { wakeSessionKey } from "./wake-kind";
 import { and, eq, exists, isNotNull, or, sql } from "drizzle-orm";
 
-/**
- * A candidate joined this exact thread through admitted work, not conversation membership: it
- * has a session for the thread, or published a reply in it.
- */
 export function threadParticipation(db: DatabaseExecutor, trigger: MessageTrigger) {
   const { message } = trigger;
   if (!message.threadId || trigger.conversationKind === "dm") return sql<boolean>`false`;

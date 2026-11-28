@@ -17,7 +17,6 @@ export function referenceArchived(
   workEntityId: SQLWrapper,
   taskEntityId: SQLWrapper,
 ) {
-  // A NULL task matches no entity, so a channel message tests only its work.
   return sql`(${inArchivedProject(organizationId, workEntityId)}
     OR ${inArchivedProject(organizationId, taskEntityId)})`;
 }

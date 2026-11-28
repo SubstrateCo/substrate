@@ -10,7 +10,6 @@ import { expect, test } from "bun:test";
 
 type Call = { command: string; args: string[]; timeoutMs: number };
 
-/** A probe whose programs answer from a table keyed by command; anything else fails. */
 function probe(
   platform: NodeJS.Platform,
   env: Record<string, string | undefined>,

@@ -11,23 +11,17 @@ import { googleAccessToken, type GoogleTokenSource } from "../../integrations/go
 import { ProviderNotConfigured, ProviderNotImplemented } from "./errors";
 import { createGoogleCalendar } from "./google";
 
-/** The owner's linked provider account. `accountId` is the Better Auth `account.id`. */
 export interface CalendarAccountRef {
   userId: string;
   accountId: string;
 }
 
-/**
- * A read-only calendar API. It loads the account's token itself and throws the calendar errors in
- * `./errors`, mapped from its integration's errors.
- */
 export interface CalendarProviderAdapter {
   listCalendars(account: CalendarAccountRef): Promise<ProviderCalendar[]>;
   syncEvents(
     account: CalendarAccountRef,
     input: {
       providerCalendarId: string;
-      /** Null requests a full sync of the window. */
       syncCursor: string | null;
       syncWindowStart: Date;
       now: Date;
@@ -36,9 +30,7 @@ export interface CalendarProviderAdapter {
 }
 
 export interface CalendarProviders {
-  /** Providers this server can connect: implemented and configured. */
   configured: CalendarProvider[];
-  /** Throws ProviderNotImplemented or ProviderNotConfigured for a provider without an adapter. */
   adapter(provider: CalendarProvider): CalendarProviderAdapter;
 }
 
@@ -52,9 +44,6 @@ export function createCalendarProviders(
       createGoogleCalendar({
         accessToken: (account) => googleAccessToken({ auth, ...account, product: "calendar" }),
       }),
-    // Not implemented. A Microsoft Graph adapter plugs in here, with its social provider in
-    // auth/calendar-accounts.ts. Until then, claimed Microsoft calendars retry with
-    // `provider_not_implemented`.
     microsoft: undefined,
   };
   return {

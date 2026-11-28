@@ -48,7 +48,6 @@ const textTypes = new Set([
   "application/x-sh",
 ]);
 
-/** Whether read_file can return the file as text. */
 function isTextType(contentType: string) {
   const type = contentType.toLowerCase();
   return (
@@ -67,7 +66,6 @@ const describe = (row: Metadata, file: Locator): FileRef => ({
   size: row.size,
 });
 
-/** The files of messages the reader can already see, keyed by message ID, in message order. */
 export async function messageFiles(db: DatabaseExecutor, messageIds: string[]) {
   const rows = await messageAttachmentMetadata(db, messageIds);
   const files = new Map<string, FileRef[]>();
@@ -81,7 +79,6 @@ export async function messageFiles(db: DatabaseExecutor, messageIds: string[]) {
   return files;
 }
 
-/** The files of a task the reader can already open. */
 export async function taskFiles(db: DatabaseExecutor, taskId: string) {
   return (await taskAttachmentMetadata(db, taskId)).map((row) =>
     describe(row, { type: "task_attachment", taskId, attachmentId: row.id }),
@@ -101,7 +98,6 @@ export function mcpFileQueries(
 ) {
   const { db, scope } = ctx;
 
-  /** The stored file behind a locator, after checking access to the record it is attached to. */
   async function resolve(locator: Locator) {
     if (locator.type === "message_attachment") {
       const { message } = await requireMessage(db, identity, locator.messageId);
@@ -144,7 +140,6 @@ export function mcpFileQueries(
   return {
     resolve,
 
-    // Message files and task files are two small newest-first queries, merged into one page.
     async list(input: McpInput<"list_files">): Promise<McpOutput<"list_files">> {
       const p = newestFirstPagination(scope, "list_files", input);
       const filters = (): SQL | undefined =>

@@ -44,7 +44,6 @@ import {
 } from "./routines/routines";
 import { statusViews } from "./status";
 
-/** The owner's agent work: reads and commands from any of the owner's devices. */
 export function createAgentWorkReadRepository(
   context: RepositoryContext,
   identity: SessionIdentity,

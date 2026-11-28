@@ -35,11 +35,9 @@ test("a started turn continues once as its next attempt, then needs the owner", 
     recoveries: 1,
     interruption: "app",
   });
-  // The old attempt no longer reports anything.
   expect(await x.recover(1).catch((error: Error) => error.name)).toBe("ConflictError");
   await x.host.start(x.turn.turn.id, { attempt: 2, droppedItemIds: [] });
   expect(await x.recover(2)).toEqual({ action: "needs_attention", reason: "interrupted_again" });
-  // The batch stays with the turn for Retry or Dismiss.
   expect((await x.items()).map((item) => item.status)).toEqual(["submitted"]);
 });
 

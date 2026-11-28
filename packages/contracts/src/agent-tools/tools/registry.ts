@@ -15,7 +15,6 @@ import { z } from "zod";
 /** server: the workspace API executes the call. local: the home desktop handles it. */
 export type ToolScope = "server" | "local";
 
-// CRM tools that also read or write tasks.
 const crmTaskTools: ReadonlySet<string> = new Set(["create_crm_follow_up", "list_crm_follow_ups"]);
 
 const serverTools = {
@@ -79,10 +78,6 @@ export const localToolCall = z
   .object({ tool: localToolName, sessionId: z.string().min(1).max(200), ...call })
   .strict();
 
-/**
- * Server tools only the main session may call: helpers report through finish_helper instead,
- * and do not manage routines or helpers.
- */
 const mainOnlyServerTools: ReadonlySet<string> = new Set([
   "reply",
   ...Object.keys(agentWorkTools).filter((name) => name !== "finish_helper"),

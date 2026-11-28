@@ -3,12 +3,6 @@ import type { ReactNode } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { cn } from "cn";
 
-/**
- * The one content column of every settings surface (account, organization, project, agent): at
- * most `max-w-4xl`, centered within the page inset, `space-y-6`. It is also the `content`
- * container, so cards can switch to two columns by their own width. Pass `inset` when the parent
- * does not already provide the page's `p-6`, such as a tab panel.
- */
 export function SettingsContent({
   inset = false,
   className,
@@ -29,11 +23,9 @@ export function SettingsContent({
       {children}
     </div>
   );
-  // The inset wraps the column, so the column is as wide in a tab panel as beside a sidebar.
   return inset ? <div className="min-w-0 p-4 sm:p-6">{column}</div> : column;
 }
 
-/** One settings section: a page header, then its cards and lists. */
 export function SettingsPanel({
   title,
   description,

@@ -51,7 +51,6 @@ test("task links enforce access, origin, and workspace, and redact a task the re
     otherTaskEntityId: secret,
   };
   expect((await write(owner, link, "https://untrusted.example.test")).status()).toBe(403);
-  // The member can edit the visible task but cannot name a task they cannot open.
   await rejected(await write(member, link), ["Undisclosed acquisition"]);
   await rejected(
     await write(outsider, { ...link, relation: "related_to", otherTaskEntityId: visible }),
@@ -74,7 +73,6 @@ test("task links enforce access, origin, and workspace, and redact a task the re
   });
 
   const remove = { action: "removeTaskLink" as const, linkId: redacted!.id };
-  // A link is removed through a task it touches that the actor can edit.
   await rejected(await write(member, { ...remove, projectEntityId: closed, taskEntityId: secret }));
   await result(await write(member, { ...remove, projectEntityId: open, taskEntityId: visible }));
   expect((await result<Detail>(await project(owner, open))).links).toEqual([]);
@@ -179,7 +177,6 @@ test("task discussions use shared messages, references and task access", async (
     ]),
   );
 
-  // View access can open the shared history, but cannot post or manage its membership.
   await result(
     await write(owner, {
       action: "share",

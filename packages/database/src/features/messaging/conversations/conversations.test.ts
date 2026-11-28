@@ -238,7 +238,6 @@ test("participant access is bound to the recipient organization and departure pr
 
 test("starting a DM with the same person returns the existing DM", async () => {
   await verified();
-  // Both people start the DM at the same moment.
   const [dm, reverse] = await Promise.all([
     service("alice").createConversation({ kind: "dm", emails: ["bob@example.com"] }),
     service("bob").createConversation({ kind: "dm", emails: ["alice@example.com"] }),

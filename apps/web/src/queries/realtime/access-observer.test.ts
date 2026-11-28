@@ -124,7 +124,6 @@ test("access events keep mounted data on screen while it is read again", async (
     reads.at(-1)!.resolve(["visible project", "granted project"]);
     await first;
     expect(observer.getCurrentResult().data).toEqual(["visible project", "granted project"]);
-    // An outage is not a denial: the loaded content stays.
     const second = cache.receive(access());
     await advanceTimersAsync(0);
     reads.at(-1)!.reject(Object.assign(new Error("Unavailable"), { status: 503 }));
@@ -160,7 +159,6 @@ test("any denied read clears its data, within the connected workspace only", asy
     await read(own);
     await read(other);
     expect(client.getQueryData(own)).toBeUndefined();
-    // Another workspace's data is cleared by that workspace's own connection.
     expect(client.getQueryData(other)).toEqual(["other workspace project"]);
   } finally {
     cache.dispose();

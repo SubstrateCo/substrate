@@ -22,7 +22,6 @@ export async function enableCalendarApp(db: DatabaseExecutor, organizationId: st
     });
 }
 
-/** A linked Google account with the calendar scope, unless `scope` says otherwise. */
 export async function linkCalendarAccount(
   db: DatabaseExecutor,
   userId: string,
@@ -40,10 +39,6 @@ export async function linkCalendarAccount(
   return id;
 }
 
-/**
- * Connects one calendar for a user in a workspace through the session repository. It verifies the
- * user's email, enables the calendar app, and links a Google account unless one is given.
- */
 export async function connectCalendar(
   db: DatabaseExecutor,
   options: {
@@ -117,7 +112,6 @@ export function providerEvent(
   };
 }
 
-/** Takes a fresh lease on the calendar, as a claim would. */
 export async function leaseCalendar(
   db: DatabaseExecutor,
   calendarEntityId: string,
@@ -144,7 +138,6 @@ export async function leaseCalendar(
   };
 }
 
-/** Stores provider events through the sync commit, under a fresh lease. */
 export async function syncCalendarEvents(
   db: DatabaseExecutor,
   calendarEntityId: string,

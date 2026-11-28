@@ -45,7 +45,6 @@ export function ProjectSharing({ projectEntityId }: { projectEntityId: string })
       },
     );
   const detail = resource.data;
-  // The project pane shows sharing only once its project has loaded.
   if (!detail) return null;
   return (
     <ProjectSharingView

@@ -3,9 +3,7 @@ import { useLayoutEffect, useRef } from "react";
 import { easeOut, ghostOf, reducedMotion } from "./motion";
 
 const exits = {
-  /** The row fades where it was. */
   fade: { keyframes: [{ opacity: 1 }, { opacity: 0 }], duration: 150 },
-  /** The reverse of the `rise` entrance: the row fades and drops 4px. */
   drop: {
     keyframes: [
       { opacity: 1, translate: "0 0" },
@@ -37,19 +35,9 @@ function measure(container: HTMLElement) {
   return places;
 }
 
-/**
- * Rows marked with `data-motion-key` leave with an exit animation, and the rows that stay glide
- * to their new place, as toasts do. Rows enter without motion here; give them an `enterMotion`
- * entrance if they need one.
- *
- * Put the returned ref on a positioned container that stays mounted while rows come and go, so
- * it is the rows' offset parent and holds the exiting copies. `anchor` is the container edge
- * that stays put when it changes size: "bottom" for a stack that grows upward.
- */
 export function useListMotion<T extends HTMLElement>(anchor: Anchor, exit: keyof typeof exits) {
   const container = useRef<T>(null);
   const last = useRef(new Map<string, Place>());
-  // Rows can change size without this component rendering, such as a card that loads its data.
   useLayoutEffect(() => {
     const list = container.current;
     if (!list) return;

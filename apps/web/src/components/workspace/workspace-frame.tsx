@@ -35,11 +35,8 @@ export function WorkspaceFrame({
   children: ReactNode;
 }) {
   const organization = useQuery(currentOrganizationQueryOptions(organizationId));
-  // The dot needs only to know whether one unread notification exists.
   const notifications = useQuery(notificationUnreadOptions(organizationId));
   const unreadMessages = useQuery(unreadCountsOptions(organizationId));
-  // Agent notifications are only for work that needs the owner. The server returns nothing for
-  // people without agents, so the dot never shows for them.
   const needsYou = useQuery(needsYouOptions(userId, organizationId));
   useAgentWorkBridgeSync(userId, organizationId);
   useAppShortcuts();

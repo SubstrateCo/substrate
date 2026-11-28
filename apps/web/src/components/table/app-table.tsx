@@ -27,10 +27,8 @@ import { useDelayedLoading } from "@/hooks/use-delayed-loading";
 import { cn } from "cn";
 import type { LucideIcon } from "lucide-react";
 
-/** The first column's link to the record. */
 export const tableLink = "block truncate font-medium underline-offset-4 hover:underline";
 
-/** The column layout as the data attributes that `ui/table` styles. */
 function columnData(meta: AppColumnMeta | undefined, head = false) {
   return {
     "data-align": meta?.align,
@@ -41,7 +39,6 @@ function columnData(meta: AppColumnMeta | undefined, head = false) {
 }
 
 export type AppTablePagination =
-  /** Pages the rows in the browser. The pager shows from the second page. */
   | { mode: "client"; pageSize?: number }
   /** `data` is one page that the server returned. */
   | {
@@ -65,7 +62,6 @@ export type AppTablePagination =
 
 type AppTableEmpty = {
   title: string;
-  /** Where rows come from or how to add one, such as "Invitations you send appear here." */
   description: string;
   icon: LucideIcon;
   action?: ReactNode;
@@ -73,9 +69,7 @@ type AppTableEmpty = {
 };
 
 type AppTableProps<TData extends RowData> = {
-  /** The table's accessible name, also used for its pager. */
   name: string;
-  /** A dense, bounded grid with a pinned heading and first column for inspecting wide records. */
   layout?: "default" | "ledger";
   pageSummary?: string;
   /**
@@ -106,7 +100,6 @@ type AppTableProps<TData extends RowData> = {
   };
   selectedRowId?: string | null;
   onRowClick?: (row: TData) => void;
-  /** A card per row below the container's `40rem` breakpoint. */
   renderMobileRow?: (row: TData) => ReactNode;
 };
 
@@ -147,8 +140,6 @@ export function AppTable<TData extends RowData>({
         className={cn(
           "@container min-w-0",
           layout === "ledger" ? "flex min-h-0 flex-col gap-2" : "space-y-3",
-          // In a bounded flex column the results fill the free height above a pinned pager;
-          // elsewhere they take their rows' height and the page scrolls.
           paginated &&
             (parts.framed || parts.pager) &&
             "flex min-h-64 flex-1 flex-col gap-3 space-y-0",
@@ -201,7 +192,6 @@ export function AppTable<TData extends RowData>({
 
 const ariaSort = { asc: "ascending", desc: "descending", none: "none" } as const;
 
-/** Which parts of the table show for its rows, load state, error, and pager. */
 function tableParts<MobileRow>({
   hasRows,
   loading,
@@ -215,19 +205,14 @@ function tableParts<MobileRow>({
   pager?: PagerProps;
   renderMobileRow?: MobileRow;
 }) {
-  // The first load shows the header and skeleton rows.
   const initialLoading = loading && !hasRows && !error;
   return {
     hasRows,
     initialLoading,
-    // With no rows, show only the notice, without the frame: sortable headers over nothing are noise.
     framed: hasRows || initialLoading,
     announceLoading: loading && (hasRows || initialLoading),
-    // An error over rows that are still shown is a compact notice above them.
     inlineError: !!error && hasRows,
-    // Page-size controls and the way back stay available through loading and later empty pages.
     pager,
-    // Rows show as cards on narrow screens, and the table only on wider ones.
     renderMobileRow: hasRows ? renderMobileRow : undefined,
   };
 }
@@ -247,7 +232,6 @@ function AppTableNotice({
   return <ContentNotice {...empty} />;
 }
 
-/** The table instance, with client paging state or the server page and sort it is given. */
 function usePagedTable<TData extends RowData>({
   columns,
   data,
@@ -285,7 +269,6 @@ function usePagedTable<TData extends RowData>({
     },
     onPaginationChange: server ? undefined : setClientPage,
   });
-  // Removing the last row of the last page would leave an empty page with no pager to go back.
   const lastPage = Math.max(0, table.getPageCount() - 1);
   if (!server && clientPage.pageIndex > lastPage)
     setClientPage({ ...clientPage, pageIndex: lastPage });
@@ -306,9 +289,7 @@ function AppTableFrame<TData extends RowData>({
   name: string;
   layout: NonNullable<AppTableProps<TData>["layout"]>;
   loading: boolean;
-  /** Skeleton rows under headers that cannot sort yet. */
   initialLoading: boolean;
-  /** Mobile cards replace the table below the container's `40rem` breakpoint. */
   desktopOnly: boolean;
   selectedRowId?: string | null;
   onRowClick?: (row: TData) => void;
@@ -383,13 +364,11 @@ function withRowActions<TData extends RowData>(
   ];
 }
 
-/** The pager's state, or nothing while there is one page. */
 function pagerProps<TData extends RowData>(
   table: AppTableInstance<TData>,
   name: string,
   pagination: AppTablePagination,
   fetching: boolean,
-  /** The loaded page has no rows. */
   empty: boolean,
 ): PagerProps | undefined {
   if (pagination.mode === "client") {
@@ -404,8 +383,6 @@ function pagerProps<TData extends RowData>(
     };
   }
   const { pageIndex, pageSize, hasNextPage, rowCount } = pagination;
-  // A page size choice stays reachable after someone picks a larger size, and a fitted page keeps
-  // its height, but an empty first page has nothing to page. A later empty page keeps the way back.
   const sized = pagination.pageSizeOptions || pagination.onFitPageSize;
   if (pageIndex === 0 && !hasNextPage && (!sized || empty)) return undefined;
   return {

@@ -26,17 +26,14 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 export type ThreadScreenProps = {
   organizationId: string;
   conversationId: string;
-  /** The thread's root message ID. */
   threadId: string;
   onBack: () => void;
   onOpenRecord: (target: RecordTarget) => void;
   onOpenProfile?: (target: MessagingProfileTarget) => void;
   onOpenConversation?: (target: MessagingConversationTarget) => void;
-  /** Starts a record from a message. Without it, those message actions are hidden. */
   onCreateFromMessage?: (source: MessageSource) => void;
 };
 
-/** A thread: its root, the replies, and a reply composer. */
 export function ThreadScreen({
   organizationId,
   conversationId,
@@ -65,7 +62,6 @@ export function ThreadScreen({
     onOpenConversation,
     onOpenProfile: openProfile,
     onCreateFromMessage,
-    // A reference to another thread here opens that thread in its place.
     onOpenThread: onOpenConversation
       ? (id) => {
           if (id !== threadId) onOpenConversation({ conversationId, threadId: id });
@@ -75,7 +71,6 @@ export function ThreadScreen({
   const canPost = conversation?.canPost ?? false;
   return (
     <SafeAreaView className="flex-1 bg-surface" edges={["top", "bottom"]} testID="thread-screen">
-      {/* The view starts below the top safe area, which the offset accounts for. */}
       <KeyboardAvoidingView
         className="flex-1"
         behavior={keyboardBehavior}

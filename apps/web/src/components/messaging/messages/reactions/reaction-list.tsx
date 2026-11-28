@@ -20,7 +20,6 @@ export function ReactionList({ message, emoji }: { message: Message; emoji?: str
   const { data, hasNextPage, isFetching, isFetchingNextPage, isFetchNextPageError, fetchNextPage } =
     people;
   const canExpandPreview = data?.pages.length === 1 && hasNextPage;
-  // Expand the cached three-person preview once, not every page as it arrives.
   useEffect(() => {
     if (canExpandPreview && !isFetching && !isFetchNextPageError) void fetchNextPage();
   }, [canExpandPreview, isFetching, isFetchNextPageError, fetchNextPage]);
@@ -49,7 +48,6 @@ export function ReactionList({ message, emoji }: { message: Message; emoji?: str
           variant="ghost"
           className="mt-2 w-full"
           pending={isFetchingNextPage}
-          // Do not cancel a refresh that a reaction change started.
           onClick={() => void fetchNextPage({ cancelRefetch: false })}
         >
           Load more

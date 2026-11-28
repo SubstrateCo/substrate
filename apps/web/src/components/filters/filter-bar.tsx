@@ -5,11 +5,6 @@ import type { FilterClause, FilterField, FilterValue } from "./types";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 
-/**
- * A "Filter" button, then one pill per active filter, then "Clear filters". Fully controlled:
- * the app owns `value`, applies it to its data, and keeps search, sort, and view separate.
- * Pills follow the order of `fields` and wrap onto new lines.
- */
 export function FilterBar<Id extends string>({
   fields,
   value,
@@ -22,9 +17,7 @@ export function FilterBar<Id extends string>({
   fields: readonly FilterField<Id>[];
   value: FilterValue<Id>;
   onValueChange: (value: FilterValue<Id>) => void;
-  /** Called after "Clear filters" resets the optional fields, such as to reset a page. */
   onClear?: () => void;
-  /** Show "Clear filters" while an optional field has a filter. Hide it when the page offers its own. */
   clearable?: boolean;
   clearLabel?: string;
   "aria-label"?: string;
@@ -51,7 +44,6 @@ export function FilterBar<Id extends string>({
       {clearable && hasClearableFilters(fields, value) && (
         <Button
           type="button"
-          // Pill height, muted text, and an X: it reads as an action but stays quieter than the pills.
           variant="disclosure"
           size="sm"
           onClick={() => {

@@ -15,7 +15,6 @@ export const fileLocator = z
   ])
   .describe("Where the file is attached. Copy it from a file in a tool result.");
 
-/** A file attached to a message or task that the reader can open. */
 const fileRef = z.object({
   file: fileLocator,
   filename: z.string(),
@@ -25,6 +24,7 @@ const fileRef = z.object({
 export const fileRefs = z
   .array(fileRef)
   .describe("Attached files. Open one with read_file, or save it with download_file.");
+export const fileRefsOmittedByOlderServers = fileRefs.default([]);
 
 const imageContent = z.object({
   kind: z.literal("image"),

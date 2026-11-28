@@ -5,7 +5,6 @@ import { migrate } from "drizzle-orm/sqlite-proxy/migrator";
 import { DatabaseSync, type StatementSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 
-/** A transaction on the local database. Every store operation runs in one. */
 export type LocalTransaction = Parameters<Parameters<SqliteRemoteDatabase["transaction"]>[0]>[0];
 
 const defaultMigrationsDirectory = fileURLToPath(new URL("../migrations/", import.meta.url));
@@ -44,13 +43,8 @@ function nodeConnection(path: string, readOnly: boolean) {
   };
 }
 
-/** The writer has already migrated this file. Never migrate or write from a search worker. */
 export const openLocalReader = (path: string) => nodeConnection(path, true);
 
-/**
- * Opens a local SQLite file and applies the migrations. Bun uses bun:sqlite; Electron's Node
- * uses node:sqlite.
- */
 export async function openLocalDatabase(
   path: string,
   migrationsDirectory = defaultMigrationsDirectory,
@@ -95,10 +89,6 @@ export async function openLocalDatabase(
   }
 }
 
-/**
- * Runs operations one at a time. The proxy driver shares one connection, so an operation that
- * awaited inside a transaction would otherwise let another operation's queries join it.
- */
 export function serialTransactions(database: SqliteRemoteDatabase) {
   let queue: Promise<unknown> = Promise.resolve();
   return function run<T>(operation: (tx: LocalTransaction) => Promise<T>): Promise<T> {

@@ -34,7 +34,6 @@ export type AgentListItem = {
   status?: WorkStatus;
 };
 
-/** The Agents app: Needs you and each agent in the sidebar, the selection beside it. */
 export function AgentsWorkspaceView({
   agents,
   catalog,
@@ -56,11 +55,9 @@ export function AgentsWorkspaceView({
   selectedAgentId?: string;
   agentLink: (agentId?: string) => LinkProps;
   onCreate: () => void;
-  /** The New agent button, where focus goes once an agent is deleted. */
   createButtonRef?: Ref<HTMLButtonElement>;
   editor?: ReactNode;
   content: ReactNode;
-  /** The selected agent's settings, a `PageSheet` over the content. */
   sheet?: ReactNode;
   aside?: ReactNode;
 }) {

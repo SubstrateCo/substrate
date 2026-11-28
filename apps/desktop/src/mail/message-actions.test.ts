@@ -118,7 +118,6 @@ test("one Gmail message changes once, including after a lost response; siblings,
     expect(await db.body(trashed.id)).toEqual({ text: "kept", format: "plain" });
     expect(await db.connection(box)).toMatchObject({ unreadTotal: 11, cursor: "checkpoint" });
     expect(await db.connection(boxes[1]!)).toMatchObject({ unreadTotal: 12 });
-    // The owner restores and marks unread in Gmail. History replay uses the same local ID.
     mode = "ok";
     state = [...labels];
     await syncMailbox(

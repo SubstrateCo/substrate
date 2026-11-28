@@ -90,7 +90,6 @@ test("app shortcuts leave the search field and its own shortcuts alone", async (
   await expect(input).toHaveValue("gt");
   await expect(page).toHaveURL(/\/messages/);
 
-  // Ctrl+Tab still switches the search type while the app shortcuts are registered.
   const types = page.getByRole("tablist", { name: "Search type", exact: true });
   await expect(types.getByRole("tab", { name: "All", exact: true })).toHaveAttribute(
     "aria-selected",
@@ -108,7 +107,6 @@ test("app shortcuts leave the search field and its own shortcuts alone", async (
   );
   await expect(input).toBeFocused();
 
-  // A finished sequence does not swallow the search shortcut that follows it.
   await page.keyboard.press("Escape");
   await input.blur();
   await page.keyboard.press("g");

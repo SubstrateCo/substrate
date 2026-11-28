@@ -107,7 +107,6 @@ export function AuthScreen({
       },
     );
   }, [mutate, email, password, changeMode]);
-  // A verification token is consumed once, never retried in a render loop.
   useEffect(() => {
     if (mode !== "verify" || !token || linkError) return;
     if (verificationStarted.current === token) return;

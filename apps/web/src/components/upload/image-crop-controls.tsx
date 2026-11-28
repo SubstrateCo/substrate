@@ -47,7 +47,6 @@ function ToolButton({
   );
 }
 
-/** Zoom, rotate, and reset under the image. Fit mode has nothing to zoom. */
 export function ImageCropControls({
   kind,
   mode,
@@ -96,7 +95,6 @@ export function ImageCropControls({
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-x-0.5 gap-y-2 sm:flex-nowrap">
         {kind === "organization-logo" ? (
-          // Logos choose between keeping the whole image and filling the square.
           <div>
             <SegmentedControl
               aria-label="Logo sizing"

@@ -12,14 +12,6 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "cn";
 import type { Layout, LayoutChangedMeta } from "react-resizable-panels";
 
-// Standard app page frame: an optional sidebar, the main content, and an optional aside.
-// The layout owns pane sizes, resizing, saved widths, and narrow-screen behavior,
-// so every page behaves the same way.
-//
-// Below the breakpoint the panel group is removed from the box tree and the panes stack.
-// The breakpoint is `md`, or `lg` when the layout has an aside.
-// `mobileView` shows only one of the sidebar and content below `md`. Without it, they stack.
-
 const savedPanes: PagePane[] = ["sidebar", "aside"];
 
 export function PageLayout({

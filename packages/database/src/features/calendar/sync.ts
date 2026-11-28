@@ -51,7 +51,6 @@ const syncableStatuses = ["pending", "active", "error"] as const;
 const retryDelayMs = 15 * 60_000;
 // Keeps each statement well below PostgreSQL's 65,535 bind parameters.
 const chunkSize = 500;
-// interactions_recorded_at is not listed, so a recorded meeting stays recorded.
 const updatedEventFields = [
   "icalUid",
   "recurringEventId",
@@ -86,8 +85,6 @@ function excluded(column: AnyColumn) {
   return sql.raw(`excluded."${column.name}"`);
 }
 
-// The calendar's entity audience reaches only readers of the calendar: its owner. The hint carries
-// no data, so the owner's client refetches calendar views.
 function calendarChanged(db: DatabaseExecutor, organizationId: string, calendarEntityId: string) {
   effectsFor(db).hint({
     audience: realtimeKeys.entity(organizationId, calendarEntityId),
@@ -166,7 +163,6 @@ export async function claimCalendarSync(
     .from(candidate)
     .where(eq(calendars.entityId, candidate.entityId))
     .returning();
-  // The claim is one atomic statement and changes nothing that a viewer sees.
   if (!row?.credentialAccountId) return { result: null, hints: [] };
   return {
     result: {
@@ -213,7 +209,6 @@ function eventValues(
     htmlLink: event.htmlLink,
     visibility: event.visibility,
     startsAt,
-    // A provider end before its start would fail the time check and the whole sync.
     endsAt: endsAt < startsAt ? startsAt : endsAt,
     allDay: event.allDay,
     timeZone: event.timeZone,
@@ -223,7 +218,6 @@ function eventValues(
   };
 }
 
-// One row per normalized email; the first listing wins.
 function attendeeValues(
   organizationId: string,
   eventEntityId: string,
@@ -257,8 +251,6 @@ async function writeCalendarSync(
     now = new Date(),
   }: { claim: CalendarSyncClaim; result: ProviderSyncResult; now?: Date },
 ) {
-  // The guarded write proves the lease and holds the row until commit, so a second commit for
-  // this calendar waits and then finds the lease gone.
   const [calendar] = await db
     .update(calendars)
     .set({
@@ -296,8 +288,6 @@ async function writeCalendarSync(
   const created = [...incoming.keys()].flatMap((id) =>
     existing.has(id) ? [] : [[id, newId()] as const],
   );
-  // Events are children of the calendar, which is a root and so its own access container. The
-  // lease stands in for createChildEntity's access check: only the owner's sync holds it.
   for (const rows of chunks(created))
     await db.insert(entities).values(
       rows.map(([, entityId]) => ({
@@ -348,8 +338,6 @@ async function writeCalendarSync(
       .set({ status: "cancelled", syncGeneration: generation })
       .where(and(ofCalendar, inArray(calendarEvents.providerEventId, ids)));
 
-  // A full sync lists every event in the window, so older generations are gone at the provider.
-  // Deleting the entity cascades to the event, its attendees, and its links.
   if (result.fullSync)
     await db.delete(entities).where(
       and(

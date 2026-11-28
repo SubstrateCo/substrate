@@ -4,7 +4,6 @@ import { useWorkspaceScope } from "@/components/workspace/workspace-scope-contex
 import { useTasksMutation } from "@/queries/tasks/mutations";
 import { Archive } from "lucide-react";
 
-/** The danger zone of an active project: archive it to make it read-only. */
 export function ProjectArchive({ project }: { project: Project }) {
   const { organizationId } = useWorkspaceScope();
   const archive = useTasksMutation(organizationId);

@@ -19,7 +19,6 @@ async function tools() {
     input: Parameters<typeof fixture.call>[1],
     kind: "interactive" | "unattended" = "interactive",
   ) => fixture.call(tool, input, kind === "interactive" ? turn : dmTurn(fixture.dm.id, kind));
-  /** Uploads a file as `userId` and returns its stored row; `bytes` is what storage holds. */
   async function stored(
     filename: string,
     contentType: string,
@@ -72,7 +71,6 @@ test("a bug filed from a message with a screenshot keeps the image visible to th
     attachmentId: report.attachments[0]!.id,
   } as const;
 
-  // Reading the source shows the image, with a locator the agent can open.
   const thread = await call("read_thread", { messageId: report.id });
   expect(thread.root.attachments).toEqual([
     { file, filename: "icons.png", contentType: "image/png", size: screenshot.size },
@@ -82,11 +80,9 @@ test("a bug filed from a message with a screenshot keeps the image visible to th
 
   const read = await call("read_file", { file });
   if (read.content.kind !== "image") throw new Error(`Expected an image, got ${read.content.kind}`);
-  // The preview is re-encoded, not the uploaded bytes.
   const preview = await sharp(Buffer.from(read.content.data, "base64")).metadata();
   expect(preview).toMatchObject({ format: "webp", width: 64, height: 32 });
 
-  // The task keeps the source message, and with it the screenshot, without a copy.
   const { id: projectId } = await project();
   const task = await call("create_task", {
     requestId: crypto.randomUUID(),
@@ -160,7 +156,6 @@ test("files of messages and tasks the owner cannot open stay closed and unlisted
   const open = await alice.createConversation({ kind: "channel", name: "open" });
   const visible = await stored("visible-notes.txt", "text/plain", new TextEncoder().encode("ok"));
   const posted = await alice.sendMessage(open.id, "Notes", undefined, undefined, [visible.id]);
-  // An attachment ID from another message does not open through this one.
   expect(
     await rejection(
       call("read_file", {
@@ -181,7 +176,6 @@ test("files of messages and tasks the owner cannot open stay closed and unlisted
   expect((await call("list_files", { mediaType: "image/" })).items).toEqual([]);
   expect((await call("list_files", { attachedTo: "task" })).items).toEqual([]);
 
-  // A task attachment lists under the task and opens through it.
   const attached = await call("attach_task_file", {
     requestId: crypto.randomUUID(),
     taskId: task.id,
@@ -218,7 +212,6 @@ test("attach_task_file shares a readable message file once, only in interactive 
     },
   };
 
-  // A background turn cannot share a file, and it cannot wait for approval to do it.
   expect(
     await rejection(
       call("attach_task_file", { ...input, requestId: crypto.randomUUID() }, "unattended"),
@@ -231,7 +224,6 @@ test("attach_task_file shares a readable message file once, only in interactive 
   expect(first.attachments).toHaveLength(1);
   expect(again.attachments).toEqual(first.attachments);
 
-  // A file from a conversation the owner cannot open cannot be shared.
   const secret = await bob.createConversation({ kind: "channel", name: "private", private: true });
   const hidden = await stored("secret.png", "image/png", await png(), "bob");
   const privateMessage = await bob.sendMessage(secret.id, "x", undefined, undefined, [hidden.id]);

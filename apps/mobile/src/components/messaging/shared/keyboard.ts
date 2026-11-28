@@ -6,5 +6,4 @@ import { Platform } from "react-native";
  */
 export const keyboardBehavior = Platform.OS === "ios" ? "padding" : "height";
 
-/** The workspace shell's top bar (`h-14`) above the messaging screen. */
 export const shellHeaderHeight = 56;

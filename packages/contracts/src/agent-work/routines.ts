@@ -7,7 +7,6 @@ const id = z.uuid();
 /** The longest value each routine text field accepts. */
 export const routineLimits = { name: 200, prompt: 20_000, cron: 100, timezone: 100 } as const;
 
-/** Five cron fields: minute hour day-of-month month day-of-week. */
 const cron = z
   .string()
   .trim()
@@ -41,8 +40,6 @@ export type CreateRoutineInput = z.input<typeof createRoutineInput>;
 export type UpdateRoutineInput = z.input<typeof updateRoutineInput>;
 /** The fields a routine write changes. */
 export type RoutineChanges = z.output<typeof routineChanges>;
-
-// Owner routes. The server scopes each to the caller's own agents in the organization.
 
 /** GET /agent-work/agents/:id/routines */
 export const listRoutinesInput = z.strictObject({ organizationId });

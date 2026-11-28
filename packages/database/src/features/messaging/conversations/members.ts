@@ -15,9 +15,6 @@ import { approvedParticipant, denyDeletedConversation, type Conversation } from 
 import { messagingConversations, messagingParticipants } from "../schema";
 import { and, asc, eq, inArray, isNotNull, isNull, ne, sql, type SQL } from "drizzle-orm";
 
-// Participant rows are never deleted: messages and reactions reference them for authorship.
-// A departure sets left_at, and the same row comes back when the member returns.
-
 export interface MemberActor {
   entityId: string;
   type: "human" | "agent";

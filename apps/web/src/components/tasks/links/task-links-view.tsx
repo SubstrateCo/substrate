@@ -42,15 +42,10 @@ import { hiddenTask, isClosedTask } from "@/lib/tasks/task-status";
 import { cn } from "cn";
 import { LockKeyhole, Plus, X } from "lucide-react";
 
-// Pressable owns the focus ring of the button row; the link row draws the same one.
 const rowClass =
   "flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-left text-sm hover:bg-row-hover";
 const linkFocus = "outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
 
-/**
- * A task's links to other tasks, grouped by relation. A task in this project opens in place; a
- * task in another project is a link to that project. A task the reader cannot open has no title.
- */
 export function TaskLinks({
   relations,
   projectEntityId,
@@ -63,11 +58,9 @@ export function TaskLinks({
 }: {
   relations: TaskRelation[];
   projectEntityId: string;
-  /** This task is open and waits on an open task. */
   blocked: boolean;
   onSelect: (taskEntityId: string) => void;
   linkFor: (other: LinkedTask) => RecordLink;
-  /** Set for editors. */
   onRemove?: (linkId: string) => void;
   pending?: boolean;
   add?: ReactNode;
@@ -135,7 +128,6 @@ export function TaskLinks({
 
 type LinkedTask = NonNullable<TaskRelation["other"]>;
 
-/** Where a linked task opens: in place in this project, or by link in another one. */
 function TaskLinkTarget({
   other,
   projectEntityId,
@@ -167,7 +159,6 @@ function TaskLinkTarget({
   );
 }
 
-/** A linked task's status and title, with its project when it is in another one. */
 function TaskLinkLabel({ task, projectName }: { task: LinkedTask; projectName?: string }) {
   return (
     <>
@@ -193,7 +184,6 @@ export type LinkCandidate = {
   projectName?: string;
 };
 
-/** The add control: choose how this task relates to another one, then search for that task. */
 export function TaskLinkPicker({
   open,
   onOpenChange,
@@ -219,7 +209,6 @@ export function TaskLinkPicker({
   pending: boolean;
   onPick: (taskEntityId: string) => void;
 }) {
-  // Results of an earlier query stay hidden while the next one loads.
   const phase: ListPhase<LinkCandidate> = loading
     ? { status: "loading" }
     : listPhase({ items: results, error: searchError });

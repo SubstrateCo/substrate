@@ -20,7 +20,6 @@ test("quick reactions react from the toolbar and follow the emoji chosen in pref
     "aria-pressed",
     "true",
   );
-  // Selecting a quick reaction you already added removes it, as the reaction chip does.
   await toolbar.getByRole("button", { name: "Remove thumbs up reaction", exact: true }).click();
   await expect(row.getByRole("button", { name: /^👍, / })).toHaveCount(0);
 
@@ -30,7 +29,6 @@ test("quick reactions react from the toolbar and follow the emoji chosen in pref
   const picker = viewer.page.getByRole("dialog", { name: "Emoji", exact: true });
   await picker.getByRole("searchbox", { name: "Search emoji", exact: true }).fill("rocket");
   await picker.getByRole("button", { name: "rocket ship launch", exact: true }).click();
-  // The new emoji takes the replaced slot, and Reset appears once the choice differs.
   await expect(quick.getByRole("button").nth(1)).toHaveAccessibleName("Replace rocket ship launch");
   await expect(
     quick.getByRole("button", { name: "Reset quick reactions", exact: true }),

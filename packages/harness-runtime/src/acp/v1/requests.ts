@@ -9,7 +9,6 @@ import type {
 } from "@agentclientprotocol/sdk/unstable";
 import { z } from "zod";
 
-/** The host answers with one of the request's optionIds. null or undefined cancels. */
 export function permissionRequestV1(
   request: RequestPermissionRequest,
 ): AcpClientRequest<RequestPermissionResponse> {

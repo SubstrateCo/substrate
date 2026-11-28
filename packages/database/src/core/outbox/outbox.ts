@@ -4,23 +4,15 @@ import type { DatabaseExecutor } from "../executor";
 import { realtimeOutbox, type RealtimeChange } from "./schema";
 import { eq, gte, lt, or, sql } from "drizzle-orm";
 
-/** A batch waiting for publication. */
 export interface OutboxBatch {
   id: string;
   changes: RealtimeChange[];
 }
 
-/** After this many relay attempts, a batch is dropped. Clients recover on their next re-read. */
 export const outboxMaxAttempts = 12;
 
-/**
- * Batches older than this are dropped, which bounds the table during a long outage. Such an outage
- * also drops the realtime subscription and its sockets, and reconnecting clients resync, so these
- * hints no longer add anything.
- */
 const outboxMaxAge = "15 minutes";
 
-/** Gives each hint its event ID and stores the batch until it is published. */
 export async function recordOutbox(
   db: DatabaseExecutor,
   hints: readonly RealtimeHint[],
@@ -34,10 +26,6 @@ export async function recordOutbox(
   return { id: row!.id, changes };
 }
 
-/**
- * Claims due batches for the relay. Each claim counts an attempt and moves the next one back, so
- * a relay that stops mid-publish does not block the batch, and concurrent relays skip it.
- */
 export const outboxClaimLimit = 100;
 
 export async function claimOutbox(
@@ -69,7 +57,6 @@ export async function claimOutbox(
   return [...rows];
 }
 
-/** Deletes a published batch. */
 export async function finishOutbox(db: DatabaseExecutor, id: string) {
   await db.delete(realtimeOutbox).where(eq(realtimeOutbox.id, id));
 }

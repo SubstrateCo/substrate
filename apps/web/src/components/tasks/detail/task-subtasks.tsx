@@ -8,7 +8,6 @@ import { Item, ItemContent, ItemMedia } from "@/components/ui/item";
 import { isClosedTask } from "@/lib/tasks/task-status";
 import { Plus } from "lucide-react";
 
-/** A task's subtasks as compact rows. Editors add one from the section header. */
 export function TaskSubtasks({
   subtasks,
   onSelect,

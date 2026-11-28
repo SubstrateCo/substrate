@@ -25,10 +25,6 @@ export interface SteerInput {
   awaitingRequestIds: string[];
 }
 
-/**
- * Whether a waiting item joins the live turn with steer. It does not join a turn whose session
- * the owner reset since the turn started: it waits for the fresh session.
- */
 function joins(
   turn: TurnRow,
   item: ItemRow,
@@ -52,13 +48,6 @@ function joins(
   );
 }
 
-/**
- * Owner items whose slot this live turn holds. Steerable items of the turn's own session join
- * an interactive turn that is not stopping or handing its epoch off, when the harness can steer;
- * they are recorded as steered into the turn before the host sends them, so that the turn's end
- * and early consumption evidence both see them. The others wait, held, until the slot frees or
- * the owner sends them now. Passive context that cannot join is dropped.
- */
 export async function steerTurn(
   db: DatabaseExecutor,
   identity: ResolvedDeviceIdentity,
@@ -82,7 +71,6 @@ export async function steerTurn(
     )
     .orderBy(agentWorkItems.availableAt, agentWorkItems.id);
   const waiting = rows.filter(({ session }) => folderKey(session) === turn.folderKey);
-  // An epoch handoff waits for this session: nothing more joins the old epoch.
   const [rotation] = await db
     .select({ id: agentWorkItems.id })
     .from(agentWorkItems)
@@ -142,11 +130,6 @@ export async function steerTurn(
 
 export type SteerResult = "delivered" | "undelivered" | "uncertain" | "inaccessible";
 
-/**
- * What happened to an item the host steered into a turn. undelivered: the steer proved the
- * harness did not take it, so it waits again. uncertain: it is never sent again by itself; the
- * owner resends or discards it. inaccessible: its source became hidden, so it is dropped.
- */
 export async function reportSteer(
   db: DatabaseExecutor,
   identity: ResolvedDeviceIdentity,

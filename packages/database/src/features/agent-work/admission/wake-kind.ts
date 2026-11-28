@@ -2,10 +2,6 @@ import { sessionKeys } from "@substrate/contracts/agent-work";
 import { agentTriggerPrecedence, type AgentTriggerKind } from "@substrate/contracts/agents";
 import { isDirectConversation, type ConversationKind } from "@substrate/contracts/messaging/input";
 
-/**
- * Why an owner message wakes one of the owner's agents, if it does: the first matching kind in
- * agentTriggerPrecedence. A disabled trigger stops it.
- */
 export function wakeKind(agent: {
   mentioned: boolean;
   directMessage: boolean;
@@ -21,7 +17,6 @@ export function wakeKind(agent: {
   return kind && !agent.disabled.includes(kind) ? kind : undefined;
 }
 
-/** One session per DM conversation; elsewhere one per thread, keyed by its root. */
 export function wakeSessionKey(
   conversationKind: ConversationKind,
   message: { id: string; conversationId: string; threadId: string | null },

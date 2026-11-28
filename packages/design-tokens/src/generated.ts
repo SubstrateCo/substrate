@@ -1,5 +1,5 @@
 /* Generated from apps/web/src/components/styles.css and Tailwind defaults. Do not edit.
-Source SHA-256: 2e23249dd11948d37b88a8bc2b7ab4a7019e73c6323d3ccde4a49b76d8952036 */
+Source SHA-256: 1b65380e3312029f2f16ceaa348e781e4c970de758f785bfeef3bf150588bb75 */
 export const themes = {
   light: {
     accent: "rgba(232, 239, 248, 1)",

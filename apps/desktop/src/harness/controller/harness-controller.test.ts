@@ -130,7 +130,6 @@ describe("desktop harness authority", () => {
     const { agents } = harnessConfigurationSchema.parse(f.calls[0]!.value);
     const agent = agents[0]!;
     expect(agent.instructions.startsWith("# Substrate workspace")).toBe(true);
-    // The fixture's organization enables messages and agents only.
     expect(agent.tools?.main).toContain("reply");
     expect(agent.tools?.main).not.toContain("get_task");
     const installed = agent.managedSkills.filter((skill) => skill.installed);
@@ -171,11 +170,9 @@ describe("desktop harness authority", () => {
     ]);
     for (const result of results)
       expect(result).toEqual({ connected: true, organizationId: "org-1" });
-    // Session and membership checks, the catalog, then one session recheck.
     expect(f.requests()).toEqual(["session", "membership", "catalog", "session"]);
     expect(f.calls.map((call) => call.method)).toEqual(["configure"]);
     await f.controller.run("synchronize");
-    // The shared authority keeps membership and the catalog until invalidated.
     expect(f.requests()).toHaveLength(5);
   });
   test("session commands verify once per generation and again after refreshAuthority", async () => {

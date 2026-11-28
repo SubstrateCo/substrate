@@ -20,7 +20,6 @@ class FakeChild extends EventEmitter {
       waiter.resolve(message);
     }
   }
-  /** Resolves with the next request for method that reaches the worker. */
   posted(method: string) {
     const message = Promise.withResolvers<Sent>();
     this.waiters.push({ method, resolve: message.resolve });
@@ -31,7 +30,6 @@ class FakeChild extends EventEmitter {
     this.killed = true;
     this.emit("exit", 1);
   }
-  /** Answers the latest request for method. */
   answer(method: string, result?: IpcValue) {
     const request = this.sent.filter((entry) => entry.method === method).at(-1);
     this.emit("message", { id: request!.id, result });
@@ -121,10 +119,8 @@ test("worker exit closes every open session with its live turn", async () => {
     ["session-3", "idle", null, null],
     ["session-1", "worker_exited", null, null],
     ["session-2", "worker_exited", turnId, 3],
-    // An open that never answered may have opened in the worker.
     ["session-4", "worker_exited", null, null],
   ]);
-  // Later events from the stopped process are ignored and nothing repeats.
   f.child.emit("exit", 1);
   expect(closed(f.events)).toHaveLength(4);
 });

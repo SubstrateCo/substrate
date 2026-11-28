@@ -13,10 +13,6 @@ import { SmilePlus } from "lucide-react";
 const columns = 8;
 const allEmojis = emojiCategories.flatMap((category) => category.emojis);
 
-/**
- * Plain buttons with no tooltip each: the panel's footer names the emoji under the pointer or
- * focus, so opening the picker mounts no per-emoji popper.
- */
 function EmojiGrid({
   label,
   emojis,
@@ -64,7 +60,6 @@ function EmojiGrid({
   );
 }
 
-/** Opens on click. Search matches emoji names; recent picks come first. */
 export function EmojiPicker({
   onSelect,
   disabled = false,
@@ -91,10 +86,6 @@ export function EmojiPicker({
   );
 }
 
-/**
- * The emoji panel in a popover around any trigger. `children` is the trigger button; it gets a
- * tooltip with `label`.
- */
 export function EmojiPopover({
   label,
   onSelect,
@@ -124,7 +115,6 @@ export function EmojiPopover({
         aria-label="Emoji"
         ref={content}
         onCloseAutoFocus={(event) => {
-          // After a pick, keep focus where the consumer put it, such as back in the composer.
           const active = document.activeElement;
           if (active && active !== document.body && !content.current?.contains(active))
             event.preventDefault();
@@ -141,7 +131,6 @@ export function EmojiPopover({
   );
 }
 
-/** The popover's content. It mounts on each open, so search and recent picks start fresh. */
 function EmojiPanel({ onPick: pick }: { onPick: (emoji: string) => void }) {
   const [query, setQuery] = useState("");
   const [recent] = useState(recentEmojis);
@@ -156,7 +145,6 @@ function EmojiPanel({ onPick: pick }: { onPick: (emoji: string) => void }) {
     ...emojiCategories,
   ];
   const groups = search ? results : browse;
-  // Each grid's first option index in the whole list, for arrow-key moves across grids.
   const offsets = groups.map((_, index) =>
     groups.slice(0, index).reduce((sum, group) => sum + group.emojis.length, 0),
   );

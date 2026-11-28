@@ -4,7 +4,6 @@ import { createApp } from "../../app";
 import { appFixture, createTestScopes, scopeFixture } from "../../test-support";
 import { expect, test } from "bun:test";
 
-// Bodies are JSON text: some cases send input that the contract must reject.
 const patch = (body: string) => ({
   method: "PATCH",
   headers: { "Content-Type": "application/json", Origin: "http://localhost:3000" },

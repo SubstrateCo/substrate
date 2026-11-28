@@ -41,7 +41,6 @@ export const meetingSkipReasonLabels: Record<MeetingSkipReason, string> = {
   no_external_attendees: "No outside attendees",
 };
 
-/** Why an event of each non-meeting kind is skipped. */
 const nonMeetingKindLabels: Record<Exclude<CalendarEventKind, "default">, string> = {
   from_gmail: "Added by Gmail from a confirmation email",
   focus_time: "Focus time",
@@ -65,10 +64,6 @@ const attendeeRoleLabels: Record<AttendeeRole, string> = {
   declined: "Declined",
 };
 
-/**
- * A guest's role in one meeting. An outside guest is added as a contact only if the meeting is
- * recorded, so a skipped meeting does not promise it.
- */
 export function attendeeRoleLabel(role: AttendeeRole, outcome: MeetingOutcome["state"]) {
   if (role === "new_contact" && outcome === "skipped") return "Not a contact";
   return attendeeRoleLabels[role];
@@ -85,10 +80,6 @@ const roleOrder: Record<AttendeeRole, number> = {
 
 const guestNames = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
-/**
- * Guests in reading order: the organizer, you, outside people, members, rooms, then declines.
- * Each group is sorted by name, with numbers in natural order.
- */
 export function sortAttendees<
   T extends Pick<CalendarAttendeeView, "role" | "isOrganizer" | "displayName" | "email">,
 >(attendees: readonly T[]) {
@@ -100,7 +91,6 @@ export function sortAttendees<
   );
 }
 
-/** The heading and explanation of what a meeting did, or will do, to interactions. */
 export function meetingOutcomeSummary(outcome: MeetingOutcome, kind: CalendarEventKind) {
   switch (outcome.state) {
     case "upcoming":
@@ -123,7 +113,6 @@ export function meetingOutcomeSummary(outcome: MeetingOutcome, kind: CalendarEve
   }
 }
 
-/** "Last synced 5m ago", "Last synced just now", "Last synced Nov 8", or "Not synced yet". */
 export function lastSyncedLabel(lastSyncedAt: string | null, now: DateInput = Date.now()) {
   if (!lastSyncedAt) return "Not synced yet";
   const relative = formatRelativeTime(lastSyncedAt, now);
@@ -132,7 +121,6 @@ export function lastSyncedLabel(lastSyncedAt: string | null, now: DateInput = Da
   return /^\d+[mhd]$/.test(relative) ? `Last synced ${relative} ago` : `Last synced ${relative}`;
 }
 
-/** What the calendar's menu offers. A disconnected calendar can only be connected again. */
 export function calendarActions(
   calendar: Pick<CalendarView, "syncStatus" | "credentialAccountId">,
 ) {

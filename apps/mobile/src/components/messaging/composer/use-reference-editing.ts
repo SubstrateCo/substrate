@@ -7,10 +7,6 @@ import {
   type DraftPart,
 } from "@/features/messaging/references/token-draft";
 
-/**
- * The caret and `@`/`#` query of a reference editor. Picking an option replaces the query with a
- * reference and asks the input to move its caret after it.
- */
 export function useReferenceEditing(
   parts: readonly DraftPart[],
   setParts: (next: DraftPart[]) => void,

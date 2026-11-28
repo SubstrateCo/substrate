@@ -23,7 +23,6 @@ import {
 } from "lucide-react-native";
 import type { LucideIcon } from "lucide-react-native";
 
-/** The pressable surface of a list row: a ghost button without the button's height or rounding. */
 export function ListButton({ className, ...props }: ComponentProps<typeof Button>) {
   return (
     <Button
@@ -34,7 +33,6 @@ export function ListButton({ className, ...props }: ComponentProps<typeof Button
   );
 }
 
-/** A dense list row with a hairline separator, like a channel list. */
 export function Row({
   title,
   subtitle,
@@ -179,7 +177,6 @@ export function DueChip({ value, open = true }: { value: string | null; open?: b
   return <Chip label={formatDate(value)} tone={open && overdue(value) ? "danger" : "outline"} />;
 }
 
-/** A label and value pair in a record's details. Tapping edits the field when allowed. */
 export function Property({
   label,
   value,
@@ -217,7 +214,6 @@ export function Property({
   );
 }
 
-/** Horizontal filter or section tabs. */
 export function Segments<T extends string>({
   value,
   options,
@@ -277,7 +273,6 @@ export function Segments<T extends string>({
   );
 }
 
-/** A labelled block of rows inside a record detail. */
 export function DetailSection({
   title,
   count,

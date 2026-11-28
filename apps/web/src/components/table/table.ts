@@ -17,9 +17,7 @@ import { DateTimeCell } from "./date-time-cell";
 import { NumberCell } from "./number-cell";
 import { SortHeader } from "./sort-header";
 
-/** Layout of one column. The classes are static, so Tailwind sees them. */
 export type AppColumnMeta = {
-  /** Amounts and counts are right-aligned with tabular figures. */
   align?: "start" | "end";
   width?:
     | "w-20"
@@ -31,9 +29,7 @@ export type AppColumnMeta = {
     | "w-56"
     | "w-[15%]"
     | "w-32 @min-[1081px]:w-64";
-  /** Hide the column in a container narrower than this. */
   hideBelow?: "@3xl" | "@4xl";
-  /** The cell holds a control (button, select), so it uses less vertical padding. */
   controls?: boolean;
 };
 
@@ -55,5 +51,4 @@ export const { useAppTable, createAppColumnHelper, useCellContext, useHeaderCont
 
 export type AppTableInstance<TData extends RowData> = ReturnType<typeof useAppTable<TData>>;
 
-// oxlint-disable-next-line typescript/no-explicit-any -- Each column keeps its own value type.
 export type AppColumnDef<TData extends RowData> = ColumnDef<typeof features, TData, any>;

@@ -28,7 +28,6 @@ export async function messagePage(
       eq(messagingConversations.id, messagingMessages.conversationId),
     )
     .where(and(inArray(messagingMessages.id, ids), visibleConversations(db, scope)));
-  // Reject the whole page before resolving any metadata if even one message is unavailable.
   if (messages.length !== ids.length) throw new AccessDeniedError();
   const [messaging, work, people, agents] = await Promise.all([
     messagingReferencePage(db, scope, messages),

@@ -6,18 +6,12 @@ export interface GradedRun {
   model: string;
   success: boolean;
   checks: Check[];
-  /** Substrate tool calls, over all turns. */
   calls: number;
-  /** Failed Substrate calls. A deletion that waits for approval is not a failure. */
   errors: number;
-  /** Calls that failed before they reached a tool, such as input the schema rejects. */
   rejected?: number;
-  /** Calls of the harness's own tools, such as tool discovery, skills and files. */
   nativeCalls: number;
   permissionPrompts: number;
-  /** Questions the agent asked its owner instead of finishing. */
   questions: number;
-  /** 1 when the run used no more calls than the scenario's budget, lower above it. */
   efficiency: number;
   inputTokens: number;
   outputTokens: number;
@@ -103,10 +97,6 @@ export function summarize(runs: GradedRun[]): ModelSummary[] {
   ];
 }
 
-/**
- * The report of one loop, with the change from the previous loop when there is one. The change
- * covers only the scenarios that the previous loop also ran; new scenarios get their own table.
- */
 export function markdown(
   label: string,
   runs: GradedRun[],

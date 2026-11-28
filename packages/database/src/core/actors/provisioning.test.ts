@@ -45,7 +45,6 @@ describe("actor provisioning", () => {
     expect(await f.db.select().from(entities)).toHaveLength(entitiesBefore.length + 1);
     const other = await ensureUserAgentActor(f.db, { ...input, organizationId: f.orgB });
     expect(other.entityId).not.toBe(first.entityId);
-    // Each workspace's agent uses the owner's access in that workspace only.
     const otherContact = await f
       .forActor(otherOwner.entityId, f.orgB)
       .contacts.create({ displayName: "Other workspace" });
@@ -151,7 +150,6 @@ describe("actor provisioning", () => {
       await rejection(ensureUserAgentActor(f.db, { ...input, organizationId: f.orgB })),
     ).toBeInstanceOf(AccessDeniedError);
     await f.db.update(userAgents).set({ enabled: false }).where(eq(userAgents.id, agent!.id));
-    // A disabled agent keeps its name on assigned tasks but cannot be assigned again.
     expect((await f.forActor(f.alice).projects.getDetail(project.entityId)).actors).toContainEqual({
       entityId: actor!.entityId,
       name: "Assistant",
@@ -169,7 +167,6 @@ describe("actor provisioning", () => {
         }),
       ),
     ).toBeInstanceOf(AccessDeniedError);
-    // The session refuses a disabled agent before any repository runs.
     expect(
       await rejection(
         createRepositories(f.db).forSession({
@@ -272,8 +269,6 @@ describe("actor provisioning", () => {
     const settled = Promise.allSettled([forward.result, reverse.result, singleResult]);
     try {
       const [firstPid, secondPid] = await Promise.all([forward.started, reverse.started]);
-      // Both batches must reach a lock before the single insert commits. Without a stable
-      // insert order, each batch holds the identity the other needs after "two" is released.
       let blocked = 0;
       const deadline = Date.now() + 2_000;
       while (blocked < 2 && Date.now() < deadline) {
@@ -300,7 +295,6 @@ describe("actor provisioning", () => {
     expect(Object.keys(byUser(first)).sort()).toEqual([...people, "outsider"].sort());
     expect(byUser(first).two).toBe(single.entityId);
     expect(byUser(first).outsider).toBe(f.outsider);
-    // Three new people: one entity and one owner grant each, and no orphans from lost races.
     expect(await f.db.select().from(entities)).toHaveLength(entitiesBefore.length + 3);
     expect(await f.db.select().from(entityGrants)).toHaveLength(grantsBefore.length + 3);
     for (const id of people)

@@ -26,7 +26,6 @@ test("invalid fresh tool output rolls back its write and never reaches the publi
     images: createSharpImageCodec(),
   });
   const parse = mcpTools.create_task.output.parse.bind(mcpTools.create_task.output);
-  // Inject a malformed handler result at the output boundary, after the real task write.
   const output = spyOn(mcpTools.create_task.output, "parse").mockImplementation(() =>
     parse({ id: "invalid" }),
   );

@@ -46,7 +46,6 @@ export function SearchBar({
   );
 }
 
-/** The top bar of a record detail: close, kind and title, edit, and more actions. */
 export function DetailHeader({
   kind,
   title,
@@ -104,7 +103,6 @@ export function DetailHeader({
   );
 }
 
-/** A toolbar row above a list: title, then actions. */
 export function ListToolbar({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <View className="h-12 flex-row items-center gap-1 border-b border-border pl-4 pr-1">

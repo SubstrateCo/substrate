@@ -17,7 +17,6 @@ export async function requireHumanCrmAdmin(context: RepositoryContext) {
   await context.requireOrganizationAdmin({ human: true });
 }
 
-// pipelineVersion is internal to pipeline changes. This write must not reset it.
 const publicSettings = {
   organizationId: crmSettings.organizationId,
   defaultCurrency: crmSettings.defaultCurrency,

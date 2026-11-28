@@ -21,7 +21,6 @@ import { needsApproval } from "@/lib/agent-work/routine-groups";
 import { formatDateTime, formatTimeZone, formatZonedDateTime } from "@/lib/format/date";
 import { CalendarClock, Hand, Pencil, Trash2 } from "lucide-react";
 
-/** Next run in the viewer's zone, with the schedule's own clock in the tooltip. */
 function nextRun(routine: AgentRoutineView) {
   if (!routine.enabled || !routine.nextFireAt) return undefined;
   return {
@@ -33,20 +32,12 @@ function nextRun(routine: AgentRoutineView) {
 export type RoutineRowActions = {
   onEdit: (routineId: string) => void;
   onDelete: (routine: AgentRoutineView) => void;
-  /** Approves the routine's current revision, for routines the agent wrote or changed. */
   onApprove: (routine: AgentRoutineView) => void;
-  /** Turns an approved routine's schedule on or off. */
   onEnabledChange: (routine: AgentRoutineView, enabled: boolean) => void;
-  /** The routine whose approval is being sent. */
   approvingId?: string;
-  /** The routine whose schedule is being turned on or off. */
   togglingId?: string;
 };
 
-/**
- * One routine. A routine waiting for approval shows only Approve: turning it on would approve it
- * without a look at what the agent wrote. `detail`, such as the prompt, goes under the schedule.
- */
 export function RoutineRow({
   routine,
   detail,
@@ -99,7 +90,6 @@ export function RoutineRow({
   );
 }
 
-/** The routine's name and schedule, with slots for its state. */
 function RoutineRowLayout({
   routine,
   icon,
@@ -137,14 +127,6 @@ function RoutineRowLayout({
             </Tooltip>
             {next}
           </div>
-          {/*
-            Future: the last run's result, once the server reports it with each routine.
-            {routine.lastRun?.status === "failed" && (
-              <ItemDescription className="text-destructive">
-                Last run failed <Timestamp value={routine.lastRun.finishedAt} />
-              </ItemDescription>
-            )}
-          */}
           {detail}
         </ItemContent>
         <ItemActions className="self-start">

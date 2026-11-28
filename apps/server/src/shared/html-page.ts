@@ -2,8 +2,6 @@ import type { Context } from "hono";
 import { html, raw } from "hono/html";
 import { createHash } from "node:crypto";
 
-// A few tokens from apps/web/src/components/styles.css. The page loads no assets, so Geist falls
-// back to the system font when it is not installed.
 const css = `
 :root {
   color-scheme: light dark;
@@ -81,15 +79,12 @@ a.primary { border-color: transparent; background: var(--primary); color: var(--
 a.primary:hover { background: color-mix(in oklch, var(--primary) 90%, var(--foreground)); }
 `;
 
-// One value, so formatting the page template cannot change the hashed stylesheet text.
 const styleElement = raw(`<style>${css}</style>`);
 
-/** Allows only this page's own stylesheet: no scripts, assets, forms or framing. */
 export const htmlPageCSP = `default-src 'none'; style-src 'sha256-${createHash("sha256")
   .update(css)
   .digest("base64")}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
 
-/** Headers for every server-rendered page. */
 export function setHtmlPageHeaders(c: Context) {
   c.header("Cache-Control", "no-store");
   c.header("Referrer-Policy", "no-referrer");
@@ -108,7 +103,6 @@ const actionLink = ({ label, href, primary }: HtmlPageAction) => {
   return html`<a class="${className}" href="${href}" rel="noreferrer">${label}</a>`;
 };
 
-/** A small page in the app's theme: a title, a few sentences and its actions. */
 export function htmlPage(page: { title: string; paragraphs: string[]; actions: HtmlPageAction[] }) {
   return html`<!doctype html>
     <html lang="en">

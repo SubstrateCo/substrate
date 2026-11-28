@@ -3,7 +3,6 @@ import type { AgentHomedHere, AgentTurnRunView } from "./desktop.ts";
 import type { TurnEventView } from "./turns.ts";
 import { z } from "zod";
 
-// The home desktop's local agent data. Commands, routines and turn summaries are server HTTP.
 export const channel = "substrate:agent-work";
 const id = z.uuid();
 export const methods = {

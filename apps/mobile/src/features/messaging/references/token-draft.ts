@@ -54,7 +54,6 @@ export function partLabels(parts: readonly DraftPart[]) {
   );
 }
 
-/** A key that changes only when the draft's body or reference labels change. */
 export function draftIdentity(parts: readonly DraftPart[]) {
   return JSON.stringify([bodyFromParts(parts), partLabels(parts)]);
 }
@@ -82,10 +81,6 @@ function normalize(parts: DraftPart[]): DraftPart[] {
   return result;
 }
 
-/**
- * Replaces the display range `[start, end)` with `insert`. A reference that the range overlaps,
- * or that an insertion lands inside, is removed whole.
- */
 function spliceDisplay(
   parts: readonly DraftPart[],
   start: number,
@@ -116,7 +111,6 @@ function spliceDisplay(
   return normalize([...before, ...insert, ...after]);
 }
 
-/** Applies a TextInput change by diffing the old and new display text. */
 export function applyDisplayChange(parts: readonly DraftPart[], next: string): DraftPart[] {
   const previous = displayText(parts);
   if (previous === next) return [...parts];
@@ -138,7 +132,6 @@ export function applyDisplayChange(parts: readonly DraftPart[], next: string): D
   );
 }
 
-/** The `@`/`#` query at the caret, unless the trigger is part of an inserted reference label. */
 export function activeReferenceQuery(
   parts: readonly DraftPart[],
   caret: number,
@@ -151,7 +144,6 @@ export function activeReferenceQuery(
   return inReference ? null : query;
 }
 
-/** Replaces the typed query with a reference and a following space. Returns the new caret. */
 export function insertReference(
   parts: readonly DraftPart[],
   query: Pick<ReferenceQuery, "start" | "end">,

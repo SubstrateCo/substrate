@@ -1,4 +1,3 @@
-// Small, valid synthetic upload inputs. These are files, not rendered application screenshots.
 export const projectPicture = {
   name: "synthetic-project-picture.png",
   mimeType: "image/png",

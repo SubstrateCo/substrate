@@ -28,7 +28,6 @@ const sortOptions: SortOption<TaskSort>[] = [
   { value: "title", label: "Title" },
 ];
 
-/** The scope and assignee filter fields. A chosen actor who left the project reads "Former member". */
 function taskFilterFields(
   assignees: ProjectDetail["actors"],
   assignee: TaskFilters["assignee"],
@@ -69,7 +68,6 @@ function taskFilterFields(
   ];
 }
 
-/** Text filter, scope and assignee filters, and sort for one project's tasks. */
 export function TaskListToolbar({
   filters,
   onChange,
@@ -81,19 +79,16 @@ export function TaskListToolbar({
 }: {
   filters: TaskFilters;
   onChange: (filters: TaskFilters) => void;
-  /** Actors that have at least one task in this project. */
   assignees: ProjectDetail["actors"];
   filtered: boolean;
   shown: number;
   total: number;
-  /** The view toggle, last at the right end. */
   viewControl?: ReactNode;
 }) {
   const set = (patch: Partial<TaskFilters>) => onChange({ ...filters, ...patch });
   return (
     <TaskFilterLayout toolbar>
       <Input
-        // On one row, the search shares the spare width with the pills, between 10rem and 18rem.
         className="w-full max-w-full @lg:w-72 @3xl:max-w-72 @3xl:min-w-40 @3xl:flex-1"
         type="search"
         aria-label="Search tasks"
@@ -107,17 +102,11 @@ export function TaskListToolbar({
           }
         }}
       />
-      {/*
-        Pills start at their full width, so the search shrinks first; past its minimum they wrap
-        inside this box, and the right group stays on the row. The padding centres the first
-        line of pills on the search.
-      */}
       <div className="flex-1 py-0.5 @3xl:min-w-0 @3xl:flex-auto">
         <FilterBar
           fields={taskFilterFields(assignees, filters.assignee)}
           value={taskFilterValue(filters)}
           onValueChange={(value) => onChange(withTaskFilterValue(filters, value))}
-          // With no matches, the empty state offers its own "Clear filters".
           clearable={shown > 0}
         />
       </div>

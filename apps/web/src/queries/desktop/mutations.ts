@@ -16,10 +16,6 @@ export type DesktopUpdateCommand = "check" | "install" | "download";
 
 const updateCommandKey = ["desktop", "updates", "command"] as const;
 
-/**
- * Runs one update command through the bridge. The update notice and the settings row share the
- * key, so a command started in one shows as pending in the other.
- */
 export function useDesktopUpdateCommand(bridge: DesktopUpdatesAPI) {
   const pending = useIsMutating({ mutationKey: updateCommandKey, exact: true }) > 0;
   const command = useMutation({

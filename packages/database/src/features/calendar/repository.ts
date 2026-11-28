@@ -73,8 +73,6 @@ function hasCalendarScope(provider: CalendarProvider, scope: string | null) {
   return scopes.some((value) => value === "Calendars.Read" || value.endsWith("/Calendars.Read"));
 }
 
-// The email claim of an ID token. The token came from the provider through better-auth; it is
-// read for display only, so its signature is not checked here.
 const idTokenClaims = z.object({ email: z.string().min(1) });
 function idTokenEmail(idToken: string | null) {
   const payload = idToken?.split(".")[1];
@@ -92,7 +90,6 @@ function calendarName(calendar: ProviderCalendar) {
   return (calendar.name.trim() || calendar.providerCalendarId).slice(0, 500);
 }
 
-// People only: rooms and other resources are not counted.
 function attendeeCount() {
   return sql<number>`(SELECT count(*)::int FROM ${calendarEventAttendees}
     WHERE ${calendarEventAttendees.organizationId} = ${calendarEvents.organizationId}
@@ -100,7 +97,6 @@ function attendeeCount() {
       AND NOT ${calendarEventAttendees.isResource})`;
 }
 
-// The owner's response, or NULL when the owner is not listed.
 function selfResponseStatus() {
   return sql<AttendeeResponseStatus | null>`(SELECT ${calendarEventAttendees.responseStatus}
     FROM ${calendarEventAttendees}
@@ -119,7 +115,6 @@ export function calendarRepository(context: RepositoryContext) {
     ctx.effects.hint({ audience: realtimeKeys.entity(org, calendarEntityId), domain: "context" });
   }
 
-  // Calendars and their credentials are managed by their owner in person, not by agents.
   async function requireOwner(ctx: RepositoryContext) {
     const { userId } = ctx.scope;
     if (!userId) throw new AccessDeniedError();
@@ -139,7 +134,6 @@ export function calendarRepository(context: RepositoryContext) {
     return row;
   }
 
-  // Compare-and-set on the status that the change was decided from.
   async function changeCalendar(
     ctx: RepositoryContext,
     calendar: CalendarRow,
@@ -162,8 +156,6 @@ export function calendarRepository(context: RepositoryContext) {
     return presentCalendar(row);
   }
 
-  // A Gmail event is a copy when its owner has another readable event starting near it, on any
-  // of their calendars here. Each of the owner's calendars is a range read on the agenda index.
   function notGmailDuplicate() {
     const window = sql.raw(`interval '${gmailDuplicateWindowMs} milliseconds'`);
     return or(
@@ -325,7 +317,6 @@ export function calendarRepository(context: RepositoryContext) {
           };
           const current = existing.get(offer.providerCalendarId);
           if (current) {
-            // A calendar that stopped syncing for want of a credential starts over with this one.
             const change: CalendarChange = { ...details };
             const status = effectiveSyncStatus(current);
             if (status === "disconnected" || status === "reauth_required")
@@ -391,7 +382,6 @@ export function calendarRepository(context: RepositoryContext) {
     disconnect(input: { calendarEntityId: string }) {
       return context.transaction(async (ctx) => {
         const calendar = await requireCalendar(ctx, input.calendarEntityId);
-        // The credential and the events stay, so reconnecting resumes the calendar's history.
         return changeCalendar(ctx, calendar, {
           ...clearedLease,
           syncStatus: "disconnected",
@@ -410,8 +400,6 @@ export function calendarRepository(context: RepositoryContext) {
         const now = new Date();
         const floor = new Date(now.getTime() - backfillPastDays * dayMs);
         const earlier = (value: Date) => (value < floor ? value : floor);
-        // Clearing the lease makes a running sync's commit fail, so it cannot store the cursor
-        // that this full sync replaces.
         return changeCalendar(ctx, calendar, {
           ...clearedLease,
           interactionsFrom: earlier(calendar.interactionsFrom),
@@ -436,7 +424,6 @@ export function calendarRepository(context: RepositoryContext) {
         and(
           ids ? inArray(calendarEvents.calendarEntityId, ids) : undefined,
           lt(calendarEvents.startsAt, until),
-          // An event of zero length at the start of the period still overlaps it.
           or(gt(calendarEvents.endsAt, from), gte(calendarEvents.startsAt, from)),
         ),
         [asc(calendarEvents.startsAt), asc(calendarEvents.entityId)],
@@ -521,7 +508,6 @@ export function calendarRepository(context: RepositoryContext) {
               context.readable(contacts.entityId, "view", "contact"),
             ),
           )
-          // The oldest contact wins when several share an email.
           .orderBy(asc(entities.createdAt), asc(entities.entityId));
         for (const match of rows)
           if (!matches.has(match.email))

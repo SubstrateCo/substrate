@@ -1,9 +1,7 @@
 import { fmt } from "../geometry/path.ts";
 
-/** An SVG transform matrix `[a b c d e f]`, for renderers that take numbers instead of strings. */
 export type Matrix = [a: number, b: number, c: number, d: number, e: number, f: number];
 
-/** `l` then `r`, as in the SVG transform list `l r`: `r` applies to points first. */
 function multiply(l: Matrix, r: Matrix): Matrix {
   const [a, b, c, d, e, f] = l;
   const [ra, rb, rc, rd, re, rf] = r;
@@ -26,7 +24,6 @@ export function rotation(degrees: number): Matrix {
   return [cos, sin, -sin, cos, 0, 0];
 }
 
-/** Composes transforms in SVG order: `compose(a, b)` equals `transform="a b"`. */
 export function compose(...matrices: Matrix[]): Matrix {
   const out = matrices.reduce(multiply, [1, 0, 0, 1, 0, 0]);
   return [fmt(out[0]), fmt(out[1]), fmt(out[2]), fmt(out[3]), fmt(out[4]), fmt(out[5])];

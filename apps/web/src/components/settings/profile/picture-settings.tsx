@@ -8,10 +8,6 @@ import { StaleNotice } from "@/components/feedback/stale-notice";
 import { SettingsCard, SettingsDetail } from "@/components/layout/settings-section";
 import type { ResourceStatus } from "@/lib/resource-state";
 
-/**
- * A settings card for a profile picture or logo. Changes save as soon as the crop is saved. A
- * failed refresh keeps the current picture, with the error above it.
- */
 export function PictureSettings({
   title,
   state,
@@ -21,7 +17,6 @@ export function PictureSettings({
   ...upload
 }: PictureUploadProps & {
   title: string;
-  /** The load state of the record that owns the picture. */
   state: ResourceStatus;
   description: string;
   onRetry: () => void;

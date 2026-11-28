@@ -22,8 +22,6 @@ test("conversation work keeps its source visible when the host consumes it durin
   const db = drizzle(f.db.$client);
   const owner = await ownerAgentWork(db, { userId: "alice", organizationId: f.orgA });
   const select = db.select.bind(db);
-  // Force the host's real writes between the first and second queue/turn snapshots.
-  // Serializing these reads models a valid schedule even when the view starts them together.
   let reads = Promise.resolve();
   let advanced = false;
   const intercept = (fields?: Parameters<typeof select>[0]) => {
@@ -117,7 +115,6 @@ test("a turn's outputs are the replies and requests it made; the conversation sh
     ["owner_message", "submitted"],
     ["owner_message", "pending"],
   ]);
-  // Another person sees none of it, and none of Alice's turns.
   expect(await rejection(x.bobWork.conversationWork(x.dm.id))).toBeInstanceOf(AccessDeniedError);
   expect(await rejection(x.bobWork.turn(claimed!.turn.id))).toBeInstanceOf(AccessDeniedError);
   expect(await rejection(x.bobWork.agentActivity(x.agent.agentId))).toBeInstanceOf(
@@ -131,7 +128,6 @@ test("activity pages through the agent's turns, newest first; the first page has
   const ids: string[] = [];
   for (let index = 0; index <= activityPageSize; index++) {
     const turn = await insertTurn(f.db, x.agent, spec);
-    // Distinct times, so the expected order is the creation order reversed.
     await f.db
       .update(agentTurns)
       .set({ createdAt: new Date(Date.now() - (activityPageSize - index) * 1000) })

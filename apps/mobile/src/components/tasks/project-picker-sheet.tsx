@@ -5,7 +5,6 @@ import { PickerSheet } from "@/features/records/ui/sheet";
 import { ErrorState } from "@/features/records/ui/states";
 import type { QueryScope } from "@/queries/keys";
 
-/** Picks one of the projects the reader can see. */
 export function ProjectPickerSheet({
   scope,
   title,

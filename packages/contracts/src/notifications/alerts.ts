@@ -34,7 +34,6 @@ export function withinSchedule(schedule: NotificationSchedule, now: Date) {
   const { day, minute } = localTime(now, schedule.timeZone);
   if (schedule.start < schedule.end)
     return schedule.days.includes(day) && minute >= schedule.start && minute < schedule.end;
-  // The window crosses midnight: its early hours belong to the day before.
   if (minute >= schedule.start) return schedule.days.includes(day);
   return minute < schedule.end && schedule.days.includes((day + 6) % 7);
 }

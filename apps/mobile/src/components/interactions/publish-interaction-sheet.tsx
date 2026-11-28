@@ -27,19 +27,13 @@ import type { QueryScope } from "@/queries/keys";
 
 export type PublishInteractionSheetProps = {
   organizationId: string;
-  /** Start from a contact: the source is one of the messages linked to it. */
   contact?: { entityId: string; name: string };
-  /** Start from a message: the reader chooses the contact it belongs to. */
   messageId?: string;
   onOpenConversation?: OnOpenConversation;
   onClose: () => void;
   onPublished?: (interactionEntityId: string) => void;
 };
 
-/**
- * Records an interaction from a message. The reader writes the approved summary; message text is
- * not copied. Publishing needs explicit consent because everyone who can read the contact sees it.
- */
 export function PublishInteractionSheet({
   organizationId,
   contact,

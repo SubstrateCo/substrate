@@ -9,7 +9,6 @@ import type { z } from "zod";
 
 const origin = appOrigin;
 
-/** Letters only, so word search splits it the same way as the indexed text. */
 const uniqueWord = () =>
   Array.from(randomBytes(12), (byte) => String.fromCharCode(97 + (byte % 26))).join("");
 
@@ -73,7 +72,6 @@ test("reaction lookup lists reactors only to participants of a private conversat
 test("channel and thread references enforce target access through search, send and resolution", async ({
   actors: { owner, member, outsider },
 }) => {
-  // The shared workspace keeps earlier channels and threads, so the searched text is unique.
   const tag = uniqueWord();
   const targetName = `private-reference-target-${tag}`;
   const reply = `Searchable reply ${tag}`;
@@ -154,7 +152,6 @@ test("messaging writes reject missing, foreign and opaque origins without persis
   actors,
   workspace,
 }) => {
-  // A fresh workspace, so the conversation list below is exactly what this test wrote.
   const [owner] = await workspace(actors.owner);
   const conversation = await post<{ id: string }>(owner, "conversations", {
     kind: "channel",
@@ -189,7 +186,6 @@ test("conversation management checks origin, ownership, and the owning organizat
   actors: { owner: workspaceOwner, member: workspaceMember, outsider },
   workspace,
 }) => {
-  // A fresh workspace, so the managed and member lists below are exactly what this test wrote.
   const [owner, member] = await workspace(workspaceOwner, workspaceMember);
   const manage = (
     actor: Actor,
@@ -225,7 +221,6 @@ test("conversation management checks origin, ownership, and the owning organizat
   });
   expect(memberManaged.status()).toBe(404);
 
-  // The organization owner manages the member's private channel without reading it.
   const managed = await owner.request.get("/api/v1/messaging/conversations/managed", {
     params: { organizationId: owner.organizationId },
   });
@@ -249,8 +244,6 @@ for (const kind of ["channel", "dm", "group"] as const) {
     actors: { owner: workspaceOwner, member: workspaceMember, outsider, recipient },
     workspace,
   }) => {
-    // Creating a DM returns the workspace's existing DM between the same people, so a DM needs
-    // a fresh workspace to hold only this test's messages.
     const [owner, member]: [Actor, Actor] =
       kind === "dm"
         ? await workspace(workspaceOwner, workspaceMember)
@@ -397,12 +390,9 @@ test("profiles resolve only through visible conversations and keep contact detai
   });
 
   for (const response of [
-    // A private channel hides its authors from nonparticipants.
     await profile(member, hidden.id, ownerActorId),
-    // Another workspace cannot use its own session scope or the owner's workspace ID.
     await profile(outsider, channel.id, ownerActorId),
     await profile(outsider, channel.id, ownerActorId, owner.organizationId),
-    // An unrelated actor ID does not resolve.
     await profile(member, channel.id, randomUUID()),
   ]) {
     expect(response.ok()).toBe(false);

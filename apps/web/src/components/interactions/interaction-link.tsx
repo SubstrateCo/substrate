@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 
-/** Open interaction details without leaving the current workspace app. */
 export function InteractionLink({
   entityId,
   children,
@@ -36,7 +35,6 @@ type InteractionsLinkProps = {
   "aria-label"?: string;
 };
 
-/** Inside Interactions: open one interaction's record sheet and keep the current view. */
 export function InteractionRecordLink({
   entityId,
   ...props
@@ -53,14 +51,12 @@ export function InteractionRecordLink({
   );
 }
 
-/** Inside Interactions: open a contact's profile, keep the current filters, and close any record. */
 export function ContactProfileLink({
   contactEntityId,
   allTime,
   ...props
 }: InteractionsLinkProps & {
   contactEntityId: string;
-  /** Show all time, for a record that can be older than the current period. */
   allTime?: boolean;
 }) {
   const { organizationId } = useWorkspaceScope();

@@ -1,6 +1,5 @@
 import { createAccessControl } from "better-auth/plugins/access";
 
-// Organization administration only. Entity access is enforced by database repositories.
 export const ac = createAccessControl({
   organization: ["update", "delete"],
   member: ["create", "update", "delete"],

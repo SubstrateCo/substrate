@@ -41,7 +41,6 @@ export function ProjectSidebar({
   createButtonRef,
 }: {
   projects: Project[];
-  /** Archived projects the reader can open; each carries the reader's level. */
   archivedProjects?: Project[];
   selectedId?: string;
   loading: boolean;
@@ -54,7 +53,6 @@ export function ProjectSidebar({
   projectLink: (id: string) => LinkProps;
   createButtonRef?: Ref<HTMLButtonElement>;
 }) {
-  // With no projects to show, the main pane shows the load error.
   const phase = listPhase({ items: projects, loading, error });
   return (
     <PageSidebar aria-label="Projects">
@@ -95,7 +93,6 @@ export function ProjectSidebar({
             error={null}
             empty={
               <div className="px-2">
-                {/* The header's New project button and the main pane offer the create action. */}
                 <ContentNotice
                   variant="inline"
                   title={archivedProjects.length ? "No active projects" : "No projects yet"}
@@ -153,8 +150,6 @@ function ArchivedProjects({
 }) {
   const containsSelected = projects.some((project) => project.entityId === selectedId);
   const [open, setOpen] = useState(containsSelected);
-  // The group opens when it holds the selected project: after a deep link to an archived project,
-  // or after archiving the open one. Closing it afterwards keeps it closed.
   const [openedFor, setOpenedFor] = useState(containsSelected ? selectedId : undefined);
   if (containsSelected && openedFor !== selectedId) {
     setOpenedFor(selectedId);
@@ -216,7 +211,6 @@ function ProjectSidebarItem(
         selected: boolean;
         onClick: () => void;
         link: LinkProps;
-        /** Fills the row beside its row actions. */
         fill?: boolean;
       },
 ) {

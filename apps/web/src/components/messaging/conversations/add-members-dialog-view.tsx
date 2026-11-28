@@ -15,7 +15,6 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { AddMembersError } from "@/lib/messaging/add-members";
 import { invitedRecipients, recipientKey } from "@/lib/people/people-picker";
 
-/** Managers add anyone, inviting by email; members add only their own agents. */
 const addCopy: Record<
   "invite" | "agents",
   { description: string; placeholder: string; unfinished?: string }
@@ -44,10 +43,8 @@ export function AddMembersDialog({
   onClose,
   onRestoreFocus,
 }: {
-  /** The conversation's display name, when the viewer can see it. */
   name?: string;
   channel: boolean;
-  /** People to suggest, without current members. */
   people: readonly PickerPerson[];
   agents?: readonly PickerAgent[];
   allowEmail?: boolean;

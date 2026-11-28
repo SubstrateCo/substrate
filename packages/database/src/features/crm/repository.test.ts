@@ -51,7 +51,6 @@ describe("connected CRM", () => {
     expect(
       (await a.crm.timeline(deal.entityId, { mode: "linked" })).map((row) => row.entityId).sort(),
     ).toEqual([interaction.entityId, linkedOnly.entityId].sort());
-    // Members read every contact's interactions, so the deal grant alone gates the rollup.
     expect(await rejection(f.forActor(f.bob).crm.timeline(deal.entityId))).toMatchObject({
       name: "AccessDeniedError",
     });
@@ -139,7 +138,6 @@ describe("connected CRM", () => {
         outcome: "won",
         lostReason: null,
       });
-    // The first ID-ordered page of one deal is closed; the open filter still finds the open one.
     const open = await a.crm.listDeals({ outcome: "open", limit: 1 });
     expect(open.map((deal) => deal.title)).toEqual(
       deals.flatMap((deal) => (closed.includes(deal) ? [] : [deal.title])),

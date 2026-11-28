@@ -4,10 +4,6 @@ import { expect } from "@playwright/test";
 
 const id = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
 
-/**
- * Records the API requests a window sends, as "METHOD /path" with IDs replaced. `take` waits
- * until the window is quiet, then returns the requests since the last call, sorted.
- */
 function requestsOf({ page }: Client) {
   const sent: string[] = [];
   let open = 0;
@@ -39,7 +35,6 @@ function requestsOf({ page }: Client) {
   };
 }
 
-// What every signed-in screen reads once: the session, the workspace, and the shell's counts.
 const shell = [
   "GET /api/auth/get-session",
   "GET /api/v1/agent-work/needs-you",
@@ -49,8 +44,6 @@ const shell = [
   "GET /api/v1/organizations/current",
 ];
 
-// These lists are budgets. A new request on one of these paths must be a decision, not a side
-// effect: each one runs for every person on every load, open, message or return to the window.
 test("messaging sends each request once, and nothing for what is already loaded", async ({
   actors,
   client,
@@ -67,7 +60,6 @@ test("messaging sends each request once, and nothing for what is already loaded"
   const other = await channel("other");
   for (const channel of [open, other]) {
     await post(sender, "messaging/messages", { conversationId: channel.id, body: "From sender" });
-    // The member joins now, so a later post is a plain new message.
     await post(member, "messaging/messages", { conversationId: channel.id, body: "From member" });
   }
   const window = await client(sender);
@@ -79,7 +71,6 @@ test("messaging sends each request once, and nothing for what is already loaded"
     expect(await requests.take()).toEqual(
       [
         ...shell,
-        // Reading the member's message moves the read position, so the counts are read again.
         "GET /api/v1/messaging/unread",
         "GET /api/v1/agent-work/conversations/:id/work",
         "GET /api/v1/agent-work/status",
@@ -102,7 +93,6 @@ test("messaging sends each request once, and nothing for what is already loaded"
       "GET /api/v1/messaging/messages",
       "GET /api/v1/messaging/unread",
       "POST /api/v1/context/message-page",
-      // One ends the viewing lease of the conversation left; one reads this conversation.
       "POST /api/v1/messaging/read",
       "POST /api/v1/messaging/read",
     ]);
@@ -162,7 +152,6 @@ test("tasks and the deals board read each list once", async ({ account, client }
   expect(await requests.take()).toEqual(
     [
       ...shell,
-      // The board. The list is read when the person switches to it.
       "GET /api/v1/crm/deals",
       "GET /api/v1/crm/pipeline",
       "GET /api/v1/crm/settings",

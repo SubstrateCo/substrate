@@ -13,7 +13,6 @@ import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
 
-/** A running interactive DM turn with three steered items beside its batch. */
 async function runningTurn() {
   const x = await hostFixture(f);
   await x.alice.sendMessage(x.dm.id, "Summarize the week");
@@ -72,10 +71,8 @@ test("finishing consumes the batch, requeues steered items still queued, and nee
     turnId: null,
   });
   expect((await x.itemRow(unknown)).status).toBe("uncertain");
-  // Late evidence settles the uncertain item, and the turn ends as it would have.
   await x.host.progress(x.claimed.turn.id, { attempt: 1, consumedItemIds: [unknown] });
   expect((await x.turnRow(x.claimed.turn.id)).status).toBe("completed");
-  // The requeued item goes first in the next turn.
   const [next] = await x.claim();
   expect(next!.items.map((item) => item.id)).toEqual([queued]);
 });
@@ -92,7 +89,6 @@ const finished = {
   usage: null,
 };
 
-/** A decided proposal of the running turn's session, and one the turn did not see. */
 async function decidedProposals(x: Awaited<ReturnType<typeof runningTurn>>) {
   const session = await x.session({ key: x.claimed.session.key, kind: "dm" });
   const seen = crypto.randomUUID();
@@ -296,10 +292,8 @@ test("progress hints say when only the activity text changed, and repeat nothing
   const audience = realtimeKeys.user("alice");
   const owner: RealtimeHint = { audience, domain: "agent-work" };
   const activity: RealtimeHint = { audience, domain: "agent-work", scope: "activity" };
-  // Only the turn's activity changes: what waits for the owner stays as it is.
   const reading = { activity: "Reading the thread" };
   expect([await report(reading), await report(reading)]).toEqual([[activity], []]);
-  // A state change can move the turn into or out of what needs the owner.
   expect(await report({ state: "waiting", activity: "Waiting for approval" })).toEqual([owner]);
   expect((await x.turnRow(x.claimed.turn.id)).activity).toBe("Waiting for approval");
 });

@@ -4,10 +4,8 @@ export type CropArea = { x: number; y: number; width: number; height: number };
 const maxImagePixels = 32_000_000;
 const maxImageDimension = 8192;
 
-/** A picture the user must replace. Its message is reviewed copy that the UI can show. */
 class PictureError extends Error {}
 
-/** Shows a picture's own limit, or a fallback for any other failure. */
 export function pictureErrorMessage(error: Error) {
   return error instanceof PictureError ? error.message : "This image could not be opened.";
 }

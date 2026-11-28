@@ -6,8 +6,6 @@ import type { GmailWork } from "./gmail/gmail-connection.ts";
 import { ReconnectRequired } from "./provider.ts";
 import type { LocalMail } from "./session.ts";
 
-/** The renderer supplies local IDs, never Gmail IDs. A checked list row represents a
- * conversation; expanding a message in the reader grants a write only to that email. */
 export async function applyMailActions(
   local: LocalMail,
   ids: string[],
@@ -60,8 +58,6 @@ export async function applyMailActions(
                       error instanceof ReconnectRequired
                     )
                       throw error;
-                    // A failed target doesn't roll back completed rows or prevent an independent
-                    // conversation from changing. Authority failures must still end the batch.
                     await allowed();
                     result = "retry";
                   }

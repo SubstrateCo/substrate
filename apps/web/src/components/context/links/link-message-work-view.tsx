@@ -81,16 +81,13 @@ export function LinkMessageWork({
   onRetry: () => void;
   onLink: (items: LinkableWork[]) => void;
   onClose: () => void;
-  /** Focus a stable control on close, because the menu item that opened the dialog is gone. */
   onRestoreFocus?: () => void;
   onCreate?: (kind: "account" | "contact" | "deal") => void;
 }) {
-  // Selection survives tab and search changes, so tasks and projects can be linked together.
   const [chosen, setChosen] = useState(() => new Map<string, LinkableWork>());
   const compact = useMediaQuery("(max-width: 639px)");
   const kindLabel = kindLabels[kind];
   const kindSet = new Set(kinds);
-  // Items that became linked, for example after a partial failure, leave the selection.
   const selection =
     state === "unavailable"
       ? []
@@ -230,7 +227,6 @@ export function LinkMessageWork({
   );
 }
 
-/** Shown above the results, which the command list renders as its items. */
 function LinkSearchStatus({
   phase,
   query,

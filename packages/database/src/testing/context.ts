@@ -4,7 +4,6 @@ import { createAcceptedMessagingService } from "./messaging";
 
 type Fixture = ReturnType<typeof setupDatabase>;
 
-/** Verified users, Alice's project, and her private channel with a root message and one reply. */
 export async function contextConversation(f: Fixture) {
   await f.db.update(user).set({ emailVerified: true });
   const repos = f.forActor(f.alice);

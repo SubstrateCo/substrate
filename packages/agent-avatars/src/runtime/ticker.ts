@@ -1,22 +1,14 @@
 export interface FrameTask {
-  /**
-   * Draws every `n`th frame. Avatars return 2 when small or when many are running; their
-   * `phase` staggers them, so each frame carries about the same work.
-   */
   every(running: number): number;
   phase: number;
-  /** Layout reads, run for every due task before any task writes. */
   read?(now: number): void;
   write(now: number): void;
 }
 
-/** Avatars this small draw every other frame (30 fps); the difference is not visible. */
 const SMALL_SIZE = 32;
-/** With more avatars than this animating, those up to `CROWD_SIZE` px also draw at 30 fps. */
 const CROWD = 40;
 const CROWD_SIZE = 64;
 
-/** The `every` of an avatar `size` px wide while `running` avatars animate. */
 export function avatarStride(size: number, running: number): number {
   return size <= SMALL_SIZE || (running > CROWD && size <= CROWD_SIZE) ? 2 : 1;
 }
@@ -40,10 +32,6 @@ function loop(now: number) {
   handle = tasks.size > 0 ? requestAnimationFrame(loop) : 0;
 }
 
-/**
- * Every avatar shares one animation frame loop. Reads and writes run in separate passes,
- * so many avatars never force layout more than once per frame.
- */
 export function subscribeFrames(task: FrameTask): () => void {
   tasks.add(task);
   if (!handle) handle = requestAnimationFrame(loop);
@@ -56,7 +44,6 @@ export function subscribeFrames(task: FrameTask): () => void {
   };
 }
 
-/** Script time the shared loop spends per frame (smoothed ms) and how many avatars it runs. */
 export function frameStats() {
   return { cost: averageCost, running: tasks.size };
 }

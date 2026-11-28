@@ -27,7 +27,6 @@ function app(finish: (...args: unknown[]) => Promise<never>) {
   );
 }
 
-// A host may send a status it must not report, such as a live one.
 const finish = (body: Partial<z.input<typeof hostFinishInput>> | { status: "running" }) => ({
   method: "POST",
   headers: { "content-type": "application/json", [desktopInstallationHeader]: installationId },

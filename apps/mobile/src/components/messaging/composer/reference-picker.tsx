@@ -23,7 +23,6 @@ export function ReferencePicker({
   const apps = useMessagingApps(organizationId);
   const tasks = apps.enabled("tasks");
   const tabs = referenceTabs(query.trigger, tasks);
-  // A typed prefix such as "@task:" picks the tab until the person picks another.
   const [choice, setChoice] = useState<{ prefix: ReferenceTab; tab: ReferenceTab }>({
     prefix: query.kind,
     tab: query.kind,
@@ -44,7 +43,6 @@ export function ReferencePicker({
       tab={tab}
       query={query.query}
       options={search.rows}
-      // Without app settings, the picker cannot know which kinds to offer.
       loading={apps.loading || (apps.ready && search.loading)}
       error={apps.error ?? search.error}
       onTab={(next) => setChoice({ prefix: query.kind, tab: next })}

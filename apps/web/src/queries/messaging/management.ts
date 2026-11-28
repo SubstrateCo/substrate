@@ -9,8 +9,6 @@ import {
   transferOwnership,
 } from "@/api/messaging/requests";
 
-// onRemoved runs before the history cleanup, so a mounted conversation can navigate away first.
-// The list forgets the conversation before that, so nothing selects it again on the way.
 export function useConversationManagement(
   organizationId: string,
   onRemoved?: (conversationId: string) => Promise<void> | void,

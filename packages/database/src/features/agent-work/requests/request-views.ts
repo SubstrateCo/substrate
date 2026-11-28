@@ -12,7 +12,6 @@ import { toRequestView } from "../views";
 import { agentRequests } from "./requests.schema";
 import { and, desc, eq, exists, gt, inArray, or, sql, type SQL } from "drizzle-orm";
 
-/** Requests of the owner's own agents in the organization. */
 export function ownedRequests(identity: SessionIdentity) {
   return and(
     eq(agentRequests.ownerUserId, identity.userId),
@@ -20,9 +19,6 @@ export function ownedRequests(identity: SessionIdentity) {
   );
 }
 
-// The place is shown only while the owner can open the conversation. A request in a hidden
-// place is a placeholder: no IDs, names, text, response or proposal. A proposal whose target
-// conversation the owner cannot open is not shown either.
 export async function requestViews(
   db: DatabaseExecutor,
   identity: SessionIdentity,
@@ -32,7 +28,6 @@ export async function requestViews(
     .select({ id: sql`${messagingConversations.id}::text` })
     .from(messagingConversations)
     .where(visibleConversations(db, identity));
-  // The conversations a proposal names are the keys of its target basis.
   const targets = sql`jsonb_object_keys(coalesce(${agentRequests.targetBasis}->'conversations', '{}'::jsonb))`;
   const rows = await db
     .select({
@@ -65,8 +60,6 @@ export async function requestViews(
   return rows.map(toRequestView);
 }
 
-// The owner can still decide the request with this event. Blocking requests stop being
-// answerable when their wait ends.
 export const answerableBy = (event: "answer" | "decline" | "approve") =>
   and(
     inStates(agentRequests.status, requestMachine.from(event)),
@@ -74,11 +67,6 @@ export const answerableBy = (event: "answer" | "decline" | "approve") =>
   );
 const answerableRequest = answerableBy("answer");
 
-/**
- * The owner's requests in one conversation they can see: open ones and those decided in the last
- * day, so cards can show the result, and executed proposals that posted here, so the created
- * message links back. Nothing for a conversation the owner cannot open.
- */
 export function queryConversationRequests(
   db: DatabaseExecutor,
   identity: SessionIdentity,
@@ -92,7 +80,6 @@ export function queryConversationRequests(
         and(eq(messagingConversations.id, conversationId), visibleConversations(db, identity)),
       ),
   );
-  // The origin place of a backlinked proposal is shown only if the owner can still see it.
   return requestViews(
     db,
     identity,

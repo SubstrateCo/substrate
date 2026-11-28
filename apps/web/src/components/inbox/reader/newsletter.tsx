@@ -39,8 +39,6 @@ export function Newsletter({ html, id }: { html: string; id: string }) {
     });
     observer.observe(root);
     measure();
-    // The frame allows neither scripts nor popups. The app opens only a user-activated,
-    // validated link using the same external-window handling as plain text messages.
     const openLink = (event: MouseEvent) => {
       const anchor = Array.from(root.querySelectorAll("a[href]")).find((a) =>
         event.composedPath().includes(a),
@@ -53,7 +51,6 @@ export function Newsletter({ html, id }: { html: string; id: string }) {
     };
     doc.addEventListener("click", openLink);
     doc.addEventListener("auxclick", openLink);
-    // Keyboard users can still leave the reader while focus is in the isolated document.
     const escape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();

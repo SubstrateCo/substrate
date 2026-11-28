@@ -24,7 +24,6 @@ export function SearchResults({
 }: {
   query: string;
   browsing: boolean;
-  /** A type other than All is selected. */
   filtered: boolean;
   joiningId?: string;
   onJoin: (conversationId: string) => void;
@@ -56,7 +55,6 @@ export function SearchResults({
     if (error) notice = errorState;
     return (
       <CommandList label="Search results" className="max-h-96 min-h-0">
-        {/* Loading, error, and empty states share one height, so the panel does not resize. */}
         <div className="flex h-36 flex-col justify-center px-3">{notice}</div>
       </CommandList>
     );
@@ -85,7 +83,6 @@ export function SearchResults({
           </PendingButton>
         </div>
       )}
-      {/* A fade over the last 16px, so a row cut by the list's edge reads as "more below". */}
       <div
         aria-hidden="true"
         className="pointer-events-none sticky bottom-0 -mt-4 h-4 bg-linear-to-t from-popover to-transparent"

@@ -15,10 +15,6 @@ import {
 import { EmptyState, ErrorState, LoadingRows } from "@/features/records/ui/states";
 import { ArrowDown } from "lucide-react-native";
 
-/**
- * A timeline, newest at the bottom. Scrolling up loads older pages. With `aroundMessageId` it
- * opens at that message and offers a way back to the latest.
- */
 export function MessageTimeline({
   organizationId,
   conversationId,
@@ -37,7 +33,6 @@ export function MessageTimeline({
   aroundMessageId?: string;
   canPost: boolean;
   navigation: MessageNavigation;
-  /** Shown above the oldest message, such as a thread's root. */
   header?: ReactElement;
   emptyTitle: string;
   emptyDescription?: string;

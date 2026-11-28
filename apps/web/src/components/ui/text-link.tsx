@@ -6,9 +6,7 @@ const textLinkVariants = cva(
   {
     variants: {
       variant: {
-        // Links in text: message bodies, logs, and descriptions.
         default: "text-primary underline decoration-primary/40 hover:decoration-current",
-        // A link that is the whole value, such as a website in a property list.
         quiet: "hover:underline",
       },
     },

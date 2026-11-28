@@ -28,7 +28,6 @@ export function LoginForm({
         label="Password"
         type="password"
         autoComplete="current-password"
-        // A returning email is already filled in, so the password is the next thing to type.
         autoFocus={!!email}
         labelAction={
           <AuthLink

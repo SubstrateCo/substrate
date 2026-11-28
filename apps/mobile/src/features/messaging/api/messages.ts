@@ -10,7 +10,6 @@ export type MessagePageQuery = {
   threadId?: string;
   beforeMessageId?: string;
   aroundMessageId?: string;
-  /** Returns only messages newer than this one, in the same timeline or thread. */
   afterMessageId?: string;
 };
 

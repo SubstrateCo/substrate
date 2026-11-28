@@ -16,7 +16,6 @@ import { useMessageMutations } from "@/queries/messaging/message-mutations";
 
 const draftKey = "edit";
 
-/** Edits a message in place with the message composer. */
 export function EditMessageComposer({
   message,
   context,
@@ -29,7 +28,6 @@ export function EditMessageComposer({
   const { organizationId } = useWorkspaceScope();
   const [body, setBody] = useState(message.body);
   const existing = useMessageReferences(context);
-  // The composer reads these once on mount, so the message's chips render before any edit.
   const [references] = useState(
     () => new Map<string, WorkspaceReference[]>([[draftKey, existing]]),
   );

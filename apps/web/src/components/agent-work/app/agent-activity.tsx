@@ -26,13 +26,11 @@ import { conversationsQueryOptions } from "@/queries/messaging/options";
 
 const outcomeLabels: Record<TurnOutcome, string> = {
   replied: "Replied",
-  // The tag already says "Checked · nothing to report".
   silent: "Checked in",
   asked: "Asked you a question",
   proposed: "Proposed an action",
 };
 
-/** The subject of work that has no activity line or outcome yet. The state shows in the tag. */
 const subjectFallbacks: Record<AgentWorkTurnView["sessionKind"], string> = {
   dm: "Work on your message",
   thread: "Work in a thread",
@@ -40,7 +38,6 @@ const subjectFallbacks: Record<AgentWorkTurnView["sessionKind"], string> = {
   helper: "Helper task",
 };
 
-/** A helper whose parent conversation the owner can't open keeps its state, not its text. */
 const hiddenHelperTask = "A task from a conversation you can't open";
 
 function helperRow(helper: AgentWorkHelperView): HelperRow {
@@ -52,7 +49,6 @@ function helperRow(helper: AgentWorkHelperView): HelperRow {
   };
 }
 
-/** One agent's work, including silent, routine, and helper work, from any owner device. */
 export function AgentActivity({
   agentId,
   name,
@@ -67,12 +63,10 @@ export function AgentActivity({
   const { userId, organizationId } = useWorkspaceScope();
   const activity = useInfiniteQuery(agentActivityOptions(userId, organizationId, agentId));
   const conversations = useQuery(conversationsQueryOptions(organizationId));
-  // The list shows each turn's start time, so it is ordered by that time, newest first.
   const turns = (activity.data?.pages.flatMap((page) => page.turns) ?? []).sort(
     (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
   );
   const turnsById = new Map(turns.map((turn) => [turn.id, turn]));
-  // Name only conversations the viewer can open now. Others stay placeholders.
   const place = (turn: AgentWorkTurnView) => {
     if (!turn.placeVisible) return hiddenConversation;
     const conversationId = turnConversation(turn, turnsById);
@@ -88,7 +82,6 @@ export function AgentActivity({
         turn.activity ??
         (turn.outcome ? outcomeLabels[turn.outcome] : undefined) ??
         subjectFallbacks[turn.sessionKind],
-      // Reviewed copy only. The runtime's message is under Technical details in the transcript.
       note: failed ? failedWorkNote : undefined,
       place: place(turn),
       kind: sessionKindLabels[turn.sessionKind],

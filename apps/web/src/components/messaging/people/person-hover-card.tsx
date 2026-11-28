@@ -40,7 +40,6 @@ export function PersonHoverCard({
           onPointerLeave={leave}
           onClick={(event) => {
             if (mode !== "preview") return;
-            // Activate the visible preview rather than toggling it closed.
             event.preventDefault();
             onOpenChange(true);
             content.current?.focus();
@@ -107,7 +106,6 @@ function usePersonCardDisclosure() {
   };
 }
 
-/** The card's content. It mounts only while the card is open, so closed cards hold no queries. */
 function PersonHoverCardBody({
   conversationId,
   actorId,
@@ -121,7 +119,6 @@ function PersonHoverCardBody({
 }) {
   const { organizationId } = useWorkspaceScope();
   const navigate = useNavigate();
-  // Details load when the card opens. The server checks conversation access each time.
   const profile = useQuery(messagingProfileOptions(organizationId, conversationId, actorId));
   const directMessage = useDirectMessage(organizationId);
   const openDirectMessage = () => {

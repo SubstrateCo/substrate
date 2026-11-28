@@ -56,7 +56,6 @@ function InvitationActions({
   );
 }
 
-/** The decline state, for the actions cell. Columns stay at module scope, so cells never remount. */
 const DeclineContext = createContext<{
   decliningId?: string;
   onDecline: (invitation: UserInvitation) => void;
@@ -123,7 +122,6 @@ export function UserInvitationsTable({
   error: Error | null;
   onRetry: () => void;
   now: number;
-  /** The invitation being declined, while it is declined. */
   decliningId?: string;
   onDecline: (invitation: UserInvitation) => void;
 }) {

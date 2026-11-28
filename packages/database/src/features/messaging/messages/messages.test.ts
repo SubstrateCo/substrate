@@ -26,13 +26,10 @@ test("send and replay reuse the authenticated identity", async () => {
   expect(sent).toMatchObject({ authorName: "Alice", body: "hello", replyCount: 0, reactions: [] });
   const redundant = () => queries.filter((query) => query.startsWith('select "name" from "user"'));
   expect(redundant()).toEqual([]);
-  // Includes the lookup for the author's own agents that the message may trigger, the read for
-  // people viewing the channel, and the read for members who follow every post.
   expect(queries).toHaveLength(8);
   queries.length = 0;
   expect(await chat.sendMessage(channel.id, "hello", undefined, requestId)).toEqual(sent);
   expect(redundant()).toEqual([]);
-  // Replay also reads the attachment set, so a changed set cannot reuse the request.
   expect(queries).toHaveLength(4);
   expect(
     await rejection(chat.sendMessage(channel.id, "changed", undefined, requestId)),
@@ -52,7 +49,6 @@ test("concurrent sends with one request create one message and both return it", 
   const requestId = crypto.randomUUID();
   const held = Promise.withResolvers<void>();
   const release = Promise.withResolvers<void>();
-  // The first send stays uncommitted, so the second passes the replay lookup and races the insert.
   const open = fixture.db.transaction(async (tx) => {
     const sent = await createMessagingService(tx, {
       userId: "alice",
@@ -67,7 +63,6 @@ test("concurrent sends with one request create one message and both return it", 
   const changed = rejection(
     service("alice").sendMessage(channel.id, "changed", undefined, requestId),
   );
-  // Give both sends time to reach the uncommitted message's request ID.
   await Bun.sleep(100);
   release.resolve();
   const [first, second] = await Promise.all([open, retry]);
@@ -107,7 +102,6 @@ test("send hints come from the write itself and describe only what the message c
         body,
       ),
     );
-  // A new message names itself and its thread, so viewers refresh only that history.
   const content = (sent: { result: { id: string; threadId: string | null } }): RealtimeHint => ({
     audience: conversation,
     domain: "messaging",
@@ -133,7 +127,6 @@ test("send hints come from the write itself and describe only what the message c
       threadId: plain.result.id,
     },
   ]);
-  // Bob's first post joins the public channel.
   expect((await send("bob", "joining")).hints).toEqual([
     { audience: conversation, domain: "messaging" },
   ]);
@@ -146,10 +139,8 @@ test("send hints come from the write itself and describe only what the message c
     ]),
   );
   expect(mention.hints).toHaveLength(2);
-  // The notification insert returns its recipients; nothing reads them back.
   expect(queries.filter((query) => /^select .* from "notifications"/i.test(query))).toEqual([]);
   const referenced = await send("alice", `@[project:${project.entityId}]`);
-  // Only the project's readers hear that its related messages changed.
   expect(referenced.hints).toEqual([
     content(referenced),
     {
@@ -214,7 +205,6 @@ test("edits refresh related lists of the work referenced before and after, for i
       },
     ]),
   );
-  // No hint names the work to the whole workspace.
   expect(
     edited.hints.filter((hint) => hint.audience[0] === "organization" && hint.domain === "context"),
   ).toEqual([]);
@@ -493,7 +483,6 @@ test("reactions aggregate per emoji, toggle per user and reject inaccessible mes
   await verified();
   const channel = await service("alice").createConversation({ kind: "channel", name: "general" });
   const message = await service("alice").sendMessage(channel.id, "hello");
-  // Only this message's reactions changed: no unread counts, order, or other conversations.
   const contentOnly: RealtimeHint[] = [
     {
       audience: realtimeKeys.conversation(channel.id),
@@ -514,7 +503,6 @@ test("reactions aggregate per emoji, toggle per user and reject inaccessible mes
     result: { active: true },
     hints: contentOnly,
   });
-  // Bob's first reaction joins the public channel, so conversation lists must refresh too.
   expect((await toggle("bob")).hints).toEqual([
     { audience: realtimeKeys.conversation(channel.id), domain: "messaging" },
   ]);

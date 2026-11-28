@@ -20,7 +20,6 @@ export function OrganizationSelection({ destination = "/messages" }: { destinati
   const now = useExpiryTime(invitations.data?.map((item) => item.expiresAt));
   const select = useActivateOrganization(destination);
   const decline = useDeclineInvitationConfirm();
-  // A failed invitation list shows its error in the Invitations group; workspaces still open.
   const pending = (resourceState(invitations).data ?? []).map((item) => ({
     ...item,
     expired: isInvitationExpired(item.expiresAt, now),
@@ -28,7 +27,6 @@ export function OrganizationSelection({ destination = "/messages" }: { destinati
   return (
     <OrganizationSelectionView
       workspaces={resourceState(organizations)}
-      // Wait for both lists, so the create form does not collapse when invitations arrive.
       invitationsPending={invitations.isPending}
       openingId={select.isPending ? select.variables : undefined}
       onRetry={() => void organizations.refetch()}

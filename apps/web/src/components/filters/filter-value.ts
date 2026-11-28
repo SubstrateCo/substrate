@@ -10,19 +10,16 @@ import type {
 } from "./types";
 import { formatShortDate, parseDateOnly } from "@/lib/format/date";
 
-/** The operators a field offers, default first. */
 export function fieldOperators(field: FilterField): readonly FilterOperator[] {
   return field.operators?.length ? field.operators : ["is"];
 }
 
-/** How an operator reads for a number of values: "is" for one, "is any of" for several. */
 export function operatorLabel(operator: FilterOperator, count: number) {
   if (count > 1 && operator === "is") return "is any of";
   if (count > 1 && operator === "is not") return "is none of";
   return operator;
 }
 
-/** The value with one field's clause set, or removed when `clause` is undefined or empty. */
 export function withClause<Id extends string>(
   value: FilterValue<Id>,
   id: Id,
@@ -34,7 +31,6 @@ export function withClause<Id extends string>(
   return next;
 }
 
-/** Whether any field that clearing would reset has a filter. */
 export function hasClearableFilters<Id extends string>(
   fields: readonly FilterField<Id>[],
   value: FilterValue<Id>,
@@ -42,7 +38,6 @@ export function hasClearableFilters<Id extends string>(
   return fields.some((field) => !field.required && !!value[field.id]?.values.length);
 }
 
-/** Whether a field without a pill remains. Pills edit their own field in place. */
 export function canAddFilter<Id extends string>(
   fields: readonly FilterField<Id>[],
   value: FilterValue<Id>,
@@ -50,7 +45,6 @@ export function canAddFilter<Id extends string>(
   return fields.some((field) => !value[field.id]?.values.length);
 }
 
-/** The value with every optional field's filter removed. Required fields keep theirs. */
 export function clearFilterValue<Id extends string>(
   fields: readonly FilterField<Id>[],
   value: FilterValue<Id>,
@@ -60,12 +54,10 @@ export function clearFilterValue<Id extends string>(
   return next;
 }
 
-/** Adds or removes one option value. The order of earlier choices stays. */
 export function toggleValue(values: readonly string[], option: string) {
   return values.includes(option) ? values.filter((value) => value !== option) : [...values, option];
 }
 
-/** Whether an option's row shows as ticked: chosen, or left out for a `checks: "unchosen"` field. */
 export function isOptionChecked(
   field: OptionFilterField,
   values: readonly string[],
@@ -74,10 +66,6 @@ export function isOptionChecked(
   return values.includes(option) !== (field.multiple === true && field.checks === "unchosen");
 }
 
-/**
- * Options in a stable order for one open menu: values chosen when it opened come first in
- * their chosen order, then the rest in field order. Grouped options keep their groups.
- */
 export function orderOptions(options: readonly FilterOption[], chosenOnOpen: readonly string[]) {
   const rank = (option: FilterOption) => {
     const index = chosenOnOpen.indexOf(option.value);
@@ -90,20 +78,14 @@ export function orderOptions(options: readonly FilterOption[], chosenOnOpen: rea
   );
 }
 
-/** A pill's value segment. `labels` names every chosen value, for a tooltip or title. */
 export type ClauseSummary = {
   text: string;
   labels: string[];
   icons: { value: string; icon: ReactNode }[];
 };
 
-/** Up to three option icons shown beside a summary. */
 const maxSummaryIcons = 3;
 
-/**
- * The value segment of a pill: one label, "3 calendars", or a date. `labels` names every
- * chosen value; a value missing from the options reads "Unknown".
- */
 export function summarizeClause(
   field: FilterField,
   clause: FilterClause,
@@ -129,7 +111,6 @@ export function summarizeClause(
   return { text: `${labels.length} ${noun}`, labels, icons };
 }
 
-/** The pill's accessible name: "Assignee is Unassigned", "Calendar is any of 3 calendars". */
 export function clauseLabel(field: FilterField, clause: FilterClause, now?: Date | number) {
   const operator = operatorLabel(clause.operator, clause.values.length);
   return `${field.label} ${operator} ${summarizeClause(field, clause, now).text}`;

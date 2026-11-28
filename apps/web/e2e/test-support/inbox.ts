@@ -20,8 +20,6 @@ declare global {
   }
 }
 
-/** Real signed-in workspace and per-test SQLite store. Only Google, artwork and the Electron
- * IPC transport are substituted. No credentials or database code enter the browser. */
 export const test = base.extend<{
   inbox: Page;
   historySize: number;

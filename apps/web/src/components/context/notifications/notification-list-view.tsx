@@ -19,7 +19,6 @@ import { Bell, CheckCheck, Eye, X } from "lucide-react";
 
 type NotificationFilterFieldId = "read";
 
-/** One "Read" field with one option. No clause means the whole feed. */
 const filterFields: FilterField<NotificationFilterFieldId>[] = [
   {
     id: "read",
@@ -40,7 +39,6 @@ function notificationFilterFrom(value: FilterValue<NotificationFilterFieldId>): 
   return value.read?.values.includes("unread") ? "unread" : "all";
 }
 
-/** Newest first, so each run of rows from one day gets one label. */
 function dayLabeled(items: Notification[]) {
   let previous = "";
   return items.map((item) => {
@@ -51,7 +49,6 @@ function dayLabeled(items: Notification[]) {
   });
 }
 
-/** Up and Down move between rows, like a list in Linear or Mail. Tab still visits every control. */
 function moveBetweenRows(event: KeyboardEvent<HTMLUListElement>) {
   const step = { ArrowDown: 1, ArrowUp: -1 }[event.key];
   if (!step || !(event.target instanceof HTMLElement) || event.target.tagName !== "A") return;
@@ -87,7 +84,6 @@ export function NotificationList({
   error?: Error | null;
   filter: NotificationFilter;
   onFilter: (filter: NotificationFilter) => void;
-  /** Older pages of the feed. */
   paging: { hasMore: boolean; loading: boolean; onMore: () => void };
   readingAll: boolean;
   onRetry: () => void;
@@ -146,7 +142,6 @@ export function NotificationList({
               fields={filterFields}
               value={notificationFilterValue(filter)}
               onValueChange={(value) => onFilter(notificationFilterFrom(value))}
-              // With nothing unread, the empty state offers its own "Show all".
               clearable={phase.status !== "empty"}
             />
             <div className="flex flex-1 flex-col gap-4">

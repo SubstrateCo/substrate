@@ -24,11 +24,7 @@ export const entities = pgTable(
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
     entityType: entityType("entity_type").notNull(),
-    // The access container. A root entity points to itself; a child points to its container.
-    // Grants are read from the container.
     accessEntityId: uuid("access_entity_id").notNull(),
-    // Counts structural changes to a container: grants, ownership, moves and deletion. Each one
-    // claims the next version by compare-and-set, so they run one at a time without row locks.
     accessVersion: integer("access_version").default(0).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

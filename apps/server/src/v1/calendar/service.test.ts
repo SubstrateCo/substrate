@@ -143,7 +143,6 @@ test("an account without calendar access asks the owner to reconnect", async () 
   });
   expect(withoutScope.providerRequests).toEqual([]);
 
-  // The stored grant can claim a scope that the provider no longer honours, or be revoked.
   for (const failure of [
     new CalendarAccessRequired("calendar_scope_missing", "No calendar scope."),
     new CalendarAccessRequired("reauth_required", "Revoked."),

@@ -10,7 +10,6 @@ import { callerOf, type TurnSpec } from "./turns";
 type Fixture = ReturnType<typeof setupDatabase>;
 type AgentFixture = Awaited<ReturnType<typeof agentWorkFixture>>;
 
-/** Calls the agent's tools through MCP dispatch, as the server does. */
 function withTools(f: Fixture, base: AgentFixture, reader?: FileContentReader) {
   const execute = async (
     tool: ServerToolName,
@@ -30,7 +29,6 @@ function withTools(f: Fixture, base: AgentFixture, reader?: FileContentReader) {
         reader,
       )
     ).result;
-  /** Runs a call that does not wait for approval and returns its output. */
   const call = async <K extends ServerToolName>(
     tool: K,
     input: WorkspaceApiRequest["input"],
@@ -41,7 +39,6 @@ function withTools(f: Fixture, base: AgentFixture, reader?: FileContentReader) {
     // SAFETY: execution parses its payload with the output schema registered for K.
     return execution.output as McpOutput<K>;
   };
-  /** Makes a call that waits for approval and returns its proposal's request ID. */
   const pending = async (
     tool: ServerToolName,
     input: WorkspaceApiRequest["input"],

@@ -34,14 +34,12 @@ export function clientForConsent(
   return chooseFile ? pick() : (configured ?? saved() ?? pick());
 }
 
-/** Only Electron's native chooser supplies this path. Never report filenames, JSON, or parse errors. */
 export async function readGoogleClientFile(path: string): Promise<GoogleClient> {
   try {
     const file = await open(path, "r");
     try {
       const stat = await file.stat();
       if (!stat.isFile() || stat.size > 64 * 1024) throw new Error();
-      // Strip all other fields. Endpoints and scopes come from Substrate, not the download.
       return download.parse(JSON.parse(await file.readFile("utf8"))).installed;
     } finally {
       await file.close();
@@ -57,7 +55,6 @@ export function packGoogleGrant(client: GoogleClient, refreshToken: string) {
 }
 
 export function unpackGoogleGrant(value: string) {
-  // Previous installs encrypted just the opaque refresh token and supplied the client through env.
   if (!value.startsWith("{") && value.length) return { client: undefined, refreshToken: value };
   try {
     return storedGrant.parse(JSON.parse(value));

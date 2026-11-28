@@ -19,7 +19,7 @@ import { detectAgent, requireAgent } from "./acp/detect.ts";
 import { openAcpPeer } from "./acp/index.ts";
 import type { HostTools } from "./adapters/tool-label.ts";
 import type { AdapterContext, EventScope, NativeAdapter } from "./adapters/types.ts";
-import { materialize, writeDefaultFiles } from "./config.ts";
+import { materialize, writeAgentFiles } from "./config.ts";
 import { HarnessError } from "./errors.ts";
 import { createStartupMcp, type McpLease } from "./mcp.ts";
 import { discoverModels } from "./models/discover.ts";
@@ -38,10 +38,6 @@ import { join } from "node:path";
 
 /** Native sessions stay open this long after their last turn, then the reaper closes them. */
 export const sessionKeepAliveMs = 3 * 60 * 1000;
-/**
- * After an interrupt, the harness has this long to end the turn. Then the host ends it as
- * interrupted and closes the native session, whose state is unknown.
- */
 const interruptGraceMs = 15_000;
 
 type CloseReason = Extract<HarnessEventBody, { type: "session.closed" }>["reason"];
@@ -53,7 +49,6 @@ export type ConnectNative = (
   resumeId?: string,
 ) => Promise<NativeAdapter>;
 
-/** Time for the host's timestamps, interrupt grace and idle reaper. */
 export interface HostClock {
   now(): number;
   /** Runs callback once after milliseconds. The timer does not keep the process alive. */
@@ -86,7 +81,6 @@ export interface HarnessHostOptions<Binding = unknown> {
   signIn?: Partial<Omit<SignInOptions, "cwd">>;
 }
 
-/** The host plus the organization and sign-in controls the desktop uses. */
 export interface RuntimeHarnessHost extends HarnessHost {
   /**
    * Interrupts and closes every session of the organization, whichever organization is
@@ -95,24 +89,19 @@ export interface RuntimeHarnessHost extends HarnessHost {
   closeOrganization(organizationId: string): Promise<void>;
   /** Starts the agent's sign-in method. Credentials stay in the agent's own store. */
   signIn: SignIns["start"];
-  /** Output and status of a sign-in since a cursor. */
   readSignIn(input: Parameters<SignIns["read"]>[0]): Promise<ReturnType<SignIns["read"]>>;
-  /** Sends one line to a terminal sign-in. */
   sendSignInInput(input: Parameters<SignIns["write"]>[0]): Promise<void>;
   cancelSignIn: SignIns["cancel"];
   signOut: SignIns["signOut"];
 }
 
-/** Bounds native interrupt waits and cleanup waits for cancelled opens. */
 const nativeCloseWaitMs = 2_000;
 
 interface LiveTurn {
   turnId: string;
   generation: number;
   settled: Promise<void>;
-  /** Ends the turn with this result if the adapter has not ended it yet. */
   force(result: TurnResult): void;
-  /** Cancels the interrupt grace, once an interrupt armed it. */
   cancelInterrupt?: () => void;
 }
 
@@ -120,7 +109,6 @@ interface SessionLifecycle {
   state: NativeSessionState;
   reason?: CloseReason;
   lease?: McpLease;
-  /** The native cleanup in progress, including a cancelled open's cleanup. */
   closed?: Promise<void>;
 }
 
@@ -136,29 +124,21 @@ interface LiveSession extends SessionLifecycle {
   agent: HarnessAgent;
   adapter: NativeAdapter;
   epoch: number;
-  /** The user-added MCP servers, as JSON, that the native session was set up with. */
   mcpServers: string;
-  /** The working folder the open command named, if any. */
   workspace?: string;
   turn?: LiveTurn;
   idleSince: number;
 }
 
-/** Set once the session is live, so adapter events during open carry no turn. */
 interface SessionHolder {
   live?: LiveSession;
 }
 
-/**
- * What a live session runs on: the agent without its managed skills, which apply when a folder
- * is written, and with the tools of the session's folder.
- */
 function sessionDefinition(agent: HarnessAgent, folder: HarnessSessionRef["folder"]) {
   const { managedSkills: _skills, tools, ...rest } = agent;
   return JSON.stringify({ ...rest, tools: tools?.[folder === "main" ? "main" : "helper"] ?? null });
 }
 
-/** The provider's binding for a turn. A context of another turn fails the turn command. */
 function bindTurn<Binding>(
   provider: ToolProvider<Binding>,
   command: Extract<HarnessCommand, { type: "turn" }>,
@@ -182,7 +162,6 @@ export async function createHarnessHost<Binding = unknown>(
 ): Promise<RuntimeHarnessHost> {
   await mkdir(options.accountDirectory, { recursive: true });
   const accountDirectory = await realpath(options.accountDirectory);
-  /** Each organization's agents, from main's last configure. Main configures every new worker. */
   const configurations = new Map<string, HarnessConfiguration>();
   const keepAliveMs = options.keepAliveMs ?? sessionKeepAliveMs;
   const graceMs = options.interruptGraceMs ?? interruptGraceMs;
@@ -211,14 +190,16 @@ export async function createHarnessHost<Binding = unknown>(
     if (disposed) throw new HarnessError("disposed", "Harness host is disposed.");
   };
 
+  function notifyIgnoringListenerFailure(
+    listener: (event: HarnessEvent) => void,
+    event: HarnessEvent,
+  ) {
+    try {
+      listener(event);
+    } catch {}
+  }
   function publish(event: HarnessEvent) {
-    for (const listener of listeners) {
-      try {
-        listener(event);
-      } catch {
-        /* A subscriber cannot stop a native event stream. */
-      }
-    }
+    for (const listener of listeners) notifyIgnoringListenerFailure(listener, event);
   }
   function emit(
     scope: { sessionId: string; organizationId: string },
@@ -244,7 +225,6 @@ export async function createHarnessHost<Binding = unknown>(
     const configuration = configurations.get(scope.organizationId);
     if (!configuration?.agents.some((agent) => agent.id === scope.agentId))
       throw new HarnessError("agent-not-found", "Agent is not configured in this organization.");
-    // Scan must not create a missing agent or a missing native config directory.
     const path = await safePath(
       accountDirectory,
       join("orgs", scope.organizationId, scope.agentId),
@@ -302,7 +282,6 @@ export async function createHarnessHost<Binding = unknown>(
       try {
         await live.adapter.disconnect();
       } finally {
-        // The adapter ends a live turn on disconnect; report it before the session closes.
         live.turn?.force({ status: "failed", error: "The native session closed." });
         await live.turn?.settled;
         transitionSession(live, "disconnected");
@@ -345,13 +324,10 @@ export async function createHarnessHost<Binding = unknown>(
     const workspace = command.workspace
       ? await workspaceDirectory(accountDirectory, command.workspace)
       : undefined;
-    // The instructions file follows the agent at each open, not only at first write.
-    await writeDefaultFiles(folder, agent, {
-      replace: true,
+    await writeAgentFiles(folder, agent, {
+      replaceInstructions: true,
       managedPrefix: definition.prefixChannel === "instructions" ? command.prefix : undefined,
     });
-    // A harness working in another folder does not read this folder's instructions file. Unless
-    // its launch environment points it there, they follow the prefix in the system prompt.
     const prefix =
       workspace && !definition.managedEnvironment
         ? `${command.prefix}\n${agent.instructions}`
@@ -417,7 +393,6 @@ export async function createHarnessHost<Binding = unknown>(
       });
       holder.live = live;
       sessions.set(ref.id, live);
-      // A native exit closes the session at once; a close already in progress keeps its reason.
       void adapter.closed?.then(() => closeSession(live, "native_exited")).catch(() => {});
       if (live.state === "closing" || disposed) {
         await closeSession(live, "closed");
@@ -455,7 +430,6 @@ export async function createHarnessHost<Binding = unknown>(
     if (bound) live.lease?.bind(bound);
     const scope = { sessionId: live.ref.id, organizationId: live.ref.organizationId };
     emit(scope, { type: "turn.started" }, turn);
-    // turn acknowledges at once so interrupts and steering can reach the live turn.
     const native = Promise.resolve()
       .then(() => live.adapter.turn(command.input, { mode: command.mode }))
       .catch(() => failedTurn);
@@ -473,7 +447,6 @@ export async function createHarnessHost<Binding = unknown>(
     });
   }
 
-  /** Every interrupt ends in a terminal event: the harness's own, or the host's after the grace. */
   function armInterrupt(live: LiveSession, turn: LiveTurn) {
     if (turn.cancelInterrupt) return;
     turn.cancelInterrupt = clock.later(() => {
@@ -486,7 +459,6 @@ export async function createHarnessHost<Binding = unknown>(
     }, graceMs);
   }
 
-  /** Closes the session now, or as soon as its live turn ends. No new turn starts meanwhile. */
   function closeWhenIdle(live: LiveSession, reason: CloseReason) {
     live.reason ??= reason;
     if (nativeSessionMachine.canFire(live.state, "drain")) transitionSession(live, "drain");
@@ -501,7 +473,6 @@ export async function createHarnessHost<Binding = unknown>(
     return live;
   }
 
-  /** Returns the open session of this epoch, or replaces a session of another epoch. */
   async function openSession(
     command: Extract<HarnessCommand, { type: "open" }>,
   ): Promise<HarnessSessionRef> {
@@ -520,7 +491,6 @@ export async function createHarnessHost<Binding = unknown>(
         JSON.stringify(existing.ref.folder) !== JSON.stringify(command.folder)
       )
         throw new HarnessError("session-conflict", "Session belongs to another agent folder.");
-      // Changed MCP servers and working folders apply at session setup, so the session reopens.
       const stale =
         existing.epoch !== command.epoch ||
         existing.mcpServers !== JSON.stringify(command.mcpServers) ||
@@ -531,7 +501,6 @@ export async function createHarnessHost<Binding = unknown>(
         existing.idleSince = clock.now();
         return structuredClone(existing.ref);
       }
-      // A session waiting to close keeps its live turn; it is never returned.
       if (!stale && existing.state === "draining")
         throw new HarnessError("session-closing", "The session closes after its live turn.");
       await closeSession(existing, existing.reason ?? "closed");
@@ -576,7 +545,6 @@ export async function createHarnessHost<Binding = unknown>(
           throw new HarnessError("no-live-turn", "No turn is running in this session.");
         if (live.state === "closing" || turn.turnId !== command.turnId)
           throw new HarnessError("no-live-turn", "That turn is not running.");
-        // Armed before the native call, which may itself hang or fail.
         armInterrupt(live, turn);
         return live.adapter.interrupt();
       }
@@ -623,12 +591,10 @@ export async function createHarnessHost<Binding = unknown>(
       );
     }, nativeCloseWaitMs);
     const cleanup = async () => {
-      // A cancelled open rejects by design; native cleanup failures still reach the closer.
       await pending.promise.catch(() => {});
       await pending.lifecycle.closed;
     };
     try {
-      // Keep the cancelled open tracked: if connect finishes late, open() still disconnects it.
       await Promise.race([cleanup(), timeout.promise]);
     } finally {
       cancel();
@@ -669,7 +635,6 @@ export async function createHarnessHost<Binding = unknown>(
             sessionDefinition(live.agent, live.ref.folder)
         )
           continue;
-        // A live turn finishes on the configuration it started with; the session closes after.
         await closeWhenIdle(live, "configuration");
       }
       await materialize(accountDirectory, configuration);
@@ -748,7 +713,7 @@ export async function createHarnessHost<Binding = unknown>(
         ?.agents.find((entry) => entry.id === scope.agentId && entry.harness === scope.harness);
       if (!agent)
         throw new HarnessError("agent-not-found", "Agent is not configured for this harness.");
-      await writeDefaultFiles(root, agent, { replace: true });
+      await writeAgentFiles(root, agent, { replaceInstructions: true });
     },
     async inspect() {
       assertOpen();
@@ -767,7 +732,6 @@ export async function createHarnessHost<Binding = unknown>(
         (entry) => entry.organizationId === organizationId,
       );
       for (const entry of pending) cancelOpening(entry.lifecycle);
-      // A cancelled open may also be in sessions while disconnecting; its bounded wait owns cleanup.
       const closing = [...sessions.values()].filter(
         (live) =>
           live.ref.organizationId === organizationId &&
@@ -776,7 +740,6 @@ export async function createHarnessHost<Binding = unknown>(
       const results = await Promise.allSettled([
         ...pending.map(waitForOpeningClose),
         ...closing.map(async (live) => {
-          // No new turn starts while the native turn stops.
           const idle = closeWhenIdle(live, "closed");
           if (idle) return idle;
           let cancel = () => {};
@@ -838,7 +801,6 @@ export async function createHarnessHost<Binding = unknown>(
         for (const entry of pending) cancelOpening(entry.lifecycle);
         const results = await Promise.allSettled([
           ...pending.map(waitForOpeningClose),
-          // Do not await an overlapping cancelled open again without its deadline.
           ...[...sessions.values()].flatMap((live) =>
             pending.some((entry) => entry.lifecycle === live) ? [] : [closeSession(live, "closed")],
           ),

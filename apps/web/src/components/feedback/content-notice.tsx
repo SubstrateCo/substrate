@@ -12,15 +12,6 @@ import { Heading } from "@/components/ui/heading";
 import { cn } from "cn";
 import { Inbox, type LucideIcon } from "lucide-react";
 
-/**
- * An empty, unavailable, or error state. Pick an icon that names the situation, such as Unlink for
- * a broken link or MailX for a missing invitation, and give one labelled primary action at most.
- *
- * - `pane`: the only content of a page or pane. Centered in the available space.
- * - `compact`: in a card or page section with its own heading.
- * - `inline`: one muted line (red with `tone="error"`) in a sheet section, sidebar list, or board
- *   column.
- */
 export function ContentNotice({
   title,
   description,

@@ -77,7 +77,6 @@ export const agentWakeRequestDetail = z.strictObject({
 });
 export type AgentWakeRequestDetail = z.infer<typeof agentWakeRequestDetail>;
 
-/** A server ID in a response. The desktop does not check its format. */
 const ref = z.string().min(1);
 
 /** A message body for the home desktop, returned only while the owner can see the message. */

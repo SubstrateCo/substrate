@@ -20,10 +20,6 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "cn";
 import { X } from "lucide-react";
 
-/**
- * Presses that keep the sheet open: controls, and portaled popovers, menus and listboxes. Using a
- * picker is not an outside click on the page.
- */
 const keepsSheetOpen = [
   "button, a, input, textarea, select, label, [role=tab]",
   "[data-radix-popper-content-wrapper]",
@@ -35,7 +31,13 @@ const keepsSheetOpen = [
 const pressKeepsSheetOpen = (target: EventTarget | null) =>
   target instanceof Element && target.closest(keepsSheetOpen) !== null;
 
-/** Temporary record details. Keep this mounted beside PageContent so exit motion can finish. */
+const selectedTabInsteadOfUnselected = (element: HTMLElement) =>
+  element.matches('[role="tab"][aria-selected="false"]')
+    ? element
+        .closest('[role="tablist"]')
+        ?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
+    : element;
+
 export function PageSheet({
   open: requestedOpen,
   onOpenChange,
@@ -94,15 +96,7 @@ export function PageSheet({
               event.preventDefault();
               if (suspended || outside.current) return;
               if (opener.current instanceof HTMLElement && opener.current.isConnected) {
-                // History may reopen a sheet while focus is on a different tab. Returning focus
-                // to that now-inactive tab would activate it and overwrite the forward branch.
-                const element = opener.current;
-                const target = element.matches('[role="tab"][aria-selected="false"]')
-                  ? element
-                      .closest('[role="tablist"]')
-                      ?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
-                  : element;
-                target?.focus({ preventScroll: true });
+                selectedTabInsteadOfUnselected(opener.current)?.focus({ preventScroll: true });
               }
             }}
             onInteractOutside={(event) => {

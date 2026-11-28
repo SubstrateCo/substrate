@@ -10,7 +10,6 @@ export function messageTime(value: string | Date) {
   return time.format(new Date(value));
 }
 
-/** "Today", "Yesterday", or the date, for the divider above a day's first message. */
 export function dayLabel(value: string | Date, now = new Date()) {
   const date = new Date(value);
   const startOf = (input: Date) =>

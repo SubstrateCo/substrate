@@ -15,7 +15,6 @@ export function ConfigurationStatus({
 }: {
   available: boolean;
   agentId?: string;
-  /** The agent's home desktop, when it has one. */
   homeDeviceName?: string;
   section: AgentSection;
   pending: boolean;
@@ -45,7 +44,6 @@ export function ConfigurationStatus({
   return null;
 }
 
-/** Skills and MCP servers are edited only on the agent's home desktop. */
 function unavailableTitle(agentId: string | undefined, homeDeviceName: string | undefined) {
   if (!agentId) return "Save the agent first";
   if (homeDeviceName) return `Edit on ${homeDeviceName}`;

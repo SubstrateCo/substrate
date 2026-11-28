@@ -42,7 +42,6 @@ test("create customer records, record a call, and advance a linked deal", async 
   const { page } = user;
   await page.emulateMedia({ colorScheme: "dark" });
   await visit(user, undefined, "/crm", { section: "accounts" });
-  // The empty list offers the same action; use the page header's.
   await page.getByRole("button", { name: "New account", exact: true }).first().click();
   const accountDialog = page.getByRole("dialog", { name: "New account", exact: true });
   await accountDialog.getByLabel("Name", { exact: true }).fill("Northstar Labs");
@@ -81,7 +80,6 @@ test("create customer records, record a call, and advance a linked deal", async 
   await expect(page.locator("html")).toHaveClass(/dark/);
 
   await visit(user, undefined, "/crm", { section: "deals" });
-  // The header and the empty board both offer "New deal".
   await page.getByRole("button", { name: "New deal", exact: true }).first().click();
   const dealDialog = page.getByRole("dialog", { name: "New deal", exact: true });
   await dealDialog.getByLabel("Title", { exact: true }).fill("Northstar workspace rollout");

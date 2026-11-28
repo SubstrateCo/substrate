@@ -11,9 +11,7 @@ ruleTester.run("owned-inserts", ownedInserts(root), {
       filename: at("store/enqueue.ts"),
       options,
     },
-    // Other writes to the table are not inserts.
     { code: `${importInbox}db.update(inbox).set(item);`, filename: at("store/turns.ts"), options },
-    // A local binding with the same name is not the table.
     {
       code: "const inbox = items();\nqueue.insert(inbox);",
       filename: at("store/turns.ts"),

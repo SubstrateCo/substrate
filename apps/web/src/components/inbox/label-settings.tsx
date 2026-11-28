@@ -12,7 +12,6 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { ChevronRight } from "lucide-react";
 
-/** How a label's filter shows in the sidebar, when it is not shown as usual. */
 const filterModeNotes: Partial<Record<LabelFilterMode, string>> = {
   hide: "Hidden filter",
   unread: "If unread",

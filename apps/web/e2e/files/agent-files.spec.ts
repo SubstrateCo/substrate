@@ -6,7 +6,6 @@ import { conversation, post, test, visit, type Actor } from "../test-support/fix
 import { project, share } from "../test-support/tasks";
 import { expect, type APIResponse } from "@playwright/test";
 
-// A 1x1 PNG.
 const png = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=",
   "base64",
@@ -19,7 +18,6 @@ async function data<T>(response: APIResponse) {
   return result.data;
 }
 
-/** Uploads bytes through the real signed storage flow and returns the file ID. */
 async function upload(actor: Actor, filename: string, contentType: string, bytes: Buffer) {
   const ticket = await data<UploadTicket>(
     await actor.request.post("/api/v1/files/uploads", {
@@ -56,7 +54,6 @@ test("an agent files a bug from a screenshot message, and the task shows the scr
   );
   const turn = await startTurn(owner, agent, channel.id, report);
 
-  // The agent sees the screenshot on the message and can look at it.
   const thread = await readTool(owner, turn, "read_thread", { messageId: report.id });
   const [screenshot] = thread.root.attachments;
   expect(screenshot).toEqual({
@@ -72,7 +69,6 @@ test("an agent files a bug from a screenshot message, and the task shows the scr
   const read = await readTool(owner, turn, "read_file", { file: screenshot!.file });
   expect(read.content).toMatchObject({ kind: "image", mimeType: "image/webp" });
 
-  // The task it files keeps the screenshot through its source message.
   const task = await callTool(owner, turn, "create_task", {
     projectId: created.entityId,
     title: "Make human and agent icons distinct",
@@ -90,7 +86,6 @@ test("an agent files a bug from a screenshot message, and the task shows the scr
     .toBe(1);
   await expect(source.getByRole("link", { name: "Open source message" })).toBeVisible();
 
-  // A project member who cannot open the private channel does not see the screenshot.
   await share(owner, created.entityId, actors.member.name, "view");
   const member = await client(actors.member);
   await visit(member, undefined, "/tasks", { projectId: created.entityId, taskId: task.id });

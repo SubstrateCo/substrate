@@ -72,7 +72,6 @@ test("scoped agent-work writes commit once each and approval nests its savepoint
   }
 });
 
-// Fail a later insert after the mutation, on the real transaction executor.
 function failingInsert(db: DatabaseExecutor, failedTable: typeof agentWorkItems): DatabaseExecutor {
   return new Proxy(db, {
     get(target, property: keyof DatabaseExecutor) {

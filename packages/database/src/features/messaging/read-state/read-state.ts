@@ -27,8 +27,6 @@ import {
 } from "drizzle-orm";
 import { alias, PgTransaction, type AnyPgColumn } from "drizzle-orm/pg-core";
 
-// The client renews a lease about every 30 seconds while the newest message is in view in a
-// focused window. A closed or sleeping window stops renewing, so its lease ends soon after.
 const viewingLease = sql`now() + interval '45 seconds'`;
 
 type UnreadCount = {
@@ -42,12 +40,9 @@ type Position = typeof messagingReadPositions | typeof messagingThreadReadPositi
 const before = (position: Position, at: SQL, messageId: string) =>
   sql`(${position.messageCreatedAt}, ${position.messageId}) < (${at}, ${messageId}::uuid)`;
 
-// A new lease, an ended one, or no change to the lease.
 const lease = (viewing: boolean | undefined) =>
   viewing === undefined ? {} : { viewingUntil: viewing ? viewingLease : null };
 
-// The conflict update of a read. Without a lease it writes only when the position moves forward.
-// With one, the row is always written: the position stays unless it moves forward.
 function forward(position: Position, at: SQL, messageId: string, viewing: boolean | undefined) {
   if (viewing === undefined)
     return {
@@ -79,20 +74,13 @@ export function readOperations(
   async function unreadRows(includeMessageIds = false) {
     const { actor } = await authenticate(db);
     if (scope.actorEntityId) throw new AccessDeniedError();
-    // Person mentions are the body's `@[person:<actor>]` tokens, which sending and editing
-    // check. Matching is case-insensitive, like the parser.
     const mention = `@[person:${actor.entityId.toLowerCase()}]`;
     const mentions = (body: AnyPgColumn) => sql`strpos(lower(${body}), ${mention}) > 0`;
     const mentionCount = sql<number>`(count(*) FILTER (WHERE ${mentions(messagingMessages.body)}))::int`;
-    // Live messages others wrote, in conversations the Messages list shows.
     const unreadFromOthers = () =>
       and(
-        // Authentication resolves the scope's human actor. Its approved participation already
-        // satisfies visibleConversations, including partner conversations.
         liveApprovedParticipant(db),
         visibleConversations(db, scope),
-        // Match the Messages list: task discussions open only from their task, so they must not
-        // light the Messages dot with nothing there to read.
         isNull(messagingConversations.taskEntityId),
         ne(messagingMessages.authorActorEntityId, actor.entityId),
         notInArray(
@@ -105,7 +93,6 @@ export function readOperations(
       eq(messagingParticipants.conversationId, messagingConversations.id),
       eq(messagingParticipants.actorEntityId, actor.entityId),
     );
-    // The main timeline counts against the conversation's read position.
     const timeline = await db
       .select({
         conversationId: messagingConversations.id,
@@ -114,7 +101,6 @@ export function readOperations(
           ? sql<string[]>`array_agg(${messagingMessages.id}::text)`
           : sql<string[]>`ARRAY[]::text[]`,
         mentionCount,
-        // Where the "New" divider goes.
         firstUnreadMessageId: sql<string | null>`(array_agg(${messagingMessages.id}
             ORDER BY ${messagingMessages.createdAt}, ${messagingMessages.id}))[1]`,
       })
@@ -132,8 +118,6 @@ export function readOperations(
         and(
           unreadFromOthers(),
           isNull(messagingMessages.threadId),
-          // Bounds the message index scan to unread rows. The joined read position cannot,
-          // because it is on the nullable side of the left join. The row comparison is exact.
           sql`${messagingMessages.createdAt} >= coalesce((SELECT bound.message_created_at
               FROM ${messagingReadPositions} bound
               WHERE bound.conversation_id = ${messagingConversations.id}
@@ -144,9 +128,6 @@ export function readOperations(
         ),
       )
       .groupBy(messagingConversations.id);
-    // Replies count against their own thread's position, and only in threads the reader follows:
-    // every thread of a direct message, and elsewhere threads they wrote in or were mentioned in.
-    // These are the people reply notifications reach.
     const inThread = alias(messagingMessages, "in_thread");
     const followed = or(
       inArray(messagingConversations.kind, ["dm", "agent_dm"]),
@@ -175,7 +156,6 @@ export function readOperations(
           ? sql<string[]>`array_agg(${messagingMessages.id}::text)`
           : sql<string[]>`ARRAY[]::text[]`,
         mentionCount,
-        // The root of each unread reply, once per reply, so the timeline can mark its thread.
         unreadReplyThreadIds: sql<string[]>`array_agg(${messagingMessages.threadId}::text
             ORDER BY ${messagingMessages.createdAt}, ${messagingMessages.id})`,
       })
@@ -236,10 +216,8 @@ export function readOperations(
       options: { threadId?: string; viewing?: boolean } = {},
     ) {
       if (scope.actorEntityId) throw new AccessDeniedError();
-      // The caller's transaction is joined: a failed statement fails the whole read.
       const work = async (tx: DatabaseExecutor) => {
         const { actor } = await authenticate(tx);
-        // The message, only in a conversation the reader can see.
         const [message] = await tx
           .select({
             id: messagingMessages.id,
@@ -270,7 +248,6 @@ export function readOperations(
           messageId,
           messageCreatedAt: at,
         };
-        // One statement moves the position forward and sets or ends the viewing lease.
         const [position] = await (
           threadId
             ? tx
@@ -307,17 +284,12 @@ export function readOperations(
                 })
         ).catch((error: Error) => denyDeletedConversation(error));
         const moved = !!position?.moved;
-        // A read position changes only the reader's unread counts, on the reader's devices.
         if (moved)
           effectsFor(tx).hint({
             audience: realtimeKeys.actor(scope.organizationId, actor.entityId),
             domain: "messaging",
             scope: "read",
           });
-        // Messages the reader has seen no longer need their attention. Clear only the notices in
-        // the timeline or thread that was read, up to the read message, so a later message stays
-        // unread. This runs even when the position did not move, so a notice created at the
-        // boundary is not left behind.
         const cleared = await tx
           .update(notifications)
           .set({ readAt: sql`now()` })
@@ -350,7 +322,6 @@ export function readOperations(
             audience: realtimeKeys.user(scope.userId),
             domain: "notifications",
           });
-        // The reader's unread counts change only when `moved`; their notifications, when `cleared`.
         return { read: true, moved, cleared: cleared.length > 0 };
       };
       return is(db, PgTransaction) ? work(db) : db.transaction(work);
@@ -370,7 +341,6 @@ export async function readForViewers(
     "id" | "conversationId" | "threadId" | "authorActorEntityId"
   >,
 ) {
-  // The stored time, at full precision, so the read position matches the message exactly.
   const at = sql`(SELECT ${messagingMessages.createdAt} FROM ${messagingMessages}
     WHERE ${messagingMessages.id} = ${message.id}::uuid)`;
   const viewers = await (message.threadId

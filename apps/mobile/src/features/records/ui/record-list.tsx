@@ -6,7 +6,6 @@ import { ActivityIndicator, FlatList, RefreshControl, View } from "react-native"
 import { EmptyState, ErrorState, LoadingRows } from "./states";
 import type { LucideIcon } from "lucide-react-native";
 
-/** A paged server list with pull to refresh, loading, error and empty states. */
 export function PagedList<Page, Item>({
   query,
   items,

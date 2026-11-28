@@ -52,7 +52,6 @@ async function referenceEndpoints(
   level: "view" | "edit",
 ) {
   const { message, conversation } = await requireMessage(ctx.db, scope, source.messageId);
-  // Seeing a task discussion needs view access; changing its references needs comment access.
   if (conversation.taskEntityId) await ctx.requireAccess(conversation.taskEntityId, "comment");
   if (message.deletedAt && level === "edit") throw new AccessDeniedError();
   if (source.conversationId && message.conversationId !== source.conversationId)
@@ -60,7 +59,6 @@ async function referenceEndpoints(
   if (conversation.organizationId !== scope.organizationId) throw new AccessDeniedError();
   const work = await requireContextTarget(ctx, target.id, level);
   if (target.type && work.entityType !== target.type) throw new AccessDeniedError();
-  // Neither an archived task's discussion nor archived work changes its linked messages.
   await requireUnarchived(ctx, referenceArchiveIds(work.entityId, conversation.taskEntityId));
   return { conversation, work };
 }
@@ -88,7 +86,6 @@ function hintReferenceChange(
     ctx.effects.hint(hint);
 }
 
-// Callers resolve the workspace context; this performs the message and work checks once.
 export async function attachReference(
   ctx: RepositoryContext,
   scope: SessionIdentity,
@@ -191,21 +188,17 @@ export function joinReferenceMessages<T extends PgSelectQueryBuilder>(query: T) 
     .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId));
 }
 
-/** The most discussions a record shows. */
 const relatedLimit = 100;
 
 export function createContextRepository(context: RepositoryContext, scope: SessionIdentity) {
   const { db } = context;
   const transaction = <T>(work: (ctx: RepositoryContext) => Promise<T>) =>
     context.transaction(work);
-  // Each message with its thread root, in request order. A message that is missing, hidden,
-  // outside the named conversation, or whose root is hidden is left out.
   async function messageTargets(targets: { conversationId: string; messageId: string }[]) {
     if (targets.length > 50) throw new ValidationError("At most 50 messages are allowed.");
     const ids = [...new Set(targets.map((target) => target.messageId))];
     if (!ids.length) return [];
     const thread = alias(messagingMessages, "thread");
-    // Reads the messages and their thread roots together; each row must be visible.
     const rows = await selectMessages(db, scope)
       .innerJoin(
         messagingConversations,
@@ -251,7 +244,6 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
     messagePage: (messageIds: string[]) => messagePage(context, scope, messageIds),
     async createTaskFromMessage(input: CreateTaskInput & { requestId: string; messageId: string }) {
       return transaction(async (ctx) => {
-        // The message must be visible and live. A task discussion is visible with view access.
         const { conversation, message } = await requireMessage(ctx.db, scope, input.messageId);
         if (message.deletedAt) throw new AccessDeniedError();
         if (conversation.organizationId !== scope.organizationId) throw new AccessDeniedError();
@@ -267,7 +259,6 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
           dueDate: input.dueDate ?? null,
           parentTaskEntityId: input.parentTaskEntityId ?? null,
         });
-        // The request claim makes retries and simultaneous submissions create one task.
         const existing = await previousRequest(
           ctx,
           "task_from_message",
@@ -356,18 +347,14 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
         )
         .orderBy(desc(messagingMessages.createdAt), desc(messagingMessages.id))
         .limit(relatedLimit);
-      // Keep the newest discussions and show them oldest first.
       const newestFirst = (a: (typeof referenced)[number], b: (typeof referenced)[number]) => {
         const time = b.createdAt.getTime() - a.createdAt.getTime();
         if (time !== 0 || a.messageId === b.messageId) return time;
         return a.messageId < b.messageId ? 1 : -1;
       };
       const chronological = (rows: typeof referenced) =>
-        // The renderer types this result with an ES2022 library, so no toSorted here.
         [...rows].sort(newestFirst).slice(0, relatedLimit).reverse();
       if (!projectTasks) return chronological(referenced);
-      // A project's discussions also include the threads of its tasks' own discussions. Those
-      // messages belong to the task by their conversation, so they have no reference row.
       const taskThreads = await joinActorProfile(
         db
           .select({
@@ -410,7 +397,6 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
   };
 }
 
-// Trusted non-HTTP entry point. Each operation starts a new scope, like request middleware does.
 export function createContextService(db: DatabaseExecutor, scope: SessionIdentity) {
   type Repository = ReturnType<typeof createContextRepository>;
   const run = async <T>(work: (repository: Repository) => Promise<T>) => {

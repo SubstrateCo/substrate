@@ -242,7 +242,6 @@ test("a decision that a held call waits for, or already returned, never steers i
   release();
   await f.settle();
   expect(f.hostCalls("steer").at(-1)!.body).toMatchObject({ awaitingRequestIds: [proposalId] });
-  // Only an interactive live turn waits for a decision.
   expect(f.runtime.awaitApproval({ ...call, turn: { ...turn.context, attempt: 2 } }, "x")).toBe(
     null,
   );
@@ -270,7 +269,6 @@ test("a decision that a held call returned is consumed at the server, so it star
   await f.runtime.observeToolCall(call, { success: true, data: {} }, { requestId: proposalId });
   release();
   await f.settle();
-  // The server learns it before the agent sees the result, not only when the turn ends.
   expect(f.hostCalls("progress").at(-1)!.body).toMatchObject({ decidedRequestIds: [proposalId] });
   expect(result.status).toBe("consumed");
   await f.emit(turn.turnId, { type: "turn.completed", result: { status: "completed" } });
@@ -398,13 +396,11 @@ test("an owner's turn that ends with text but no reply is asked once to send its
   const turn = f.turns()[0]!;
   await f.emit(turn.turnId, { type: "text", text: "Marcus has the most, with 4." });
   await f.emit(turn.turnId, { type: "turn.completed", result: { status: "completed" } });
-  // The turn is still live: the host asked for the answer in the same session and turn.
   expect(f.finished(turn.turnId)).toBeUndefined();
   expect(f.turns()).toHaveLength(2);
   expect(f.turns()[1]).toMatchObject({ turnId: turn.turnId, context: turn.context });
   expect(f.turns()[1]!.input.text).toContain("send it now with the reply tool");
 
-  // It asks once. A turn that still publishes nothing ends quiet.
   await f.emit(turn.turnId, { type: "turn.completed", result: { status: "completed" } });
   expect(f.turns()).toHaveLength(2);
   expect(f.finished(turn.turnId)).toMatchObject({ status: "completed", outcome: "silent" });

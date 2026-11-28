@@ -70,7 +70,6 @@ for (const location of ["channel", "thread"] as const) {
       expect(response.ok()).toBe(true);
       await expect(latestRow.getByText(`${label} ${count - 1}`, { exact: true })).toBeVisible();
     };
-    // More than the near-bottom threshold must grow without turning following off.
     await expand("Expanded detail");
     await expectBottom(log, latestRow);
     await log.evaluate((node) => {
@@ -91,7 +90,6 @@ for (const location of ["channel", "thread"] as const) {
     await newMessages.click();
     await expectBottom(log, log.getByRole("article").last());
 
-    // Delay the real sent-image response, not the draft preview. Loading changes its height.
     const imageReady = Promise.withResolvers<void>();
     const releaseImage = Promise.withResolvers<void>();
     const previewUrl = "**/api/v1/files/attachments/messages/preview?*";

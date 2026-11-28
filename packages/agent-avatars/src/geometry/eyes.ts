@@ -2,13 +2,9 @@ import type { EyeStyle } from "../config/presets.ts";
 import { fmt } from "./path.ts";
 
 export interface EyeDimensions {
-  /** Width, in body radii. */
   w: number;
-  /** Height, in body radii. */
   h: number;
-  /** Corner rounding, from 0 (square) to 1 (fully round). */
   round: number;
-  /** Distance of each eye from the middle, as a share of the half width. */
   spread: number;
   scaleL: number;
   scaleR: number;
@@ -25,15 +21,10 @@ export const EYE_DIMENSIONS: Record<EyeStyle, EyeDimensions> = {
 
 const KAPPA = 0.5523;
 
-/** A rounded corner from `a` to `b` around the corner point `p`. */
 function corner(px: number, py: number, bx: number, by: number, ax: number, ay: number) {
   return `C${fmt(ax + (px - ax) * KAPPA)} ${fmt(ay + (py - ay) * KAPPA)} ${fmt(bx + (px - bx) * KAPPA)} ${fmt(by + (py - by) * KAPPA)} ${fmt(bx)} ${fmt(by)}`;
 }
 
-/**
- * An open eye: a rounded rectangle whose top edge can be lowered on each side by a lid
- * (`lidLeft` and `lidRight` are shares of the height).
- */
 export function openEyePath(
   cx: number,
   cy: number,
@@ -66,12 +57,10 @@ export function openEyePath(
   ].join("");
 }
 
-/** A curved line: `bulge` above zero arches up (^), below zero sags down (‿). */
 export function arcEyePath(cx: number, cy: number, w: number, bulge: number): string {
   return `M${fmt(cx - w / 2)} ${fmt(cy + bulge * 0.3)}Q${fmt(cx)} ${fmt(cy - bulge)} ${fmt(cx + w / 2)} ${fmt(cy + bulge * 0.3)}`;
 }
 
-/** `>` when `pointsRight`, otherwise `<`. Used for squeezed-shut eyes. */
 export function chevronEyePath(cx: number, cy: number, w: number, h: number, pointsRight: boolean) {
   const dir = pointsRight ? 1 : -1;
   return `M${fmt(cx - (dir * w) / 2)} ${fmt(cy - h / 2)}L${fmt(cx + (dir * w) / 2)} ${fmt(cy)}L${fmt(cx - (dir * w) / 2)} ${fmt(cy + h / 2)}`;
@@ -90,7 +79,6 @@ export function heartPath(cx: number, cy: number, size: number): string {
   ].join("");
 }
 
-/** A spiral of about one and a half turns, rotated by `angle`. */
 export function spiralPath(cx: number, cy: number, radius: number, angle: number): string {
   const turns = Math.PI * 3.2;
   const steps = 22;

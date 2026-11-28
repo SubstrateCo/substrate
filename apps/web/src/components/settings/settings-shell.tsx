@@ -32,9 +32,6 @@ const accountGroup: SettingsNavGroup = {
   ],
 };
 
-// The frame of user and organization settings: section links on the left and the open section
-// on the right. Organization sections appear only for the active organization's owners and
-// admins; the server still checks the role on every request.
 export function SettingsShell({
   organizationId,
   children,

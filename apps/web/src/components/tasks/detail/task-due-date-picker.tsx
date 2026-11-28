@@ -9,14 +9,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { formatShortDate, parseDateOnly } from "@/lib/format/date";
 import { Check } from "lucide-react";
 
-// Days from today for each quick choice. Next week is the coming Monday.
 const quick: { label: string; days: (today: Date) => number }[] = [
   { label: "Today", days: () => 0 },
   { label: "Tomorrow", days: () => 1 },
   { label: "Next week", days: (today) => (8 - today.getDay()) % 7 || 7 },
 ];
 
-/** Quick choices and an exact date for a date-only value. `children` is the trigger button. */
 export function TaskDueDatePicker({
   value,
   onChange,
@@ -46,7 +44,6 @@ export function TaskDueDatePicker({
   );
 }
 
-/** The popover's content. It mounts on each open, so today and the typed date start fresh. */
 function DueDateChoices({
   value,
   onChoose: choose,

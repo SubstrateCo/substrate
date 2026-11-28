@@ -31,7 +31,6 @@ export type SignInDialogState = {
 
 type StatusLine = { icon: ReactNode; text: string };
 
-/** `waiting` is what the sign-in waits for while it runs. */
 function statusLine(label: string, status: SignInStatus, waiting: string): StatusLine {
   switch (status) {
     case "starting":
@@ -53,10 +52,6 @@ function statusLine(label: string, status: SignInStatus, waiting: string): Statu
   }
 }
 
-/**
- * Output segments with the character offset where each starts. Output only grows, so the
- * offset identifies a segment across reads.
- */
 function positionedSegments(output: string) {
   let start = 0;
   return outputSegments(output).map((segment) => {
@@ -66,7 +61,6 @@ function positionedSegments(output: string) {
   });
 }
 
-/** Terminal output with links that open in the system browser. Follows new output at the end. */
 function OutputLog({ output, label }: { output: string; label: string }) {
   const log = useRef<HTMLPreElement>(null);
   const following = useRef(true);
@@ -106,7 +100,6 @@ function OutputLog({ output, label }: { output: string; label: string }) {
   );
 }
 
-/** One line for the login command, such as a code from the sign-in page. */
 function InputLine({
   disabled,
   pending,
@@ -125,7 +118,6 @@ function InputLine({
         // React events cross portals; the agent form around the launcher must not submit.
         event.stopPropagation();
         if (disabled || pending || !text.trim()) return;
-        // A failed send keeps the text. The send mutation holds the error, and the dialog shows it.
         void onSend(text.trim())
           .then(() => setText(""))
           .catch(() => {});
@@ -162,7 +154,6 @@ function SignInStatusLine({ status }: { status: StatusLine }) {
   );
 }
 
-/** The login command's output and one line of input, while it runs. */
 function TerminalSignInBody({
   label,
   state,
@@ -194,7 +185,6 @@ function TerminalSignInBody({
   );
 }
 
-/** The agent signs in by itself, often in the system browser. */
 function AgentSignInBody({
   label,
   status,
@@ -252,10 +242,6 @@ function SignInFooter({
   );
 }
 
-/**
- * Sign-in to a native agent. A terminal sign-in shows the login command's output and takes one
- * line of input at a time. An agent sign-in waits while the agent finishes in the browser.
- */
 export function SignInDialog({
   label,
   state,
@@ -268,11 +254,9 @@ export function SignInDialog({
 }: {
   label: string;
   state: SignInDialogState;
-  /** Starting, reading, sending, or cancelling failed. */
   error?: Error | null;
   sending: boolean;
   onSend: (text: string) => Promise<void>;
-  /** Stops a running sign-in and closes. */
   onCancel: () => void;
   onRetry: () => void;
   onClose: () => void;

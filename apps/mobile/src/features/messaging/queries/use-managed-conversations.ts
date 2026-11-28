@@ -8,7 +8,6 @@ import { useOrganizationAdmin } from "@/features/organizations/use-organization-
 
 export const useConversationAdminAccess = useOrganizationAdmin;
 
-/** The server exposes metadata to admins, not a way into private message history. */
 export function useManagedConversations(organizationId: string) {
   const scope = useMessagingScope(organizationId);
   const access = useConversationAdminAccess(organizationId);

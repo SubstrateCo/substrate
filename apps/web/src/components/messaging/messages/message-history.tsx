@@ -8,7 +8,6 @@ type MessageHistoryState = {
   onLatest: () => void;
 };
 
-/** Sits at the top of the timeline when more history exists. */
 export function OlderMessages({
   label = "Older messages",
   hasOlder,
@@ -35,7 +34,6 @@ export function OlderMessages({
   );
 }
 
-/** Floats over the bottom of the timeline while it shows an older page. */
 export function JumpToLatest({
   label = "Back to latest",
   hasPrevious,

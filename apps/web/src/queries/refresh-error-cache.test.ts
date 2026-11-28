@@ -5,7 +5,6 @@ import { expect, test } from "bun:test";
 
 type Notifier = NonNullable<Parameters<typeof createRefreshErrorCache>[0]>;
 
-/** Records the toasts the cache would show and dismiss. */
 function recordingNotifier() {
   const shown: Parameters<Notifier["error"]>[] = [];
   const dismissed: Parameters<Notifier["dismiss"]>[0][] = [];

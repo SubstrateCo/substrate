@@ -6,7 +6,6 @@ import type { SheetAction } from "./ui/sheet";
 import { captureToast } from "@/lib/toast";
 import * as Clipboard from "expo-clipboard";
 
-/** Share only scoped record identity, never a title, summary, or access credential. */
 export function recordLinkActions(organizationId: string, record: RecordTarget): SheetAction[] {
   const run = async (operation: (url: string) => Promise<void>, success?: string) => {
     const feedback = captureToast();

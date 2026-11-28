@@ -12,7 +12,6 @@ import { v1Driver } from "./v1/driver.ts";
 import { v2Driver } from "./v2/driver.ts";
 import { Readable, Writable } from "node:stream";
 
-/** A started agent process. exited resolves with the reason once it ends. */
 export interface AcpProcess {
   transport: AcpTransport;
   exited: Promise<Error>;
@@ -23,13 +22,10 @@ type AcpSpawn = (launch: AcpLaunch, cwd: string) => AcpProcess;
 
 export interface AcpConnectDeps {
   spawn?: AcpSpawn;
-  /** Replaces the registered drivers. */
   drivers?: ProtocolDriver[];
-  /** Negotiated versions; defaults to the process-wide cache. */
   cache?: Map<string, AcpProtocolVersion>;
 }
 
-/** An initialized connection and the process behind it. close stops the process. */
 export interface AcpLiveConnection {
   connection: AcpDriverConnection;
   close(): Promise<void>;
@@ -66,7 +62,6 @@ function spawnAcp(agent: AcpLaunch, cwd: string): AcpProcess {
   };
 }
 
-/** Every registered driver takes part in negotiation; the agent picks the version. */
 function enabledDrivers(deps: AcpConnectDeps) {
   const drivers = new Map<number, ProtocolDriver>();
   for (const driver of deps.drivers ?? registeredDrivers.values())
@@ -74,15 +69,9 @@ function enabledDrivers(deps: AcpConnectDeps) {
   return drivers;
 }
 
-// Bundled adapters share Electron's execPath, so the script in args tells them apart.
 const launchKey = (agent: AcpLaunch) =>
   `launch:${[agent.command, ...agent.args].join(" ")}@${agent.version}`;
 
-/**
- * Starts the agent and initializes it with the highest enabled version, or the version this
- * agent negotiated before. When the agent offers another version, the process restarts and
- * initialize runs again with the best version both sides speak.
- */
 export async function connectAcp(
   agent: AcpLaunch,
   cwd: string,

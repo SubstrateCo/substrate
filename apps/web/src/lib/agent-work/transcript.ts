@@ -18,10 +18,6 @@ export type TranscriptEntry =
   | { type: "error"; key: string; text: string }
   | { type: "attempt"; key: string; attempt: number };
 
-/**
- * The canonical turn events as transcript entries. A tool's start and completion become one
- * step; the last open step is current while the turn works. A new attempt starts a section.
- */
 export function transcriptEntries(
   events: readonly TurnEventView[],
   working: boolean,
@@ -34,7 +30,6 @@ export function transcriptEntries(
     if (event.attempt !== attempt) {
       attempt = event.attempt;
       entries.push({ type: "attempt", key: `a${key}`, attempt });
-      // An interrupted attempt leaves its open tools unfinished.
       for (const step of tools.values()) if (step.state === "current") step.state = "error";
       tools.clear();
     }
@@ -89,13 +84,11 @@ export function transcriptEntries(
         break;
     }
   }
-  // A tool that never completed in a stopped turn did not finish.
   if (!working)
     for (const step of tools.values()) if (step.state === "current") step.state = "error";
   return entries;
 }
 
-/** What a transcript panel shows under its header. */
 export type TranscriptBodyState =
   | { kind: "unavailable"; reason: string }
   | { kind: "elsewhere"; notice: string }
@@ -103,11 +96,6 @@ export type TranscriptBodyState =
   | { kind: "loading" }
   | { kind: "error"; error: Error };
 
-/**
- * The timeline lives only on the desktop that ran the turn, so `local` (undefined while unknown)
- * decides between the timeline here and a notice naming that desktop. Loading wins over an
- * error, so a retry that is running replaces the error.
- */
 export function transcriptBody({
   unavailable,
   device,
@@ -117,7 +105,6 @@ export function transcriptBody({
   error,
 }: {
   unavailable?: string;
-  /** The agent's home desktop, to say where its transcripts are. */
   device?: string;
   turn: { loading: boolean; loaded: boolean };
   local: boolean | undefined;

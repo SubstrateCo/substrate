@@ -9,7 +9,6 @@ const styles = read("apps/web/src/components/styles.css");
 
 type Oklch = { l: number; c: number; h: number; text: string };
 
-/** `--name: oklch(L C H)` tokens, with or without alpha, in one block of CSS. */
 function oklchTokens(css: string) {
   const tokens = new Map<string, Oklch>();
   for (const match of css.matchAll(
@@ -36,7 +35,6 @@ const themes = {
   dark: oklchTokens(block(styles, ".dark")),
 };
 
-// Tokens that carry colour on purpose. Every other token is a neutral step of the ramp.
 const ACCENT = [
   "primary",
   "primary-foreground",
@@ -66,7 +64,6 @@ void test("every accent token shares the primary hue, so the interface has one a
   for (const [theme, tokens] of Object.entries(themes)) {
     const hue = tokens.get("primary")!.h;
     for (const name of ACCENT) {
-      // An alias such as var(--accent) is checked through the token it names.
       const value = tokens.get(name);
       if (!value || value.c === 0) continue;
       assert.equal(value.h, hue, `${theme} --${name} drifts from the primary hue`);

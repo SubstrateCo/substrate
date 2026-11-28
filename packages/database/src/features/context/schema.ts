@@ -36,7 +36,6 @@ export const messageEntityReferences = pgTable(
       foreignColumns: [actors.organizationId, actors.entityId],
     }),
     index("message_reference_target_idx").on(table.organizationId, table.entityId),
-    // Conversation deletion cascades here, and delete impact counts by conversation.
     index("message_reference_conversation_idx").on(table.conversationId),
   ],
 );

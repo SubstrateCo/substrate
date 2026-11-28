@@ -2,7 +2,6 @@ import type { FilterClause, FilterField } from "../types";
 import { DateEditor } from "./date-editor";
 import { OptionEditor } from "./option-editor";
 
-/** The value editor for a field's kind. */
 export function FieldEditor({
   field,
   clause,

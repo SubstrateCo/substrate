@@ -52,9 +52,7 @@ export function ConversationPane({
   turnId?: string;
   header?: ReactNode;
   onNavigate?: (target: { messageId?: string; turnId?: string }) => void;
-  /** The CRM record the conversation was opened from. */
   source?: MessageSource;
-  /** The record sheet is open: the task of a task discussion, or the source record. */
   sheet?: boolean;
 }) {
   const { organizationId, userId } = useWorkspaceScope();
@@ -80,7 +78,6 @@ export function ConversationPane({
     messageId && !turnId ? target.data?.root.id : undefined,
   );
   const resource = resourceState(messages);
-  // The transcript keeps the open thread in the URL, so closing it returns to that thread.
   const transcript = (openTurnId?: string) =>
     navigateConversation({ messageId, turnId: openTurnId });
   return (
@@ -180,7 +177,6 @@ function useConversationNavigation(
   const navigate = useNavigate();
   return (target: { messageId?: string; turnId?: string }) => {
     if (onNavigate) return onNavigate(target);
-    // Threads and transcripts keep the record the conversation was opened from.
     const link = messageLink(organizationId, conversationId, undefined, source);
     void navigate({
       ...link,
@@ -230,7 +226,6 @@ function ConversationMessages({
   if (timeline.length === 0) return <EmptyConversation conversation={conversation} />;
   return (
     <MessageList
-      // A new conversation gets a fresh first scroll.
       key={conversation.id}
       {...unread}
       messages={timeline}
@@ -245,7 +240,6 @@ function ConversationMessages({
   );
 }
 
-/** The open turn transcript or thread beside the messages. */
 function ConversationAside({
   conversation,
   messageId,
@@ -273,7 +267,6 @@ function ConversationAside({
       />
     );
   if (!messageId || target.error) return null;
-  // A root in the timeline opens its thread at once; the target read confirms it later.
   const root = timeline.find((message) => message.id === messageId && !message.threadId);
   return (
     <ConversationThreadAside
@@ -285,7 +278,6 @@ function ConversationAside({
   );
 }
 
-/** The open thread. Render it only for a message whose target loaded without error. */
 function ConversationThreadAside({
   conversation,
   target,
@@ -323,12 +315,8 @@ function useConversationTimeline(
 ) {
   const { messages, history, loadOlder } = useMessageHistory(options);
   const timeline = messages.data ?? [];
-  // Read before the read position can move, so the divider marks what was new on opening.
   const opening = useOpeningUnread(options.organizationId, options.conversationId, openThreadId);
-  // The conversation whose newest message is in view; a pane reused for another one starts unseen.
   const [latestVisibleIn, setLatestVisibleIn] = useState<string>();
-  // Only mark the conversation read when the current result reaches its newest message and the
-  // person can see it.
   const canMarkRead =
     opening.ready &&
     latestVisibleIn === options.conversationId &&

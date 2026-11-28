@@ -3,8 +3,6 @@ import { useEffect, useState } from "react";
 import { attachmentPreview, type MessageAttachmentTarget } from "../api/files";
 import { onPrivateStateReset } from "@/auth/private-state";
 
-// Previews never change for an attachment. Keeping them out of the query cache stops realtime
-// invalidation from downloading every image again. They are private, so resets drop them.
 const previews = new Map<string, Promise<string>>();
 onPrivateStateReset(() => previews.clear());
 
@@ -31,7 +29,6 @@ export function useAttachmentPreview(target: MessageAttachmentTarget, enabled: b
     return () => {
       active = false;
     };
-    // The target's IDs are all in the key.
     // oxlint-disable-next-line react-hooks/exhaustive-deps -- `target` is a new object each render.
   }, [key, enabled, attempt]);
   return { ...state, retry: () => setAttempt((value) => value + 1) };

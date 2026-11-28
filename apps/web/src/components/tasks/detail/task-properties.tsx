@@ -26,8 +26,6 @@ import { actorIdentity, actorLabel } from "@/lib/actors/identity";
 import { formatDueDate } from "@/lib/format/date";
 import { CalendarDays, ChevronDown } from "lucide-react";
 
-// Property values look like text until hovered, then act as menu buttons. The negative margin
-// lines their text up with plain values.
 const trigger = "-ml-2.5 max-w-full min-w-0";
 
 function dueText(value: string | null) {
@@ -70,7 +68,6 @@ function PropertySelect<T extends string>({
   );
 }
 
-/** Status, priority, assignee, and due date. Editors change each one in place. */
 export function TaskProperties({
   detail,
   task,

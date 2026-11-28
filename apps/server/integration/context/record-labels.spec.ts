@@ -56,12 +56,9 @@ test("record labels name only records the caller can open, in their own workspac
   expect(JSON.stringify(shown)).not.toContain("Undisclosed acquisition");
   expect(JSON.stringify(shown)).not.toContain(closed);
 
-  // Another workspace's member gets nothing for these IDs in their own workspace, and cannot
-  // name the owner's workspace.
   expect((await result<{ items: Label[] }>(await labels(outsider, ids))).items).toEqual([]);
   await rejected(await labels(outsider, ids, owner.organizationId), ["Closed work"]);
 
-  // A session, a trusted origin and bounded UUID input are required.
   expect(
     (
       await anonymous.post("/api/v1/context/record-labels", {

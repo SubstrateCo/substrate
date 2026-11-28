@@ -26,7 +26,6 @@ type TaskCues = (task: Task) => {
   blocked: boolean;
 };
 
-/** A project's tasks, shown as a status-grouped list or board with shared filters. */
 export function TaskList({
   detail,
   view,
@@ -39,7 +38,6 @@ export function TaskList({
 }: {
   detail: ProjectDetail;
   view: "list" | "board";
-  /** The List/Board toggle, at the right end of the toolbar. */
   viewControl?: ReactNode;
   selectedId: string | null;
   onSelect: (id: string) => void;
@@ -77,7 +75,6 @@ export function TaskList({
           viewControl={viewControl}
         />
       ) : (
-        // An empty project has nothing to filter, but keeps the view toggle in its place.
         viewControl && (
           <TaskFilterLayout>
             <div className="ml-auto">{viewControl}</div>
@@ -117,9 +114,7 @@ function TaskListBody({
   ...rows
 }: {
   view: "list" | "board";
-  /** The project has no tasks at all. */
   empty: boolean;
-  /** Filters hide every task. */
   noMatches: boolean;
   tasks: Task[];
   cues: TaskCues;
@@ -133,7 +128,6 @@ function TaskListBody({
   onClearFilters: () => void;
 }) {
   if (noMatches) return <NoMatchingTasks onClearFilters={onClearFilters} />;
-  // Empty board columns are where a new project's first tasks are created in their status.
   if (view === "board") return <TaskBoard tasks={tasks} onCreate={onCreate} {...rows} />;
   if (empty) return <EmptyProject onCreate={onCreate} />;
   return (

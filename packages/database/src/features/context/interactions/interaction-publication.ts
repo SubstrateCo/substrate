@@ -45,9 +45,6 @@ export async function publishInteraction(
     const endedAt = value.endedAt ? new Date(value.endedAt) : null;
     if (endedAt && endedAt < occurredAt)
       throw new ValidationError("The end must not precede the start.");
-    // A message is published once per contact; a repeat returns the earlier interaction unchanged.
-    // The message's `source` reference finds it. Publishers claim the contact's version first, so
-    // of two publishers at the same instant one conflicts and its retry finds the interaction.
     await ctx.requireStructuralAccess(value.contactEntityId, "edit");
     const [existing] = await ctx.db
       .select({ entityId: contactInteractions.entityId })

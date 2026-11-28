@@ -21,37 +21,26 @@ const tcpAddress = z.object({ port: z.number() });
 export interface McpLeaseOptions {
   organizationId: string;
   agentId: string;
-  /** The local agent-work session that owns this endpoint. */
   sessionId: string;
-  /** Tools offered on this endpoint, by provider name. */
   tools: readonly string[];
-  /** The session's working folder. Large outputs are written below it. */
   folder: string;
 }
 
 /** A tools/call result. Both MCP SDK generations accept this shape. */
 export type McpToolResult = {
   isError?: boolean;
-  /** Text first, then any images the model should see. */
   content: [{ type: "text"; text: string }, ...{ type: "image"; data: string; mimeType: string }[]];
   structuredContent?: JsonObject | OffloadedOutput | SavedDownload;
 };
 
-/** The turn bound to a lease: the host's turn ID and the provider's binding for it. */
 interface LeaseTurn<Binding> {
   turnId: string;
   binding: Binding;
 }
 
-/**
- * The transport-agnostic side of one lease: its tool set, routing, output offload and turn
- * binding. The loopback HTTP server and the MCP-over-ACP provider (acp/mcp-provider.ts) both
- * serve this, so a session sees the same tools and the same NO_TURN rule on either transport.
- */
 export interface McpToolEndpoint {
   readonly server: ToolServerIdentity;
   readonly tools: readonly string[];
-  /** registerTool config for one of the endpoint's tools, for both MCP SDK generations. */
   config(name: string): ReturnType<typeof mcpToolConfig>;
   /** False once the lease is revoked or expired. A use renews an unexpired lease. */
   touch(): boolean;
@@ -64,7 +53,6 @@ export interface McpToolEndpoint {
  * host binds the turn at each turn and unbinds it when the turn ends.
  */
 export interface McpLease<Binding = unknown> {
-  /** The MCP server name declared to the native agent. */
   server: string;
   url: string;
   token: string;
@@ -82,7 +70,6 @@ export interface McpLease<Binding = unknown> {
 }
 
 function mcpToolConfig(tool: ToolDescriptor) {
-  // No outputSchema: a large result is replaced by an offload reference of another shape.
   return {
     title: tool.title,
     description: tool.description,
@@ -97,15 +84,12 @@ function mcpToolConfig(tool: ToolDescriptor) {
   };
 }
 
-/** An open session's lease expires only after it stays unused and unbound this long. */
 const leaseIdleTtlMs = 24 * 60 * 60 * 1000;
 
 interface LeaseState<Binding> {
   options: McpLeaseOptions;
-  /** Ignored while a turn is bound: a lease never expires under a live turn. */
   expires: number;
   context?: LeaseTurn<Binding>;
-  /** Output files per tool in the bound turn. */
   outputs: Map<string, number>;
   endpoint: McpToolEndpoint;
 }
@@ -127,10 +111,6 @@ function jsonResult(structured: NonNullable<McpToolResult["structuredContent"]>)
   };
 }
 
-/**
- * Results that must not go through the generic JSON path: an image becomes an image block the
- * model can see, and downloaded bytes go to the session folder instead of its context.
- */
 async function fileResult(
   result: Extract<ToolCallResult, { success: true }>,
   folder: string,
@@ -149,7 +129,6 @@ async function fileResult(
   };
 }
 
-/** Runs one tool call for a lease. live: the lease is still issued and unexpired. */
 async function callTool<Binding>(
   lease: LeaseState<Binding>,
   provider: ToolProvider<Binding>,
@@ -160,7 +139,6 @@ async function callTool<Binding>(
   try {
     if (!live()) throw new Error("Credential revoked or expired");
     if (!lease.options.tools.includes(name)) throw new Error("Tool not offered on this lease");
-    // The turn is captured when the call starts; a call in flight at turn end completes.
     const turn = lease.context;
     const { organizationId, agentId, sessionId, folder } = lease.options;
     if (!turn)
@@ -228,8 +206,9 @@ export async function createStartupMcp<Binding>(
   const active = new Set<McpServer>();
   let authority = "";
   const server = createServer(async (request, response) => {
-    // Native clients have no Origin. Reject all browser-origin requests and DNS rebinding.
-    if (request.headers.host !== authority || request.headers.origin !== undefined) {
+    const addressedToThisServer = request.headers.host === authority;
+    const sentByBrowser = request.headers.origin !== undefined;
+    if (!addressedToThisServer || sentByBrowser) {
       response.writeHead(403).end();
       return;
     }
@@ -248,7 +227,6 @@ export async function createStartupMcp<Binding>(
         timingSafeEqual(Buffer.from(key), Buffer.from(candidate)),
     );
     const lease = token ? leases.get(token) : undefined;
-    // Use renews the lease while its session stays open.
     if (!token || !lease || !lease.endpoint.touch()) {
       response.writeHead(401).end();
       return;

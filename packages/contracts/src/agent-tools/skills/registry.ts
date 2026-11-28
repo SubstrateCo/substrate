@@ -17,7 +17,6 @@ export function enabledAppGuides(enabledApps: readonly AppId[]) {
   return appGuides.filter((guide) => appEnabled(enabledApps, guide.app));
 }
 
-/** Skills for every agent, whatever apps are enabled. */
 const coreSkills = [searchSkill, messagingSkill];
 
 /**

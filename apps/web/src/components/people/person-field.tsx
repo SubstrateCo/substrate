@@ -17,11 +17,6 @@ import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 
 type Person = Omit<PickerPerson, "email">;
 
-/**
- * A labelled single choice of a workspace person: a field button that opens a searchable list.
- * `value` is the chosen person's id or `""`. `children` go below the description, such as a
- * loading line or an error.
- */
 export function PersonField({
   label = "Person",
   people,

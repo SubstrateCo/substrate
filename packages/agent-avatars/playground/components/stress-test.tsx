@@ -6,7 +6,6 @@ import { frameStats } from "../../src/runtime/ticker.ts";
 const COUNTS = [0, 50, 100, 200, 400];
 const SIZES = [24, 40, 72];
 
-/** Frames per second and the shared loop's script cost, sampled twice a second. */
 function useFrameMeter() {
   const [reading, setReading] = useState({ fps: 0, cost: 0, running: 0 });
   useEffect(() => {

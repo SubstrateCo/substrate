@@ -16,7 +16,6 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-// A connection authorizes an org to participate. Individual consent is still required.
 export const messagingConnections = pgTable(
   "messaging_connections",
   {
@@ -38,7 +37,6 @@ export const messagingConnections = pgTable(
   ],
 );
 
-// IDs are locators, not bearer credentials: reads and acceptance require verified identity.
 export const messagingInvitations = pgTable(
   "messaging_invitations",
   {

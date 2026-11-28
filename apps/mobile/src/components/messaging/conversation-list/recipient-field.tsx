@@ -18,7 +18,6 @@ import { X } from "lucide-react-native";
 
 const suggestionLimit = 6;
 
-/** Chosen people as removable chips, a search field, and matching members to add. */
 export function RecipientField({
   label,
   people,
@@ -79,7 +78,6 @@ export function RecipientField({
           value={text}
           editable={!disabled}
           onChangeText={(next) => {
-            // A separator after a complete address adds it.
             const match = /^(.+?)[\s,;]$/.exec(next);
             const recipient =
               match && isEmailAddress(match[1]!) ? recipientFor(match[1]!, people) : undefined;

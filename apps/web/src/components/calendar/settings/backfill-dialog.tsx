@@ -2,7 +2,6 @@ import { backfillPastDays } from "@substrate/contracts/calendar";
 
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 
-/** Confirms a backfill, which shares past meetings with the organization as interactions. */
 export function BackfillDialog({
   calendarName,
   recordsInteractions,

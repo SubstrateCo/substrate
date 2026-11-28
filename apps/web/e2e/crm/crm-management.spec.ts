@@ -34,7 +34,6 @@ function managementWrite(page: Page, action: "share" | "revoke" | "assignOwner")
   );
 }
 
-// Record tools sit in the header's More actions menu on pages and sheets.
 async function openTool(page: Page, name: string) {
   await page.getByRole("button", { name: "More actions", exact: true }).click();
   await page.getByRole("menuitem", { name, exact: true }).click();
@@ -56,8 +55,6 @@ async function choosePerson(page: Page, name: string) {
   await page.getByRole("option").filter({ hasText: name }).click();
 }
 
-// Accounts and deals share one management view, and database tests cover each kind's grant rules.
-// Contacts belong to every member, so they have no management view.
 test("a member edits a contact without sharing, and contacts offer no management", async ({
   actors,
   client,
@@ -92,7 +89,6 @@ test("an owner shares and revokes a private account through its detail", async (
   const reader = await client(actors.member);
   await visit(reader, undefined, "/crm", search);
   await expect(reader.page.getByRole("heading", { name: record.name, exact: true })).toBeVisible();
-  // A viewer neither shares nor reassigns the account.
   await expectNoTools(reader.page, ["Share", "Change owner"]);
 
   await openTool(owner.page, "Share");
@@ -118,7 +114,6 @@ test("an owner shares and revokes a private account through its detail", async (
   await expect(reader.page.getByRole("heading", { name: record.name, exact: true })).toHaveCount(0);
 });
 
-// Accounts use the same reassignment dialog; only deals also send their expected version.
 test("deal reassignment requires existing access by default and never silently grants it", async ({
   actors,
   client,

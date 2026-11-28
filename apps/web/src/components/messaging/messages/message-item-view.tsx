@@ -37,25 +37,17 @@ export function MessageItem({
   renderReaction,
   children,
 }: {
-  /** What an agent author is doing, such as working while its reply is still being worked on. */
   authorMood?: Mood;
-  /** Replaces the body while the message is edited in place. */
   editor?: ReactNode;
   message: Message;
-  /** Continues the previous message from the same author: no avatar or name. */
   grouped?: boolean;
-  /** The message a link points to. */
   highlighted?: boolean;
-  /** The message arrived while the person watched, so it fades in. */
   arriving?: boolean;
-  /** A small status mark on the avatar, such as an agent run's state. Agent replies never group. */
   avatarBadge?: ReactNode;
-  /** A status after the time, such as the state of the work behind an agent's reply. */
   status?: ReactNode;
   onReact?: (emoji: string) => void;
   pending?: boolean;
   onThread?: (id: string) => void;
-  /** Replies in this message's thread that the viewer has not read. */
   unreadReplies?: number;
   body?: ReactNode;
   actions?: ReactNode;
@@ -108,7 +100,6 @@ export function MessageItem({
   );
 }
 
-/** What the body shows. A deleted message wins over an open editor. */
 type MessageContent =
   | { kind: "deleted" }
   | { kind: "editing"; editor: ReactNode }

@@ -35,7 +35,6 @@ function useSharingActivation() {
   const router = useRouter();
   const activateShared = (result: AcceptedWorkspace) => {
     const conversationId = result.conversationId ?? undefined;
-    // Setup complete shows the now-active workspace, so it needs only the conversation.
     const destination = isDesktop()
       ? linkOptions({
           to: "/messages",
@@ -117,7 +116,6 @@ export function AcceptSharingScreen({ invitationId }: { invitationId: string }) 
           />
         )}
       />
-      {/* The form shows its own error. */}
       {outcome.kind !== "respond" && <FormMessage error={mutationError} />}
     </AuthFrame>
   );
@@ -178,7 +176,6 @@ function InvitationOutcomeView({
     );
   if (outcome.kind === "respond") return renderForm(outcome.invitation);
   if (outcome.kind === "closed") return <WorkspacesLink />;
-  // The load notice shows loading, a retry, or the way back for a missing invitation.
   return null;
 }
 

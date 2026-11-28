@@ -33,7 +33,6 @@ const transports = [
 const replaceAt = <T,>(items: readonly T[], index: number, value: T) =>
   items.map((item, at) => (at === index ? value : item));
 
-/** A labelled single-line input with its error and description. */
 function TextField({
   id,
   label,
@@ -52,7 +51,6 @@ function TextField({
   type?: string;
   onChange: (value: string) => void;
 }) {
-  // The error replaces the description so the two never stack.
   const hint = error ? undefined : description;
   const describedBy = [error && `${id}-error`, hint && `${id}-description`]
     .filter(Boolean)
@@ -88,7 +86,6 @@ function RemoveRow({ label, onClick }: { label: string; onClick: () => void }) {
   );
 }
 
-/** A titled list of rows with an add button below, such as arguments. */
 function RowGroup({
   id,
   title,
@@ -242,7 +239,6 @@ function StdioFields({
   );
 }
 
-/** Adds or edits one user-added MCP server. Validation matches what the desktop stores. */
 export function McpServerEditor({
   server,
   servers,
@@ -252,9 +248,7 @@ export function McpServerEditor({
   onSave,
   onRestoreFocus,
 }: {
-  /** The server to edit; absent for a new server. */
   server?: HarnessMcpServer;
-  /** Every server of the agent, to keep new names unique. */
   servers: readonly HarnessMcpServer[];
   pending: boolean;
   error?: Error | null;

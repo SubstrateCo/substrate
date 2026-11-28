@@ -13,12 +13,10 @@ function postgresError(error: Error) {
   return undefined;
 }
 
-/** The SQLSTATE code of a failed statement, or undefined for any other error. */
 export function postgresErrorCode(error: Error) {
   return postgresError(error)?.code;
 }
 
-/** The constraint a failed statement violated, or undefined for any other error. */
 export function violatedConstraint(error: Error) {
   return postgresError(error)?.constraint_name;
 }
@@ -76,7 +74,6 @@ export class AccessDeniedError extends Error {
   }
 }
 
-/** The record is visible, but the action needs a role the scope does not have. */
 export class PermissionRequiredError extends Error {
   constructor(message: string) {
     super(message);

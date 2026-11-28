@@ -16,7 +16,6 @@ export function SetupCompleteScreen({
 }: {
   organizationId: string;
   name: string;
-  /** The viewer's stored role in the organization. */
   role: string;
   conversationId?: string;
 }) {

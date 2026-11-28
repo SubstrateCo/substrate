@@ -2,7 +2,6 @@ import { ContentNotice } from "@/components/feedback/content-notice";
 import { Button } from "@/components/ui/button";
 import { UserRound } from "lucide-react";
 
-/** The empty state while only the signed-in user's interactions show. */
 export function OwnInteractionsNotice({ onShowEveryone }: { onShowEveryone: () => void }) {
   return (
     <ContentNotice

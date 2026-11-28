@@ -26,7 +26,6 @@ export function DealPipeline({
 }: {
   stages: { id: string; name: string }[];
   deals: PipelineDeal[];
-  /** Offers the empty board's primary action when the viewer can create a deal. */
   onCreate?: () => void;
 }) {
   const { organizationId } = useWorkspaceScope();

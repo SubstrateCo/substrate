@@ -16,7 +16,6 @@ import { requireAgent } from "../acp/detect.ts";
 import { openAcpPeer } from "../acp/index.ts";
 import { HarnessError } from "../errors.ts";
 
-/** Models from the agent's "model" select option. The current value is the default. */
 function acpModels(options: AcpConfigOption[]): HarnessModel[] {
   const option = options.find((entry) => entry.category === "model" && entry.type === "select");
   if (!option) return [];
@@ -28,7 +27,6 @@ function acpModels(options: AcpConfigOption[]): HarnessModel[] {
   });
 }
 
-/** What the renderer may know about the agent's sign-in: names and types, no launch details. */
 function acpAuth(peer: Pick<AcpPeer, "authMethods" | "capabilities">) {
   return {
     methods: peer.authMethods.slice(0, 20).map((method) => {
@@ -40,12 +38,10 @@ function acpAuth(peer: Pick<AcpPeer, "authMethods" | "capabilities">) {
   };
 }
 
-/** The agent's catalog; sign-in when session setup answers auth_required. */
 export async function discoverAcpModels(
   harness: HarnessKind,
   directory: string,
   signal: AbortSignal,
-  /** Test seam. */
   agents: { openPeer: OpenAcpPeer; requireAgent: typeof requireAgent } = {
     openPeer: openAcpPeer,
     requireAgent,
@@ -86,7 +82,6 @@ export async function discoverModels(
     );
     return harnessModelCatalogSchema.parse({ harness, ...catalog });
   } catch {
-    // Do not send native stderr, authentication payloads, or local paths to the renderer.
     return { harness, status: "unavailable", models: [] };
   }
 }

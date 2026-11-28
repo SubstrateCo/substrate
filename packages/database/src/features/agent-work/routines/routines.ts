@@ -22,16 +22,10 @@ import { and, desc, eq } from "drizzle-orm";
 
 export type RoutineRow = typeof agentRoutines.$inferSelect;
 
-/**
- * Who saves a routine. The owner's own save is approved as saved. A routine that the agent
- * creates, or changes in what it does or where it posts, waits for the owner's approval.
- */
 export type RoutineAuthor = "owner" | "agent";
 
-/** The owner of the agent: routines run with this person's access. */
 type Owner = Pick<SessionIdentity, "organizationId" | "userId">;
 
-/** Changes to these fields create a new revision. Ticks of an older revision do not fire. */
 const revisedFields = [
   "name",
   "prompt",
@@ -65,7 +59,6 @@ export function routineView(row: RoutineRow): AgentRoutineView {
   };
 }
 
-/** The routine runs: the owner approved the revision it has now. */
 export const routineApproved = (row: Pick<RoutineRow, "revision" | "approvedRevision">) =>
   row.approvedRevision === row.revision;
 
@@ -73,10 +66,6 @@ function checkSchedule(cron: string, timezone: string) {
   if (!validCron(cron, timezone)) throw new ValidationError("Invalid cron expression.");
 }
 
-/**
- * Where the routine posts. A given place must be one the owner can see; none is the owner's
- * direct conversation with the agent, created on first use.
- */
 async function destinationOf(
   db: DatabaseExecutor,
   owner: Owner,
@@ -98,7 +87,6 @@ function changed(db: DatabaseExecutor, row: Pick<RoutineRow, "ownerUserId">) {
   effectsFor(db).hint({ audience: realtimeKeys.user(row.ownerUserId), domain: "agent-work" });
 }
 
-/** A routine of the owner's agent in the organization. With userAgentId, of that agent only. */
 export async function requireRoutine(
   db: DatabaseExecutor,
   owner: Owner,
@@ -120,7 +108,6 @@ export async function requireRoutine(
   return row;
 }
 
-/** The agent's routines, newest first. */
 export async function listRoutines(db: DatabaseExecutor, owner: Owner, userAgentId: string) {
   return db
     .select()
@@ -144,7 +131,6 @@ export interface NewRoutine {
   destination: TurnPlace | null;
 }
 
-/** Creates a routine that runs from its next occurrence after now. */
 export async function createRoutine(
   db: DatabaseExecutor,
   owner: Owner,
@@ -180,11 +166,6 @@ export async function createRoutine(
   return row!;
 }
 
-/**
- * Changes a routine. A change to what it does or where it posts is a new revision: the owner's
- * change approves it, and the agent's change waits for the owner. The routine's session posts
- * to the new destination from its next turn.
- */
 export async function updateRoutine(
   db: DatabaseExecutor,
   routine: RoutineRow,
@@ -216,7 +197,6 @@ export async function updateRoutine(
       nextFireAt: nextOccurrence(cron, timezone, now),
       updatedAt: now,
     })
-    // Compare-and-set on the revision the change was computed from.
     .where(and(eq(agentRoutines.id, routine.id), eq(agentRoutines.revision, routine.revision)))
     .returning();
   if (!row) throw new ConflictError("The routine changed. Try again.");
@@ -237,7 +217,6 @@ export async function updateRoutine(
   return row;
 }
 
-/** Deletes a routine. Its queued run is dropped; work it already did stays. */
 export async function deleteRoutine(db: DatabaseExecutor, routine: RoutineRow) {
   const pending = await db
     .select({ id: agentWorkItems.id })
@@ -260,10 +239,6 @@ export async function deleteRoutine(db: DatabaseExecutor, routine: RoutineRow) {
   changed(db, routine);
 }
 
-/**
- * The owner approves exactly this revision. It runs from its next occurrence after now, so a
- * time that passed while it waited does not fire at once.
- */
 export async function approveRoutine(
   db: DatabaseExecutor,
   routine: RoutineRow,

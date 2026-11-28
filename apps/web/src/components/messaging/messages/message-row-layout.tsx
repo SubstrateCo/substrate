@@ -3,10 +3,6 @@ import type { ReactNode } from "react";
 import { enterMotion } from "@/components/motion/motion";
 import { cn } from "cn";
 
-/**
- * Who wrote the row: the avatar and byline, or a continuation of the previous message from the
- * same author, which shows neither and is named by `continued` for screen readers.
- */
 export type MessageRowAuthor = { avatar: ReactNode; byline: ReactNode } | { continued: string };
 
 export function MessageRowLayout({
@@ -20,7 +16,6 @@ export function MessageRowLayout({
   children: ReactNode;
   toolbar?: ReactNode;
   highlighted?: boolean;
-  /** The row arrived while the person watched, so it fades in. */
   arriving?: boolean;
 }) {
   const continued = "continued" in author;

@@ -17,10 +17,8 @@ export interface Project {
   name: string;
   description: string;
   image?: string | null;
-  /** Set while the project is archived and read-only. */
   archivedAt?: string | null;
   archivedByActorEntityId?: string | null;
-  /** The reader's level, in archived project lists only. */
   level?: PermissionLevel;
 }
 export interface Task {
@@ -46,22 +44,18 @@ export interface ProjectDetail {
     actorEntityId: string;
     name: string;
     image?: string | null;
-    /** Set exactly for an agent. */
     avatar: AgentAvatarCode | null;
     type: "human" | "agent";
     level: PermissionLevel;
   }[];
-  /** `assignable`: the actor can read the project, so the server accepts them as an assignee. */
   actors: {
     entityId: string;
     name: string;
     image?: string | null;
-    /** Set exactly for an agent. */
     avatar: AgentAvatarCode | null;
     type: "human" | "agent";
     assignable: boolean;
   }[];
   tasks: Task[];
-  /** Every link that touches a task in this project. */
   links: TaskLinkView[];
 }

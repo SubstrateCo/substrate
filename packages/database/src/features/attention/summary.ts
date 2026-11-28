@@ -10,7 +10,6 @@ import { createMessagingRepository } from "../messaging/service";
 import { createFeedRepository } from "../notifications/service";
 import { eq } from "drizzle-orm";
 
-/** Resolve each membership independently; never use the active workspace to grant access. */
 export async function accountAttention(
   db: DatabaseExecutor,
   userId: string,
@@ -23,7 +22,6 @@ export async function accountAttention(
   for (const { organizationId } of memberships) {
     const identity = { userId, organizationId };
     const resolved = await workspaceContext(db, identity).catch((error: Error) => {
-      // Membership may disappear during the read, or this workspace's actor may be disabled.
       if (error instanceof AccessDeniedError) return null;
       throw error;
     });

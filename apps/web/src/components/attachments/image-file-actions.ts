@@ -22,7 +22,6 @@ async function copyImage(url: string, contentType: string) {
   await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
 }
 
-/** Saves a same-origin file. The desktop app asks where to save it. */
 function downloadFile(url: string, filename: string) {
   const link = document.createElement("a");
   link.href = url;
@@ -30,7 +29,6 @@ function downloadFile(url: string, filename: string) {
   link.click();
 }
 
-/** Right-click actions for an image file. `onOpen` adds "Open image" for a thumbnail. */
 export function imageFileActions({
   href,
   filename,

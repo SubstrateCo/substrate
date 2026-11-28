@@ -45,12 +45,10 @@ export function taskLifecycle(context: RepositoryContext) {
     async delete(taskId: string, projectId: string) {
       return context.transaction(async (ctx) => {
         const tx = ctx.db;
-        // The claim comes first: the subtree read below then includes every committed subtask.
         await ctx.requireStructuralAccess(projectId, "edit");
         await requireTask(ctx, taskId, projectId);
         await requireUnarchived(ctx, [projectId]);
         const subtree = await taskSubtree(ctx, projectId, taskId);
-        // Discussion access disappears with the task, including cached open conversations.
         ctx.effects.hint({
           audience: realtimeKeys.organization(scope.organizationId),
           domain: "access",
@@ -79,7 +77,6 @@ export function taskLifecycle(context: RepositoryContext) {
       return context.transaction(async (ctx) => {
         const tx = ctx.db;
         const projectIds = [...new Set([projectId, destinationProjectId])];
-        // The claim comes first: the subtree, parent and assignee reads below are then current.
         await ctx.requireStructuralAccessAll(projectIds, "edit", { type: "project" });
         const task = await requireTask(ctx, taskId, projectId);
         await requireUnarchived(ctx, projectIds);
@@ -119,8 +116,6 @@ export function taskLifecycle(context: RepositoryContext) {
             destinationProjectId,
             live.map((row) => row.assignee),
           );
-          // A single statement keeps the entity-container and same-project parent FKs valid.
-          // Include deleted descendants too: their structural references must remain aligned.
           await tx.execute(sql`
             WITH moved_entities AS (
               UPDATE ${entities} SET access_entity_id = ${destinationProjectId}, updated_at = now()

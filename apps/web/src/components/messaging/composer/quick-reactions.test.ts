@@ -9,7 +9,6 @@ test("stored quick reactions keep valid picks and fill bad slots with unused def
   expect(parseQuickReactions(null)).toEqual([...defaultQuickReactions]);
   expect(parseQuickReactions("not json")).toEqual([...defaultQuickReactions]);
   expect(parseQuickReactions(JSON.stringify(["🔥", "👀", "🚀"]))).toEqual(["🔥", "👀", "🚀"]);
-  // An unknown emoji and a repeat are replaced by defaults that are not already picked.
   expect(parseQuickReactions(JSON.stringify(["👍", "🦄", "👍"]))).toEqual(["👍", "😂", "🙌"]);
   expect(parseQuickReactions(JSON.stringify(["🔥"]))).toEqual(["🔥", "😂", "👍"]);
 });

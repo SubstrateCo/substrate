@@ -38,7 +38,6 @@ test("Expo web preview: real Copy feedback stays centered and expands upward on 
     messages.push({ id: testId.slice("message-".length), body });
   }
 
-  // All three notifications come from successful, real clipboard operations.
   for (const [index, message] of messages.entries()) {
     await openMessageActions(page, message.id, message.body);
     await page.getByRole("button", { name: "Copy text", exact: true }).click();
@@ -80,7 +79,6 @@ test("Expo web preview: real Copy feedback stays centered and expands upward on 
   const touchBox = await bounds(front);
   const input = await context.newCDPSession(page);
   try {
-    // Real touch input, not a toast API call or a demo seam.
     await input.send("Input.dispatchTouchEvent", {
       type: "touchStart",
       touchPoints: [{ x: touchBox.x + 32, y: touchBox.y + touchBox.height / 2 }],

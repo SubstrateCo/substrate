@@ -13,13 +13,11 @@ function inDialog(target: EventTarget | null) {
   return target instanceof Element && !!target.closest("[role=dialog], [role=alertdialog]");
 }
 
-/** Binds each rail app's shortcut to opening that app. */
 export function useAppShortcuts() {
   const navigate = useNavigate();
   const apps = useOrganizationApps();
   useHotkeys(
     [...workspaceApps, notificationsApp].map((app) => ({
-      // The provider applies the person's keys to each app hotkey.
       hotkey: appHotkeys[app.shortcut],
       callback: (event: KeyboardEvent) => {
         if (inDialog(event.target)) return;

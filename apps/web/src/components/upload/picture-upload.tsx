@@ -20,7 +20,6 @@ import { toast } from "sonner";
 export interface PictureUploadProps {
   value?: string | null;
   kind: PictureKind;
-  /** The caller's upload mutation state. */
   uploading: boolean;
   uploadError?: Error | null;
   /** Starts the upload mutation with a 512 × 512 PNG. A failure keeps the crop for retry. */
@@ -28,11 +27,9 @@ export interface PictureUploadProps {
     input: PictureUploadContext & { file: File },
     options: { onSuccess: () => void },
   ) => void;
-  /** The caller's remove mutation state. */
   removing: boolean;
   onRemove: (options: { onError: () => void }) => void;
   disabled?: boolean;
-  /** Whose picture this is. Without a picture, the preview shows the initials people see elsewhere. */
   name?: string;
   framed?: boolean;
 }
@@ -101,12 +98,10 @@ export function PictureUpload({
     },
     [],
   );
-  // The preview URL lives as long as its crop dialog.
   useEffect(() => {
     if (!source) return;
     return () => URL.revokeObjectURL(source.src);
   }, [source]);
-  // Opening checks the image before the crop dialog shows it.
   async function open(file: File) {
     if (opening.current) return;
     const controller = new AbortController();
@@ -189,7 +184,6 @@ export function PictureUpload({
   );
 }
 
-/** Removes the picture at once: it can be uploaded again. */
 function RemovePictureButton({
   removing,
   disabled,

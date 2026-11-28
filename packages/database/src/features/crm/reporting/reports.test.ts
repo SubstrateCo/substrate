@@ -91,7 +91,6 @@ test("follow-up exceptions use readable tasks and meaningful touches with matchi
   const report = await a.crm.report(new Date("2000-01-01Z"), new Date("2100-01-01Z"), input);
   expect(report.exceptions).toMatchObject({ overdue: 1, noNextAction: 1, stale: 2 });
   const bob = await b.crm.report(new Date("2000-01-01Z"), new Date("2100-01-01Z"), input);
-  // Bob cannot read the follow-up tasks, but they read every contact's interactions.
   expect(bob.exceptions).toMatchObject({ overdue: 0, noNextAction: 3, stale: 2 });
   const pages = [];
   let afterEntityId: string | undefined;

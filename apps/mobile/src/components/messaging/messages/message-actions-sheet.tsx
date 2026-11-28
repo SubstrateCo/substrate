@@ -22,7 +22,6 @@ export type MessageAction = {
   onPress: () => void;
 };
 
-/** Quick reactions and actions for one message. */
 export function MessageActionsSheet({
   preview,
   canReact,

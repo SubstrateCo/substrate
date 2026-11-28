@@ -8,7 +8,6 @@ import { eventDate } from "@/lib/calendar/days";
 import { calendarLink } from "@/lib/navigation/record-links";
 import { contactMeetingsOptions } from "@/queries/calendar/options";
 
-/** A contact's meetings from the viewer's calendars, shown only while the Calendar app is on. */
 export function ContactMeetings({ contactEntityId }: { contactEntityId: string }) {
   const apps = useOrganizationApps();
   if (!apps.enabled("calendar")) return null;

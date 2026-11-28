@@ -32,7 +32,6 @@ import {
 } from "@agentclientprotocol/sdk/experimental/v2/unstable";
 import { z } from "zod";
 
-/** The first response on the connection answers initialize. */
 const initializeResult = z.object({
   id: z.union([z.string(), z.number()]),
   result: z.object({ protocolVersion: z.int() }),
@@ -53,7 +52,6 @@ const bounded = (signal: AbortSignal): SendRequestOptions => ({
   stopWaitingOnCancel: true,
 });
 
-/** Custom and future method types are skipped: the client cannot run them. */
 function authMethodsV2(methods: AuthMethod[] | undefined): AcpAuthMethod[] {
   const mapped: AcpAuthMethod[] = [];
   for (const method of methods ?? []) {
@@ -115,7 +113,6 @@ function setupV2(setup: AcpSessionSetup): NewSessionRequest {
   return request;
 }
 
-/** Per-session reducers and turns, created on the first traffic for a session. */
 class Sessions {
   private readonly entries = new Map<string, { updates: SessionUpdatesV2; turns: SessionTurns }>();
 
@@ -274,7 +271,6 @@ async function initialize(
     .onRequest("session/request_permission", ({ params, signal: request }) =>
       handlers.request(permissionRequestV2(params), request),
     )
-    // Only form mode is advertised; anything else gets the no-ask answer.
     .onRequest("elicitation/create", ({ params, signal: request }) =>
       params.mode === "form"
         ? handlers.request(elicitationRequestV2(params), request)

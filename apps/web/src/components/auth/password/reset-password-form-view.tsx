@@ -8,10 +8,6 @@ import { FormMessage } from "@/components/feedback/form-message";
 import { Button } from "@/components/ui/button";
 import type { authLink } from "@/lib/auth/navigation";
 
-/**
- * Marks the confirmation invalid while it differs, so the form shows the mismatch inline. After a
- * password change, `revalidate` lets the form refresh an error already shown on the confirmation.
- */
 function checkPasswordsMatch(form: HTMLFormElement | null, revalidate = false) {
   const password = form?.elements.namedItem("password");
   const confirm = form?.elements.namedItem("confirm");
@@ -99,7 +95,6 @@ export function ResetPasswordForm({
           minLength={8}
           missingMessage="Enter the new password again."
           required
-          // Runs before the form's own input handler, which then reads the updated validity.
           onInput={(event) => checkPasswordsMatch(event.currentTarget.form)}
         />
         <FormMessage

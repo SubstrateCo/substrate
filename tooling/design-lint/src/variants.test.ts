@@ -7,10 +7,6 @@ const root = join(import.meta.dirname, "../../..");
 const source = join(root, "apps/web/src");
 const ui = join(source, "components/ui");
 
-/**
- * Variants chosen through a value this scan cannot follow, such as a prop forwarded from a
- * computed variable. Each entry names where the value comes from.
- */
 const INDIRECT: Record<string, string> = {};
 
 const files = readdirSync(source, { recursive: true, encoding: "utf8" })
@@ -18,7 +14,6 @@ const files = readdirSync(source, { recursive: true, encoding: "utf8" })
   .map((file) => ({ path: join(source, file), text: readFileSync(join(source, file), "utf8") }));
 const name = (path: string) => relative(root, path).replaceAll("\\", "/");
 
-/** The text between a `{` at `start` and its matching `}`, skipping strings and comments. */
 function block(text: string, start: number) {
   let depth = 0;
   for (let i = start; i < text.length; i++) {
@@ -33,7 +28,6 @@ function block(text: string, start: number) {
   throw new Error("Unbalanced braces");
 }
 
-/** Top-level keys of an object literal body, with the text of each value. */
 function entries(body: string) {
   const found: { key: string; value: string }[] = [];
   let depth = 0;
@@ -80,10 +74,8 @@ function variants(): Variant[] {
         /defaultVariants:\s*\{([^}]*)\}/.exec(file.text.slice(match.index))?.[1] ?? "";
       for (const { key: group, value } of entries(body)) {
         const values = entries(value).map(({ key }) => key);
-        // Boolean groups (`inset: { true, false }`) are set with a plain prop.
         if (values.every((key) => key === "true" || key === "false")) continue;
         for (const key of values) {
-          // A `default` key is what a caller gets by leaving the prop out.
           const isDefault =
             key === "default" || new RegExp(`\\b${group}\\s*:\\s*["']${key}["']`).test(defaults);
           if (!isDefault) result.push({ file: name(file.path), group, value: key });
@@ -94,7 +86,6 @@ function variants(): Variant[] {
   return result;
 }
 
-/** A line sets the group to the value: `size="sm"`, `size: "sm"`, or `size={wide ? "sm" : …}`. */
 function used({ group, value, file }: Variant) {
   const quoted = `["'\`]${value.replace(/[-]/g, "\\-")}["'\`]`;
   const pattern = new RegExp(

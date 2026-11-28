@@ -5,7 +5,6 @@ import { hashKey, queryOptions, skipToken, type QueryClient } from "@tanstack/re
 
 import { queryKeys } from "@/queries/keys";
 
-/** The mailboxes' sync state. It changes when a sync finishes or a mailbox changes status. */
 export function mailRevision(boxes: Mailbox[]) {
   return boxes.map((b) => `${b.id}:${b.lastSync}:${b.status}`).join(",");
 }
@@ -14,8 +13,6 @@ export function localMailQueries(api: MailAPI, scope: MailScope) {
   const root = queryKeys.mail(scope.userId, scope.organizationId);
   async function readPage(query: OlderMailQuery, client: QueryClient) {
     const page = await api.nextPage({ ...scope, ...query });
-    // New replies change an open thread as well as its row and badge. Gmail can
-    // also mark an empty mailbox for reconnection without returning any items.
     if (page.items.length || page.issue === "reconnect") {
       const affected = page.items.length ? ["accounts", "list", "thread"] : ["accounts"];
       await Promise.all(
@@ -29,7 +26,6 @@ export function localMailQueries(api: MailAPI, scope: MailScope) {
     readPage,
     accounts: queryOptions({
       queryKey: [...root, "accounts", scope],
-      // A new sync revision reads lists, threads and bodies again.
       queryFn: async ({ client, queryKey }) => {
         const previous = client.getQueryData<Mailbox[]>(queryKey);
         const boxes = await api.accounts(scope);
@@ -41,14 +37,11 @@ export function localMailQueries(api: MailAPI, scope: MailScope) {
       retry: false,
     }),
     page: (query: MailFolder) => {
-      // The search comes last, so one folder's searches share every other part of the key.
       const queryKey = [...root, "list", scope, { ...query, search: "" }, query.search];
       const folder = hashKey(queryKey.slice(0, -1));
       return queryOptions({
         queryKey,
         queryFn: () => api.list({ ...scope, ...query }),
-        // A new search in the same folder keeps the previous results on screen until its own
-        // arrive. Another folder, mailbox or label starts from its own loading state.
         placeholderData: (previous, previousQuery) =>
           previousQuery && hashKey(previousQuery.queryKey.slice(0, -1)) === folder
             ? previous
@@ -67,8 +60,6 @@ export function localMailQueries(api: MailAPI, scope: MailScope) {
         staleTime: Infinity,
         retry: false,
       }),
-    // A sync invalidates bodies and threads instead of changing their keys, so the open reader
-    // keeps its content while it reads again.
     body: (id: string | undefined) =>
       queryOptions({
         queryKey: [...root, "body", scope, id],

@@ -31,8 +31,6 @@ const removalCopy = {
     "This agent stops reading and replying here. Its earlier messages stay, and you can add it back later.",
 };
 
-// Mounted outside the popover: opening the modal can dismiss the member list without
-// unmounting its confirmation or losing a pending mutation.
 export function RemoveMemberDialog({
   conversationId,
   member,

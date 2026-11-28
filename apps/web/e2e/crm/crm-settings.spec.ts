@@ -14,7 +14,6 @@ test("CRM settings discard drafts independently and persist both sections", asyn
   const defaults = page.getByRole("region", { name: "Deal defaults", exact: true });
   await expect(pipeline.getByRole("textbox", { name: "Stage 1 name" })).toBeVisible();
   await expect(defaults.getByRole("combobox", { name: "Default currency" })).toBeVisible();
-  // The sections stack, so the content pane scrolls to reach each section's save action.
   for (const section of [pipeline, defaults]) {
     const save = section.getByRole("button", { name: "Save", exact: true });
     await save.scrollIntoViewIfNeeded();

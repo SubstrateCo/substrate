@@ -14,10 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RefreshCw, Tag } from "lucide-react";
 
-/** The header's start: the folder beside the sidebar, or the mailbox and view switches without it. */
 export type InboxHeading = { leading?: ReactNode; title: ReactNode; icon?: ReactNode };
 
-/** The header's mail tools, present once a mailbox is connected. */
 export type InboxTools = {
   syncing: boolean;
   onSync: () => void;
@@ -70,10 +68,6 @@ export function InboxHeader({
   );
 }
 
-/**
- * The active label as an editable "Label is …" pill. Choosing a label opens it as the sidebar
- * does; removing the pill goes back to the inbox. Mailboxes and folders stay navigation.
- */
 export function LabelFilterBar({
   boxes,
   scope,
@@ -83,9 +77,7 @@ export function LabelFilterBar({
   onClear,
 }: {
   boxes: readonly Mailbox[];
-  /** The chosen mailbox, or null for all inboxes. */
   scope: Mailbox | null;
-  /** Group the labels by mailbox. */
   unified: boolean;
   filter: MailLabelFilter | undefined;
   onLabel: (label: MailLabelFilter) => void;
@@ -121,7 +113,6 @@ export function LabelFilterBar({
         aria-label="Mail filters"
         fields={fields}
         value={value}
-        // The pill's own remove button is the only reset; one field needs no "Clear filters".
         clearable={false}
         onValueChange={(next) => {
           const chosen = parseLabelOptionValue(next.label?.values[0]);
@@ -133,7 +124,6 @@ export function LabelFilterBar({
   );
 }
 
-/** A sync problem, with the action that fixes it. */
 export function SyncNotice({
   problem,
   failed,

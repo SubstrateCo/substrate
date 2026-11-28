@@ -15,7 +15,6 @@ import { schemaIssueMessage } from "@/lib/forms/validation-messages";
 import { z } from "zod";
 import "./styles.css";
 
-// Schema issues without their own message use product copy, never library text.
 z.config({ customError: schemaIssueMessage });
 
 const router = getRouter();
@@ -25,7 +24,6 @@ createRoot(document.getElementById("root")!).render(
     <ScrollbarVisibility />
     <QueryClientProvider client={router.options.context.queryClient}>
       <ThemeProvider>
-        {/* Above the router, so root error and not-found screens keep tooltips. */}
         <TooltipProvider delayDuration={350}>
           <DesktopFrame>
             <ShortcutsProvider>

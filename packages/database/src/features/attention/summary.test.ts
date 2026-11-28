@@ -16,7 +16,6 @@ test("a mentioned message and its notification count once until both are read", 
   await chat.addMembers(channel.id, ["bob@example.com"]);
   const message = await chat.sendMessage(channel.id, `@[person:${f.bob}] Please review`);
   expect(await accountAttention(f.db, "bob")).toEqual({ count: 1 });
-  // Reading the feed alone must not hide a message that is still unread.
   await createFeedService(f.db, { userId: "bob", organizationId: f.orgA }).markAllRead();
   expect(await accountAttention(f.db, "bob")).toEqual({ count: 1 });
   await f.messaging("bob").markRead(channel.id, message.id);

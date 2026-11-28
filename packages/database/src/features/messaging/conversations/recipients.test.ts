@@ -72,7 +72,6 @@ test("the most recipients use one lookup for creation and member addition", asyn
     added: messagingLimits.recipients,
   });
   expect(lookups()).toHaveLength(1);
-  // The recipients have actors now, so the lookup returns them without per-person statements.
   expect(queries.length).toBeLessThan(20);
   expect(
     await fixture.db
@@ -110,7 +109,6 @@ test("first-use recipients get actors in the same statements for few or many peo
     expect(
       participants.map(({ userId }) => userId).sort((a, b) => String(a).localeCompare(String(b))),
     ).toEqual(["alice", ...group.map(({ id }) => id)].sort());
-    // Provisioned people own their actor, as single provisioning grants.
     const created = participants.filter(({ userId }) => userId !== "alice");
     expect(
       await fixture.db

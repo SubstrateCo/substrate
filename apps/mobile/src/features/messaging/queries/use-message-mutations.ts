@@ -30,8 +30,6 @@ export function useSendMessage(organizationId: string, conversationId: string, t
       if (input.attachmentFileIds.length) message.attachmentFileIds = input.attachmentFileIds;
       return sendMessage(message);
     },
-    // Reads only the messages after the newest loaded one into the open history. When that
-    // cannot bring it up to date, the history is read again with the rest of messaging.
     onSuccess: async (sent) => {
       const location = { conversationId, threadId };
       const appended = await appendNewMessages(client, scope, location, {
@@ -67,7 +65,6 @@ export function useMessageMutations(organizationId: string, messageId: string) {
       mutationFn: (emoji: string) => toggleReaction({ organizationId, messageId, emoji }),
       onSuccess: invalidate,
     }),
-    // The record's own pages list its linked messages too.
     unlink: useMutation({
       mutationFn: (entityId: string) => detachWork({ organizationId, messageId, entityId }),
       onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.workspace(scope) }),
@@ -75,7 +72,6 @@ export function useMessageMutations(organizationId: string, messageId: string) {
   };
 }
 
-/** Who reacted with one emoji, a page at a time. */
 export function useReactionPeople(organizationId: string, messageId: string, emoji: string) {
   const scope = useMessagingScope(organizationId);
   return useInfiniteQuery({

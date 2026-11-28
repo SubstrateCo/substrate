@@ -31,7 +31,6 @@ test("link tickets need a verified session, a trusted origin and a known product
     await owner.request.post(tickets, { headers: { origin }, data: { product: "mail" } }),
   );
 
-  // The browser hop has no session. A ticket that was never issued shows the expired page.
   const unknown = await start(anonymous, "A".repeat(43));
   expect(unknown.status()).toBe(400);
   expect(unknown.headers()["content-type"]).toContain("text/html");

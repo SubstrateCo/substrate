@@ -14,7 +14,6 @@ const closeSettings = (page: Page) =>
 const instructions = (page: Page) =>
   page.getByRole("textbox", { name: "Additional instructions (optional)", exact: true });
 
-/** Creates an agent from the Agents app, then opens its settings. */
 async function createAgent(user: Client, name: string) {
   await visit(user, undefined, "/agents");
   await user.page.getByLabel("New agent", { exact: true }).first().click();
@@ -56,7 +55,6 @@ test("selecting an agent opens its existing messages and settings keep the conve
   });
   const user = await client(account);
   await visit(user, undefined, "/agents");
-  // The link's name also carries the agent's status, such as "Working on Laptop".
   await user.page.getByRole("link", { name: agent.name }).click();
   await expect(user.page.getByRole("radio", { name: "Messages", exact: true })).toHaveAttribute(
     "aria-checked",
@@ -158,7 +156,6 @@ test("a disabled agent directs the owner to enable it before starting a conversa
   await user.page.getByRole("button", { name: "Open settings", exact: true }).click();
   const enabled = user.page.getByRole("switch", { name: "Enabled", exact: true });
   await expect(enabled).not.toBeChecked();
-  // The switch saves at once; there is no Save step for it.
   await Promise.all([
     user.page.waitForResponse(
       (response) => response.url().endsWith("/actors/save") && response.ok(),
@@ -193,7 +190,6 @@ test("agent definitions and run settings can be created, edited, persisted and d
   await user.page.getByRole("button", { name: "Discard", exact: true }).click();
   await expect(user.page.getByLabel("Agent name", { exact: true })).toHaveValue(name);
   await expect(save).toBeDisabled();
-  // Name, model, and instructions are one card on one page, saved together.
   await expect(instructions(user.page)).toHaveValue(
     "Review release tasks. Do not contact external services.",
   );
@@ -209,11 +205,9 @@ test("agent definitions and run settings can be created, edited, persisted and d
   const sidebar = user.page.getByRole("region", { name: "Your agents", exact: true });
   await expect(sidebar.getByRole("link", { name: updatedName, exact: true })).toBeVisible();
   await expect(sidebar.getByRole("link", { name, exact: true })).toHaveCount(0);
-  // The open sheet is part of the URL, so it survives a reload.
   await user.page.reload();
   await expect(instructions(user.page)).toHaveValue("Summarize release risks only.");
 
-  // A trigger switch saves at once, with no Save button.
   const directMessage = user.page.getByRole("switch", { name: "Direct message", exact: true });
   const enabled = await directMessage.isChecked();
   await Promise.all([
@@ -225,7 +219,6 @@ test("agent definitions and run settings can be created, edited, persisted and d
   await user.page.reload();
   await expect(directMessage).toBeChecked({ checked: !enabled });
 
-  // Closing the sheet with a draft asks first.
   await instructions(user.page).fill("Unsaved draft");
   await closeSettings(user.page);
   const discard = user.page.getByRole("dialog", { name: "Discard unsaved changes?", exact: true });
@@ -243,7 +236,6 @@ test("agent definitions and run settings can be created, edited, persisted and d
     .getByRole("button", { name: "Delete agent", exact: true })
     .click();
   await expect(sidebar.getByRole("link", { name: updatedName, exact: true })).toHaveCount(0);
-  // Without agents, the Agents app explains how to start instead of an empty Needs you list.
   const firstAgent = user.page.getByRole("heading", {
     name: "Create your first agent",
     exact: true,

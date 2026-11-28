@@ -21,15 +21,12 @@ export function keepFirstPage(client: QueryClient, queryKey: QueryKey) {
   client.setQueryData<InfiniteData<unknown>>(
     queryKey,
     { pages: data.pages.slice(0, 1), pageParams: data.pageParams.slice(0, 1) },
-    // Keep the read time: the first page is no fresher than before.
     { updatedAt: query.state.dataUpdatedAt },
   );
 }
 
-/** Keeps only the first page of a deep list once the view that loaded it closes. */
 export function useFirstPageOnLeave(queryKey: QueryKey) {
   const client = useQueryClient();
-  // Callers build a new key array each render; its hash changes only with the key.
   const hash = hashKey(queryKey);
   useEffect(() => {
     // SAFETY: hashKey is the JSON of the key, and query keys here hold only JSON values.

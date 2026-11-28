@@ -14,7 +14,6 @@ test("archive a project, open it read-only from Archived, and restore it", async
     title: "Archived work",
   });
   await share(actors.sender, created.entityId, actors.member.name, "edit");
-  // An Archived group that is already there, closed, opens to show the newly archived project.
   const older = await project(actors.sender);
   await post(actors.sender, "tasks/mutations", {
     action: "archiveProject",
@@ -26,7 +25,6 @@ test("archive a project, open it read-only from Archived, and restore it", async
   await visit(owner, undefined, "/tasks", { projectId: created.entityId });
   await expect(page.getByRole("button", { name: "New task", exact: true })).toBeVisible();
   await page.getByRole("tab", { name: "Settings", exact: true }).click();
-  // Delete is offered only after the project is archived.
   await expect(page.getByRole("button", { name: "Delete project", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Archive project", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: `Archive “${created.name}”?`, exact: true });
@@ -43,7 +41,6 @@ test("archive a project, open it read-only from Archived, and restore it", async
   const archived = page.getByRole("region", { name: "Archived projects", exact: true });
   await expect(archived.getByRole("link", { name: created.name, exact: true })).toBeVisible();
 
-  // An editor's deep link opens the project read-only, without Restore.
   const editor = await client(actors.member);
   await visit(editor, undefined, "/tasks", { projectId: created.entityId });
   await expect(editor.page.getByRole("status").filter({ hasText: "read-only" })).toBeVisible();

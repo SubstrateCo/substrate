@@ -6,11 +6,6 @@ import type { WorkTone } from "@/lib/agent-work/status";
 import { cn } from "cn";
 import { Clock } from "lucide-react";
 
-/**
- * Under an owner message the agent has not started on yet: where it waits. When the agent is
- * busy and cannot take the message into its current work, Send now interrupts that work. When
- * the desktop couldn't confirm the agent received it, Resend submits it again and Discard drops it.
- */
 export function InboxReceiptView({
   label,
   tone,
@@ -23,7 +18,6 @@ export function InboxReceiptView({
   tone: WorkTone;
   onSendNow?: () => void;
   sending: boolean;
-  /** Set when the desktop couldn't confirm the agent received the message. */
   uncertain?: { onResend: () => void; onDiscard: () => void };
   resolving?: boolean;
 }) {

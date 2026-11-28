@@ -16,10 +16,6 @@ export const linkableKindLabels: Record<ContextEntityType, string> = {
   contact_interaction: "Interactions",
 };
 
-/**
- * Splits one link request per record into what was linked and what failed, so earlier links stay
- * and the person can retry only the failures.
- */
 export function settleLinks<T>(
   items: readonly T[],
   settled: readonly PromiseSettledResult<unknown>[],

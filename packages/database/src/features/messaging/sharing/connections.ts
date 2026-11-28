@@ -46,7 +46,6 @@ export function connectionOperations(db: DatabaseExecutor, scope: SessionIdentit
           },
           { domain: "access" },
         );
-        // Invitations to other partners and host invitations without a target stay pending.
         await tx
           .update(messagingInvitations)
           .set({ status: sharingInvitationMachine.events.revoke.to })
@@ -120,8 +119,6 @@ export async function clearMembershipSharingInTransaction(
   userId: string,
   organizationId: string,
 ) {
-  // The person's external conversations. Ending participation and revoking invitations are
-  // guarded writes that are safe to repeat, so this takes no claim.
   const conversations = await tx
     .select({
       id: messagingConversations.id,

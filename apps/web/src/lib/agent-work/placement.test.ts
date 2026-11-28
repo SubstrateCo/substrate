@@ -162,7 +162,6 @@ describe("inbox item placement", () => {
     const older = item({ id: "older", createdAt: "2026-11-08T10:00:00Z" });
     const newer = item({ id: "newer", createdAt: "2026-11-08T10:00:05Z" });
     const otherSession = item({ id: "other", sessionId: "s2" });
-    // Held messages offer Send now and stay receipts; steered ones already joined live work.
     const held = item({ id: "held", sessionId: "s3", held: true });
     const steered = item({ id: "steered", sessionId: "s4", status: "submitted" });
     const background = item({ id: "background", sessionId: "s5", lane: "background" });

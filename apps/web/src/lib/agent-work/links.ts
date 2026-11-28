@@ -2,10 +2,6 @@ import type { AgentRequestView, TurnOutputView } from "@substrate/contracts/agen
 
 import { contactLink, crmLink, messageLink, workLink } from "@/lib/navigation/record-links";
 
-/**
- * The forward link from an executed proposal to the message, task or project it created or
- * changed. A deleted record has no link, and neither has a call that names no single record.
- */
 export function proposalResultLink(organizationId: string, request: AgentRequestView) {
   const outcome = request.proposal?.outcome;
   if (outcome?.status !== "executed") return undefined;
@@ -31,7 +27,6 @@ export function proposalResultLink(organizationId: string, request: AgentRequest
   };
 }
 
-/** The back link from a created message to the conversation the proposal came from. */
 export function proposalSourceLink(organizationId: string, request: AgentRequestView) {
   const { place } = request;
   if (place.access !== "visible") return undefined;
@@ -41,7 +36,6 @@ export function proposalSourceLink(organizationId: string, request: AgentRequest
   };
 }
 
-/** A turn's message output, as a link. Task outputs have no project here, so no link. */
 export function outputLink(organizationId: string, output: TurnOutputView) {
   if (output.kind !== "message") return undefined;
   return messageLink(organizationId, output.conversationId, output.id);

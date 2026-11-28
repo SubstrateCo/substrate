@@ -18,7 +18,6 @@ export const mobileConfig = {
       ],
       rules: {
         "react-native/no-unused-styles": "error",
-        // These components render their string children through native Text primitives.
         "react-native/no-raw-text": [
           "error",
           { skip: ["Notice", "ComposerNotice", "DialogTitle", "DialogDescription"] },
@@ -31,7 +30,6 @@ export const mobileConfig = {
         "react/memo-dependencies": "error",
         "react/no-unstable-nested-components": "error",
         "react/exhaustive-effect-dependencies": "error",
-        // Expression wrappers can preserve a single element for asChild primitives.
         "react/jsx-no-useless-fragment": ["error", { allowExpressions: true }],
         "react/jsx-no-comment-textnodes": "error",
         "react/no-unescaped-entities": "error",
@@ -47,7 +45,6 @@ export const mobileConfig = {
       },
     },
     {
-      // Browser-only implementations render DOM text, not native Text nodes.
       files: [`${MOBILE}/**/*.web.tsx`],
       rules: { "react-native/no-raw-text": "off" },
     },
@@ -74,7 +71,6 @@ export const mobileConfig = {
       rules: { "mobile/no-raw-colors": "off" },
     },
     {
-      // Unit tests run in Node or Bun, not in the shipped native runtime.
       files: [`${MOBILE}/**/*.test.ts`, `${MOBILE}/**/*.test.tsx`],
       rules: { "mobile/native-boundaries": "off" },
     },

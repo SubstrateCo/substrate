@@ -41,8 +41,6 @@ test("resizing the open reader keeps senders, subjects and times aligned; replie
         bounds(row.locator("time")),
         bounds(row.getByLabel("Labels", { exact: true })),
       ]);
-      // Short and long rows start immediately beside the checkbox. A full-width subject
-      // gets its own line, even when labels, thread counts and two mailbox addresses are present.
       expect(from.x - right(checkbox)).toBeGreaterThanOrEqual(0);
       expect(from.x - right(checkbox)).toBeLessThan(18);
       expect(Math.abs(from.x - subject.x)).toBeLessThan(2);

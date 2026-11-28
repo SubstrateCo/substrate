@@ -18,14 +18,9 @@ type WorkspaceApp = {
   label: string;
   icon: LucideIcon;
   to: NonNullable<LinkProps["to"]>;
-  /** The app shortcut that opens this app. The person can change its keys. */
   shortcut: ShortcutId;
 };
 
-/**
- * The apps in the rail, in rail order. Agents render in the bottom group, above Notifications.
- * Each app's route decides when it is active.
- */
 export const workspaceApps = [
   {
     id: "messages",

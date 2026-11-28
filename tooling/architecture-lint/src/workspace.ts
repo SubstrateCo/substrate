@@ -4,7 +4,6 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-/** The repository root, which holds `architecture.config.json` and `oxlint.config.ts`. */
 export const repositoryRoot = fileURLToPath(new URL("../../../", import.meta.url));
 
 interface Manifest {
@@ -17,7 +16,6 @@ function readManifest(path: string): Manifest {
   return JSON.parse(readFileSync(path, "utf8")) as Manifest;
 }
 
-/** Names of the workspace packages, so imports of them are `pkg:` and not third-party. */
 function workspacePackages(root: string) {
   const names = new Set<string>();
   for (const pattern of readManifest(join(root, "package.json")).workspaces ?? []) {
@@ -38,7 +36,6 @@ interface Architecture {
   workspace: Workspace;
 }
 
-/** Loads and checks `architecture.config.json`. A config mistake fails the lint run. */
 export function loadArchitecture(root = repositoryRoot): Architecture {
   const configPath = join(root, "architecture.config.json");
   // SAFETY: configProblems below rejects unknown fields, layers, and rule IDs before any rule runs.

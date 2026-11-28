@@ -30,9 +30,6 @@ const viewOptions = [
   { value: "board", label: "Board", icon: Columns3 },
 ] as const;
 
-/**
- * A project page and its task detail sheet, directly inside a PageLayout.
- */
 export function ProjectPane(props: ComponentProps<typeof ProjectPaneContent>) {
   return (
     <UnsavedDraftsProvider>
@@ -63,9 +60,7 @@ function ProjectPaneContent({
   state: ResourceStatus;
   capabilities: ProjectCapabilities;
   onRetry: () => void;
-  /** The Settings tab of a loaded project: its editor, access, and danger zone. */
   renderSettings: (detail: ProjectDetail) => ReactNode;
-  /** Above the tabs' content, such as the read-only notice of an archived project. */
   notice?: ReactNode;
   renderTaskForm: (props: {
     parentTaskEntityId: string | undefined;
@@ -85,7 +80,6 @@ function ProjectPaneContent({
   onSelectTask: (id: string | null) => void;
   onTaskStatusChange: (task: Task, status: TaskStatus) => void;
   headerActions?: ReactNode;
-  /** The Discussions tab of a loaded project. */
   renderContext: (detail: ProjectDetail) => ReactNode;
   statusPending?: boolean;
 }) {
@@ -168,7 +162,6 @@ function ProjectPaneContent({
             <TabsContent value="discussions" className="min-h-0 overflow-y-auto">
               <div className="flex min-h-full flex-col p-6">{renderContext(detail)}</div>
             </TabsContent>
-            {/* Stays mounted so an unsaved project name or description survives a tab change. */}
             <TabsContent
               value="settings"
               forceMount
@@ -252,7 +245,6 @@ function CreateTaskForm({
   });
 }
 
-/** A project that has not loaded: loading, no longer accessible, or failed. */
 function ProjectPaneState({ state, onRetry }: { state: ResourceStatus; onRetry: () => void }) {
   if (state === "loading")
     return (

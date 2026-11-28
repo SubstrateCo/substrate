@@ -60,7 +60,6 @@ export async function queueSharingInvitations(
       }),
     ),
   ];
-  // Per-org limits are approximate: concurrent batches may each pass these counts.
   const [totals] = await db
     .select({
       sent: sql<number>`count(*) filter (where ${gt(
@@ -93,7 +92,6 @@ export async function queueSharingInvitations(
     if (otherPeople.some((person) => emails.some((email) => person.email !== email)))
       throw new ValidationError("A direct message can only have two people.");
   }
-  // A new invitation to the same address replaces the previous one.
   await db
     .update(messagingInvitations)
     .set({ status: sharingInvitationMachine.events.revoke.to })
@@ -202,7 +200,6 @@ export async function declineSharingInvitation(db: DatabaseExecutor, userId: str
   });
 }
 
-/** Loads the invitation. The caller authorizes. */
 async function loadInvitation(db: DatabaseExecutor, id: string) {
   const [invite] = await db
     .select()
@@ -217,8 +214,6 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
     async invite(conversationId: string, input: { email: string; shareHistory: boolean }) {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
-        // Check membership before the claim, as accept does. The manager check needs the
-        // claimed row, so it runs after.
         await workspaceContext(tx, scope);
         const conversation = await claimConversation(tx, conversationId);
         const [invitation] = await queueSharingInvitations(tx, scope, conversation, {
@@ -237,8 +232,6 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
           .from(messagingInvitations)
           .where(eq(messagingInvitations.id, id));
         if (!lookup) throw new AccessDeniedError();
-        // Sharing changes of one conversation run one at a time. Read the invitation again
-        // after the claim: an earlier acceptance may have changed it.
         const conversation = await claimConversation(tx, lookup.conversationId);
         const [invite] = await tx
           .select()
@@ -329,7 +322,6 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
             conversationId: null,
           };
         }
-        // Partner-managed individual invitations cannot reactivate a disconnected org.
         const connectionActive = await hasSharingConnection(
           tx,
           conversation.id,
@@ -337,7 +329,6 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
         );
         if (invite.senderOrganizationId !== invite.hostOrganizationId && !connectionActive)
           throw new AccessDeniedError();
-        // Individual consent must not replace the organization's original approval provenance.
         if (!connectionActive)
           await tx
             .insert(messagingConnections)
@@ -390,7 +381,6 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
     decline: (id: string) => declineSharingInvitation(db, scope.userId, id),
     async revoke(id: string) {
       return db.transaction(async (tx) => {
-        // Revocation is one compare-and-set on the invitation's status, so it takes no claim.
         const invite = await loadInvitation(tx, id);
         const conversation = await conversationRow(tx, invite.conversationId);
         await requireSharingManager(tx, scope, conversation);

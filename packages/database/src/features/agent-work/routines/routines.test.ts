@@ -63,7 +63,6 @@ test("a routine the agent creates or revises waits for the owner; pausing keeps 
     updateRoutine(tx, await x.row(created.id), { prompt: "Summarize the week." }, "agent"),
   );
   expect(revised).toMatchObject({ revision: 2, approvedRevision: 1 });
-  // The owner's own change is approved as saved.
   const { result } = await x.repository.updateRoutine(created.id, { cron: "0 10 * * *" });
   expect(result).toMatchObject({ revision: 3, approvedRevision: 3 });
 });

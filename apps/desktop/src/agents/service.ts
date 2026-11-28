@@ -54,10 +54,6 @@ async function storePath(accountDirectory: string) {
   return path;
 }
 
-/**
- * The authority caches the catalog until an agents hint or a realtime reconnect, which may
- * follow missed hints. This directory keeps no cache of its own.
- */
 function agentDirectory(
   server: ReturnType<typeof createAgentWorkServer>,
   authority: DesktopSessionAuthority,
@@ -72,10 +68,6 @@ function agentDirectory(
   };
 }
 
-/**
- * Agent work for the signed-in account in main. Main derives the account and organization from
- * the verified session for every operation; the renderer never names them.
- */
 export function createAgentWorkService(options: {
   backend: string;
   installationId: string;
@@ -88,9 +80,7 @@ export function createAgentWorkService(options: {
   migrationsDirectory?: string;
   notify(change: AgentWorkChange): void;
   log?: (message: string) => void;
-  /** Test seam. Defaults to `AgentWorkStore.open`. */
   openStore?: (path: string, migrationsDirectory?: string) => Promise<AgentWorkStore>;
-  /** Test seam. Defaults to `createAgentWorkRuntime`. */
   createRuntime?: typeof createAgentWorkRuntime;
 }) {
   const log = options.log ?? (() => {});
@@ -130,10 +120,6 @@ export function createAgentWorkService(options: {
       ? current
       : undefined;
 
-  /**
-   * The account or organization changed: the old runtime interrupts and closes its live
-   * sessions and ends their turns before it goes. It keeps receiving their events until then.
-   */
   async function retire(current: Active) {
     transition("retire");
     await current.runtime.shutdown().catch(() => log("Agent work could not stop cleanly."));
@@ -186,16 +172,10 @@ export function createAgentWorkService(options: {
       },
     );
     active = { identity, generation, organizationId: auth.organizationId, store, runtime };
-    // Retirement must not close the store while startup still uses it.
     await runtime.start().catch(() => log("Agent work could not start."));
     return active;
   }
 
-  /**
-   * The runtime for the current verified account and organization. The session is verified
-   * again after its freshness window or an event that may change it; calls share one check.
-   * A network outage keeps recoverable state. Confirmed denial retires the old runtime.
-   */
   function ensure() {
     if (!accepting()) return Promise.resolve(undefined);
     if (ensuring) return ensuring;
@@ -217,7 +197,6 @@ export function createAgentWorkService(options: {
           }
         }
         if (!accepting()) return undefined;
-        // A hint received during any await must not be swallowed by this shared check.
         if (generation !== authority.generation) continue;
         transition(current ? "ready" : "unavailable");
         return current;
@@ -235,7 +214,6 @@ export function createAgentWorkService(options: {
     return current.runtime;
   }
 
-  /** The local store of the verified organization. */
   async function organizationStore(organizationId: string) {
     const current = available(await ensure());
     if (current?.organizationId !== organizationId)
@@ -243,7 +221,6 @@ export function createAgentWorkService(options: {
     return current.store;
   }
 
-  /** The agents' user-added MCP servers. The runtime sends them with each open command. */
   const mcpServers: LocalMcpServers = {
     list: async (organizationId, agentId) =>
       (await organizationStore(organizationId)).mcpServers.list(organizationId, agentId),
@@ -258,7 +235,6 @@ export function createAgentWorkService(options: {
       (await organizationStore(organizationId)).mcpServers.delete(organizationId, agentId, id),
   };
 
-  /** The agents' working folders. A change rotates the agent's sessions to a new epoch. */
   const workspaces: LocalWorkspaces = {
     get: async (organizationId, agentId) =>
       (await organizationStore(organizationId)).workspaces.get(organizationId, agentId),
@@ -311,8 +287,6 @@ export function createAgentWorkService(options: {
       if (event.domain === "session" || event.domain === "access" || appsChanged) sessionChanged();
       if (event.domain === "access") void ensure();
       if (event.domain === "agents") {
-        // An agent may have moved to or from this desktop. The server ends moved leases; the
-        // next sync stops their work here.
         agents.invalidate();
         void ensure()
           .then((current) => {
@@ -322,7 +296,6 @@ export function createAgentWorkService(options: {
           })
           .catch(() => log("Could not check where agents run."));
       }
-      // An activity hint echoes a host's own progress report: it changes no work to run.
       if (event.domain === "agent-work" && event.scope !== "activity")
         void ensure().then((current) => available(current)?.runtime.hint());
       if (event.domain === "session" || appsChanged)
@@ -332,7 +305,6 @@ export function createAgentWorkService(options: {
           return current?.runtime.sync();
         });
     },
-    /** Harness events reach the store before anything else. */
     onHarnessEvent(event: HarnessEvent) {
       active?.runtime.onHarnessEvent(event);
     },
@@ -343,14 +315,9 @@ export function createAgentWorkService(options: {
     ) {
       return active?.runtime.observeToolCall(request, result, decided);
     },
-    /** The server checks that this device is the home of the request's agent. */
     requestStatus(organizationId: string, requestId: string) {
       return server.requestStatus(organizationId, requestId);
     },
-    /**
-     * A held call waits on requestId in its live interactive turn. Returns the function that
-     * ends the wait, or null when the call does not wait.
-     */
     awaitApproval(request: WorkspaceApiRequest, requestId: string) {
       return available(active)?.runtime.awaitApproval(request, requestId) ?? null;
     },
@@ -363,7 +330,6 @@ export function createAgentWorkService(options: {
         };
       return current.runtime.handleLocalTool(request);
     },
-    /** The IPC bridge. Values are parsed per method. */
     async call(method: string, value?: IpcValue) {
       return dispatchAgentWork(await required(), method, value);
     },

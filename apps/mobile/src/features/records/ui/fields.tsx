@@ -70,7 +70,6 @@ export function TextField({
   );
 }
 
-/** A calendar date typed as YYYY-MM-DD. An empty value means no date. */
 export function DateField({
   label,
   value,

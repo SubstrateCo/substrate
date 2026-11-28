@@ -49,15 +49,11 @@ export function InteractionTimeline({
   loggedBy,
   onLoggedByChange,
 }: {
-  /** Its `loggedBy` must match the `loggedBy` choice. */
   period: TimelineInput;
-  /** The activity period that `period` covers. */
   days: InteractionDays;
   onDaysChange: (days: InteractionDays) => void;
-  /** An organization profile's scope. Without it, the bar has no Scope filter. */
   scope?: InteractionScope;
   onScopeChange?: (scope: InteractionScope) => void;
-  /** Whose interactions show. Without it, the bar has no Logged by filter. */
   loggedBy?: InteractionLoggedBy;
   onLoggedByChange?: (loggedBy: InteractionLoggedBy) => void;
 }) {
@@ -100,8 +96,6 @@ export function InteractionTimeline({
         />
       </div>
       <TimelinePage
-        // Each period and filter pages from its own start: a cursor from another one would
-        // skip that list's newest interactions.
         key={JSON.stringify([period, debounced.query, kind, origin])}
         period={period}
         search={debounced.query}
@@ -132,7 +126,6 @@ function TimelinePage({
   const pages = useCursorPages<Cursor>();
   const input: TimelineInput = { ...period, search, kind, origin, ...pages.cursor };
   const apps = useOrganizationApps();
-  // The view remounts for each filter, so a placeholder here is always the previous page.
   const query = useQuery({
     ...interactionTimelineOptions(input),
     enabled: !pending,

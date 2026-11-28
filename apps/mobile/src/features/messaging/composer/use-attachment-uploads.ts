@@ -15,7 +15,6 @@ export type AttachmentDraft = {
 
 let nextKey = 0;
 
-/** Files picked for a message. Each uploads at once; a failed one can retry or be removed. */
 export function useAttachmentUploads() {
   const [items, setItems] = useState<AttachmentDraft[]>([]);
   const controllers = useRef(new Map<string, AbortController>());

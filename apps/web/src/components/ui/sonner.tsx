@@ -15,7 +15,6 @@ import { Toaster as Sonner, type ToasterProps } from "sonner";
 const Toaster = ({ ...props }: ToasterProps) => {
   const { resolvedTheme } = useTheme();
 
-  // Keep toast exit animations out of the desktop frame's contained scroll area.
   return createPortal(
     <Sonner
       theme={resolvedTheme}

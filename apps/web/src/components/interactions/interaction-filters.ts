@@ -6,21 +6,17 @@ import type {
 import { interactionKinds } from "./interaction-types";
 import { withClause, type FilterValue } from "@/components/filters";
 
-/** The activity period in the URL: the last 7 or 30 days, or all time. */
 export type InteractionDays = "7" | "30" | "all";
 export type InteractionOrigin = NonNullable<InteractionTimeline["origin"]>;
 export type InteractionScope = NonNullable<InteractionTimeline["scope"]>;
-/** Whose interactions count: the signed-in user's, or everyone's. */
 export type InteractionLoggedBy = "me" | "anyone";
 export type InteractionFilterId = "period" | "loggedBy" | "type" | "origin" | "frequency" | "scope";
 
-/** The filters one surface shows. A field the surface does not show stays unset. */
 export type InteractionFilters = {
   days: InteractionDays;
   loggedBy?: InteractionLoggedBy;
   kind?: InteractionKind;
   origin?: InteractionOrigin;
-  /** Only records with two or more interactions. */
   repeat?: boolean;
   scope?: InteractionScope;
 };
@@ -39,7 +35,6 @@ function choice<T extends string>(
   return allowed.find((candidate) => candidate === chosen);
 }
 
-/** The filters as filter-bar clauses. Unset optional filters have none. */
 export function interactionFilterValue(
   filters: InteractionFilters,
 ): FilterValue<InteractionFilterId> {
@@ -53,10 +48,6 @@ export function interactionFilterValue(
   return withClause(value, "scope", is(filters.scope));
 }
 
-/**
- * The filters read from filter-bar clauses. Values the data layer does not support are dropped.
- * The period, logged-by, and scope filters are required, so a missing one keeps the `current` choice.
- */
 export function interactionFiltersFrom(
   value: FilterValue<InteractionFilterId>,
   current: InteractionFilters,

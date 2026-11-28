@@ -14,7 +14,6 @@ import { Label } from "@/components/ui/label";
 import type { CalendarGroup } from "@/lib/calendar/groups";
 import { CalendarDays, Unlink } from "lucide-react";
 
-/** "Calendar is not …": the hidden calendars, grouped by account. The menu ticks the shown calendars, as the sidebar does. */
 function calendarFilterFields(
   groups: readonly CalendarGroup[],
 ): FilterField<CalendarFilterFieldId>[] {
@@ -40,7 +39,6 @@ function calendarFilterFields(
   ];
 }
 
-/** The hidden calendars as a filter bar. The sidebar checkboxes change the same choice. */
 export function CalendarFilterBar({
   groups,
   hidden,
@@ -62,7 +60,6 @@ export function CalendarFilterBar({
   );
 }
 
-/** Shows or hides each calendar's events, grouped by account. The choice stays on this screen only. */
 export function CalendarFilter({
   groups,
   hidden,

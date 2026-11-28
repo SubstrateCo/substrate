@@ -12,14 +12,12 @@ import { fmt } from "../geometry/path.ts";
 import { compose, rotation, scaling, translation, type Matrix } from "./matrix.ts";
 import type { EyeKind, ParticleKind, Pose } from "./pose.ts";
 
-/** The avatar is drawn in a 100 × 100 view box centred on the origin. */
 export const VIEW_BOX = "-50 -50 100 100";
 export const BODY_RADIUS = 33;
 const CENTER_Y = 1;
 
 export interface EyeFrame {
   d: string;
-  /** Line eyes (closed, happy, spiral) are stroked; the rest are filled. */
   stroked: boolean;
   strokeWidth: number;
   opacity: number;
@@ -37,11 +35,8 @@ export interface ParticleFrame {
 
 export interface Frame {
   body: string;
-  /** Transform of the body group (position, roll and squash). */
   transform: string;
-  /** The same transform as a matrix, for renderers that take numbers. */
   matrix: Matrix;
-  /** Centres of the lighting layers, in body coordinates. */
   light: { x: number; y: number };
   spec: { x: number; y: number };
   bounce: { x: number; y: number };
@@ -52,7 +47,6 @@ export interface Frame {
 }
 
 export interface FrameInput {
-  /** Body outline path. Callers cache it; it only changes while the body morphs. */
   body: string;
   geometry: BodyGeometry;
   eyes: EyeStyle;
@@ -60,13 +54,10 @@ export interface FrameInput {
   pose: Pose;
   eyeKind: EyeKind;
   eyeSpin: number;
-  /** Openness multipliers from blinks, winks and eye swaps. */
   openL: number;
   openR: number;
-  /** Speech bob, in view units. */
   eyeLift: number;
   particles: ParticleKind | null;
-  /** Seconds since the particles started, for fading in. */
   particleAge: number;
   t: number;
 }
@@ -86,18 +77,11 @@ function rotate(x: number, y: number, angle: number) {
 interface SurfacePoint {
   x: number;
   y: number;
-  /** Depth toward the viewer, from -1 (behind) to 1 (front). */
   z: number;
-  /** Foreshortening across and down the surface. */
   fx: number;
   fy: number;
 }
 
-/**
- * Places a point on the body's ellipsoid at a longitude and latitude, then projects it to the
- * screen. Turning the head shifts the longitude, so features slide around the body and squash
- * near the edge.
- */
 function project(lon: number, lat: number, ax: number, ay: number): SurfacePoint {
   const cosLat = Math.cos(lat);
   return {
@@ -293,7 +277,6 @@ export function buildFrame(input: FrameInput): Frame {
   const R = BODY_RADIUS;
   const bottom = geometry.bottom * R;
   const baseY = CENTER_Y + (1 - geometry.bottom) * R * 0.5;
-  // Depth reads as size: closer is bigger.
   const depth = Math.max(0.2, 1 + pose.z);
   const sx = pose.squashX * pose.scale * depth;
   const sy = pose.squashY * pose.scale * depth;
@@ -366,7 +349,6 @@ export function buildFrame(input: FrameInput): Frame {
       cy: fmt(baseY + bottom + 3),
       rx: fmt(R2 * 0.88 * shadowScale * pose.squashX),
       ry: fmt(4.6 * shadowScale),
-      // Nothing to cast a shadow on in space.
       opacity: input.world === "space" ? 0 : fmt(0.9 * shadowScale ** 2),
     },
     eyes: [eye(-1), eye(1)],

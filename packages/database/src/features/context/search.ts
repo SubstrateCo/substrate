@@ -61,30 +61,22 @@ interface SearchResult {
   image?: string | null;
   projectEntityId?: string;
   contactEntityId?: string;
-  // Task results only: the readable parent project and the task's status, so pickers can tell
-  // tasks with the same title apart.
   projectName?: string;
   status?: TaskStatus;
   conversationId?: string;
   threadId?: string | null;
   conversationName?: string;
-  // Conversation results, and message and thread results for their conversation.
   conversationKind?: ConversationKind;
-  // Message and thread results only: one line of plain text with references resolved for the
-  // viewer, the author's name, and when it was sent.
   excerpt?: string;
   authorName?: string;
   createdAt?: Date;
-  // Agent results only: the viewer's own agent definition and how it looks.
   agentId?: string;
   avatar?: AgentAvatarCode;
-  // Conversation and channel results only.
   private?: boolean;
   membership?: ChannelMembership;
   memberCount?: number;
 }
 
-// Columns shared by thread and message results. Needs joinMessageConversationAndAuthor.
 function messageResultColumns() {
   return {
     id: messagingMessages.id,
@@ -116,8 +108,6 @@ export function containsText(column: SQLWrapper, query: string) {
   return sql`${trigramKey(column)} LIKE lower(${pattern})`;
 }
 
-// How well a short field matches the query, best first: 0 is the whole text, 1 a prefix, 2 the
-// start of a later word, and 3 anything else, such as a substring or a description word.
 function matchRank(column: SQLWrapper, query: string) {
   const key = trigramKey(column);
   return sql<number>`(CASE WHEN ${key} = lower(${query}) THEN 0
@@ -126,9 +116,6 @@ function matchRank(column: SQLWrapper, query: string) {
     ELSE 3 END)`;
 }
 
-// Every word of the query as a word prefix, for the word indexes. PostgreSQL splits the query with
-// the expression that built the index, so both sides get the same words and punctuation separates
-// them. A query with no words gives NULL, which matches nothing.
 export function wordPrefixQuery(query: string) {
   return sql`(
     SELECT string_agg('''' || replace(replace(lexeme, '\\', '\\\\'), '''', '''''') || ''':*', ' & ')::tsquery
@@ -159,17 +146,13 @@ export async function contextSearch(
 ): Promise<SearchResult[]> {
   signal?.throwIfAborted();
   const { db } = ctx;
-  // The route and the MCP tool schemas validate the query and kind.
   const limit = pageSize(input.limit ?? 30);
   const query = input.query.trim();
   const kind = input.kind ?? "all";
-  // A several-kind search with text is a picker, which has no cursor: each kind's page holds its
-  // best matches. Every other search pages by ID.
   const ranked = !!input.kinds && !!query;
   const rankBy = (column: SQLWrapper) => (ranked ? matchRank(column, query) : sql<number>`0`);
   const rankOrder = (column: SQLWrapper) =>
     ranked ? [matchRank(column, query), sql`lower(${column})`] : [];
-  // A combined search names its kinds. Otherwise "all" covers every kind except people and agents.
   const searches = (type: ContextSearchBatchKind) =>
     input.kinds
       ? input.kinds.includes(type)
@@ -188,13 +171,9 @@ export async function contextSearch(
     signal?.throwIfAborted();
     if (!source) return [];
   }
-  // One hop only. Membership stays structural; links never grant access.
-  // The anchor can be an entity, a message, or a conversation ID.
   let anchorKind: "entity" | "message" | "conversation" | undefined;
   let anchorConversationId: string | undefined;
-  // A task anchor's subtasks share its project, which bounds the scan by the unique index.
   let anchorProjectId: string | undefined;
-  // A message anchor's channel and thread references, read from its body.
   let anchorReferences: ReturnType<typeof bodyMessagingReferences> = [];
   const anchorId = input.relatedToEntityId;
   if (anchorId) {
@@ -292,8 +271,6 @@ export async function contextSearch(
         inArray(messagingMessages.id, relatedReferenceIds(messageEntityReferences.messageId)),
       );
     } else if (anchorKind === "message") {
-      // Only the anchor's own outgoing references: references are not stored, so incoming ones
-      // cannot be found without scanning message bodies.
       const ids = (kind: "channel" | "thread") =>
         anchorReferences.flatMap((reference) => (reference.kind === kind ? [reference.id] : []));
       const threadIds = ids("thread");
@@ -307,17 +284,12 @@ export async function contextSearch(
     }
   }
   const words = wordPrefixQuery(query);
-  // `rank` is internal: it orders a picker's rows and is removed before they are returned.
   const results: (SearchResult & { rank?: number })[] = [];
-  // Full message bodies by result ID, for excerpts.
   const bodies = new Map<string, string>();
-  // Branches of kind "all" start here and run concurrently; their rows join `results` in order.
   const branchRows: Promise<(SearchResult & { rank?: number })[]>[] = [];
   const entityTypes = (["task", "project", ...crmContextTypes] as const).filter(searches);
   if (entityTypes.length) {
-    // Work and CRM records in one statement with one visibility CTE.
     const minimum = input.editable ? "edit" : "view";
-    // The task's project already passed the readable check, so its name is safe to show.
     const taskProject = alias(projects, "task_project");
     const branches = entityTypes.map((type) => {
       let table, column, matches, active, projectEntityId;
@@ -329,7 +301,6 @@ export async function contextSearch(
           matchesWords(searchDocument(column, table.description), words),
         );
         projectEntityId = type === "task" ? tasks.projectEntityId : projects.entityId;
-        // Archived work stays searchable but cannot be the target of a change.
         if (input.editable)
           active = sql`NOT ${inArchivedProject(table.organizationId, table.entityId)}`;
       } else {
@@ -440,7 +411,6 @@ export async function contextSearch(
       ),
     );
   }
-  // Channel browse and the channel reference picker. Ordered by name; the cursor is the last ID.
   if (kind === "channel") {
     const me = alias(messagingParticipants, "me");
     const nameKey = sql`(lower(${messagingConversations.name}), ${messagingConversations.id})`;
@@ -594,10 +564,6 @@ export async function contextSearch(
       )
       .where(
         and(
-          // This narrows the scan without changing the result. Outside task discussions and
-          // public channels, only live members can see a conversation, and a person has one
-          // actor per organization. So mentionablePerson checks only those members, not every
-          // person in the organization.
           or(
             isNotNull(messagingConversations.taskEntityId),
             publicChannel(),
@@ -628,7 +594,6 @@ export async function contextSearch(
       pending.then((rows) => rows.map((row) => ({ ...row, kind: "person" as const }))),
     );
   }
-  // Mention picker: the viewer's own agents that are members here.
   if (searches("agent") && input.conversationId) {
     const pending = db
       .select({
@@ -667,19 +632,15 @@ export async function contextSearch(
       ),
     );
   }
-  // Every branch runs concurrently. Pages are sorted by ID below, so arrival order does not matter.
   for (const rows of await Promise.all(branchRows)) results.push(...rows);
   signal?.throwIfAborted();
   type Row = (typeof results)[number];
   const byId = (a: Row, b: Row) => a.id.localeCompare(b.id);
-  // Rows without a rank, such as messages, count as the weakest match.
   const rankOf = (row: Row | undefined) => row?.rank ?? 3;
   const byRank = (a: Row, b: Row) =>
     rankOf(a) - rankOf(b) ||
     a.title.toLowerCase().localeCompare(b.title.toLowerCase()) ||
     byId(a, b);
-  // A combined search keeps each kind's own page, grouped in the requested order. A ranked search
-  // moves a kind with a stronger best match ahead; the sort is stable, so ties keep that order.
   const groups = input.kinds?.map((type) =>
     results.filter((row) => row.kind === type).sort(ranked ? byRank : byId),
   );
@@ -687,7 +648,6 @@ export async function contextSearch(
   const page = (groups?.flat() ?? results.sort(byId).slice(0, limit)).map(
     ({ rank: _rank, ...row }): SearchResult => row,
   );
-  // Message rows passed the conversation check above, so their bodies may be quoted.
   const excerpts = await messageExcerpts(
     ctx,
     db,

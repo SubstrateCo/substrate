@@ -18,10 +18,6 @@ export const messagePageOptions = (
   queryOptions({
     queryKey: queryKeys.messagePage(organizationId, conversationId, messageIds),
     queryFn: async ({ signal, client, queryKey }) => {
-      // Each new message changes the key. Rows of messages already loaded in this conversation
-      // are reused, so only the new IDs are requested and unchanged rows keep their objects.
-      // Invalidated pages are skipped: invalidation means their context changed. A page that
-      // already has data is refetching, so it requests every ID.
       const refetch = client.getQueryData(queryKey) !== undefined;
       const rowsOf = (usable: boolean) =>
         new Map(
@@ -31,8 +27,6 @@ export const messagePageOptions = (
               predicate: ({ state }) =>
                 usable ? !refetch && state.status === "success" && !state.isInvalidated : true,
             })
-            // Overlapping pages can refresh in a different order from their insertion order.
-            // Let the newest page win when several pages contain the same message.
             .sort(
               ([left], [right]) =>
                 (client.getQueryState(left)?.dataUpdatedAt ?? 0) -
@@ -55,13 +49,11 @@ export const messagePageOptions = (
         return row ? [row] : [];
       });
     },
-    // Each new message changes the key. Keep visible rows' context while the new page loads.
     placeholderData: keepPreviousData,
     enabled: messageIds.length > 0,
     retry: false,
   });
 
-/** Names for up to 50 record IDs. An ID missing from the result is one the viewer can't open. */
 export const recordLabelsOptions = (organizationId: string, ids: readonly string[]) => {
   const sorted = [...new Set(ids)].sort();
   return queryOptions({
@@ -87,7 +79,6 @@ export const messageTargetOptions = (
 ) =>
   queryOptions({
     queryKey: [...queryKeys.messageTargets(organizationId, conversationId ?? ""), messageId ?? ""],
-    // Shares one request with the other targets read at the same time.
     queryFn:
       conversationId && messageId
         ? () => load(organizationId, conversationId, messageId)

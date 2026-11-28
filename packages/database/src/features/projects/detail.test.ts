@@ -94,7 +94,6 @@ test("only actors who can read the project are assignable, like the assignee che
         row.assignable,
       ]),
     );
-  // Bob is a member without a grant, so the server refuses him as an assignee.
   expect((await assignable())[f.bob]).toBe(false);
   expect(
     await rejection(
@@ -105,7 +104,6 @@ test("only actors who can read the project are assignable, like the assignee che
       }),
     ),
   ).toBeInstanceOf(AccessDeniedError);
-  // An organization admin reaches the project through the role, without a grant.
   await f.db.update(member).set({ role: "admin" }).where(eq(member.id, "bob-a"));
   expect((await assignable())[f.bob]).toBe(true);
   await alice.tasks.create({

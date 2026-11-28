@@ -36,13 +36,11 @@ test("create_project and update_project write as the agent and replay their resu
     name: "Launch",
     description: "Q3",
     archived: false,
-    // The agent creates with its owner's access, so the owner owns the project.
     yourLevel: "owner",
     members: [{ actor: { id: f.alice, type: "human" }, level: "owner" }],
   });
   expect(await call("create_project", input)).toEqual(created);
 
-  // Only the supplied field changes.
   const renamed = await call("update_project", {
     requestId: crypto.randomUUID(),
     projectId: created.id,
@@ -91,7 +89,6 @@ test("project reads show the archived state, the caller's level and direct membe
   expect(await call("get_project", { projectId: archived.entityId })).toMatchObject({
     archived: true,
   });
-  // An archived project takes no changes, and view access takes none either.
   for (const projectId of [archived.entityId, shared.entityId])
     expect(
       await rejection(
@@ -135,7 +132,6 @@ test("move_task moves a task with its subtasks to another project and under a ne
     .where(eq(taskActivity.taskEntityId, task.entityId));
   expect(moves.find((row) => row.action === "Project changed")?.actorEntityId).toBe(agent.actorId);
 
-  // A task cannot move under its own subtask, and back to the top level it has no parent.
   expect(
     await rejection(
       call("move_task", {
@@ -199,7 +195,6 @@ test("delete_task waits for the owner: nothing is deleted until approval, then t
   });
   const input = { requestId: requestId(), taskId: task.entityId };
   const proposalId = await pending("delete_task", input);
-  // A retry returns the same proposal and deletes nothing.
   expect(await pending("delete_task", input)).toBe(proposalId);
   expect(await f.db.select().from(agentRequests)).toHaveLength(1);
   expect((await call("get_task", { taskId: task.entityId })).id).toBe(task.entityId);
@@ -236,7 +231,6 @@ test("a project is archived, restored, archived again and deleted on approval", 
   const { call, pending, approve } = await tools();
   const project = await f.forActor(f.alice).projects.create({ name: "Work" });
   const input = () => ({ requestId: requestId(), projectId: project.entityId });
-  // Deleting an active project could never run, so it is refused: archive it first.
   expect(await rejection(pending("delete_project", input()))).toBeInstanceOf(ValidationError);
   expect(await call("archive_project", input())).toMatchObject({ archived: true });
   expect(await call("restore_project", input())).toMatchObject({ archived: false });

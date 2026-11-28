@@ -7,7 +7,6 @@ test("canonical JSON sorts keys at every level and drops undefined fields", () =
   expect(
     canonicalJson({ b: 1, a: { d: [3, { z: true, y: null }], c: "x" }, skip: undefined }),
   ).toBe('{"a":{"c":"x","d":[3,{"y":null,"z":true}]},"b":1}');
-  // Arrays keep their order; sorting would change meaning.
   expect(canonicalJson([2, 1])).toBe("[2,1]");
   // UTF-16 code unit order: uppercase sorts before lowercase.
   expect(canonicalJson({ b: 1, B: 2, a: 3 })).toBe('{"B":2,"a":3,"b":1}');

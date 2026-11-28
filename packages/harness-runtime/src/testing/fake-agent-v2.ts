@@ -1,7 +1,3 @@
-/**
- * The v2 side of the fake ACP agent, built with the SDK's experimental v2 agent() app.
- * fake-agent.ts routes a connection here when the script's protocolVersions includes 2.
- */
 import type {
   FakeAgentRecord,
   FakeAgentScript,
@@ -27,25 +23,18 @@ import {
   type Usage,
 } from "@agentclientprotocol/sdk/experimental/v2/unstable";
 
-/** FakeAgentScript.v2: v2 initialize and session data. */
 export interface FakeV2Options {
   capabilities?: AgentCapabilities;
   authMethods?: AuthMethod[];
   configOptions?: SessionConfigOption[];
-  /** Hold prompts sent while a turn runs, and insert each after the turn's idle. */
   holdPrompts?: boolean;
-  /** Answer $/cancel_request for a held prompt with -32800; held prompts are never inserted. */
   honorCancelRequest?: boolean;
 }
 
-/** Steps only the v2 fake runs; the v1 fake skips them. */
 export type FakeV2Step =
-  /** A raw tool_call_update upsert. */
   | { toolUpdate: ToolCallUpdate }
-  /** A whole agent_message upsert; null clears it. */
   | { message: { id: string; text: string | null } };
 
-/** Answers the v2 fake records, beside the v1 ones. */
 export interface FakeV2Answers {
   permission: RequestPermissionResponse;
   elicitation: CreateElicitationResponse;
@@ -54,11 +43,9 @@ export interface FakeV2Answers {
 interface Run {
   sessionId: string;
   cancelled: boolean;
-  /** Aborts the run's pending permission and elicitation requests ($/cancel_request). */
   requests: AbortController;
   cancel(): void;
   steer(): void;
-  /** Resolves on session/cancel or session/close. */
   stopped: Promise<void>;
 }
 
@@ -105,7 +92,6 @@ export function fakeAgentAppV2(
   let configOptions = structuredClone(options.configOptions ?? []);
   let running: Run | undefined;
   const held: HeldPrompt[] = [];
-  /** ACP-declared MCP servers per session: name to serverId. */
   const acpServers = new Map<string, Map<string, string>>();
   const caller = new McpOverAcpCaller({ clientInfo: { name: "fake-agent", version: "1.0.0" } });
   const declare = (sessionId: string, servers: unknown[] | undefined) =>
@@ -255,7 +241,6 @@ export function fakeAgentAppV2(
     }
   }
 
-  /** Runs one foreground interval: running, the steps, then idle with its stop reason. */
   function start(client: AgentContext, sessionId: string, steps: FakeStep[]) {
     const cancel = Promise.withResolvers<void>();
     let steered = Promise.withResolvers<void>();
@@ -290,8 +275,6 @@ export function fakeAgentAppV2(
           script.promptUsage,
         ),
       );
-      // An agent that honors $/cancel_request keeps held prompts until the client withdraws
-      // them; one that does not inserts each after the idle, as a turn of its own.
       const next = options.honorCancelRequest ? undefined : held.shift();
       if (next) {
         const messageId = await insert(client, next.sessionId, next.text);
@@ -408,7 +391,6 @@ export function fakeAgentAppV2(
         });
       const messageId = await insert(client, sessionId, text);
       if (active) {
-        // Native steering: the text joins the running interval.
         record.steers.push(text);
         active.steer();
       } else void start(client, sessionId, stepsFor(text));

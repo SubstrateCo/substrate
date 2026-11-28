@@ -8,10 +8,8 @@ import { UserPlus, UserRound } from "lucide-react";
 
 export type ResponsibleRecord = RecordOwnerProps["record"];
 
-/** A record header action: an item in the More actions menu. */
 export type RecordTool = { label: string; icon: ReactNode; onSelect: () => void };
 
-/** The Share and Change owner tools of an account or deal, and the dialogs they open. */
 export function useRecordManagement({
   entityId,
   name,
@@ -23,12 +21,10 @@ export function useRecordManagement({
 }: {
   entityId: string;
   name: string;
-  /** The record kind in copy, such as "deal". */
   noun: string;
   capabilities: CrmRecordCapabilities;
   record?: ResponsibleRecord;
   enabled: boolean;
-  /** Focuses the menu trigger after a tool's dialog closes. */
   onRestoreFocus: () => void;
 }) {
   const [dialog, setDialog] = useState<"share" | "owner" | null>(null);

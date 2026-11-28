@@ -8,7 +8,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "cn";
 import { Plus } from "lucide-react";
 
-/** A row of board columns. The columns stretch to the board's height. */
 export function Board({ className, ...props }: ComponentProps<"section">) {
   return (
     <section
@@ -21,7 +20,6 @@ export function Board({ className, ...props }: ComponentProps<"section">) {
   );
 }
 
-/** One board column: a header with the name and count, then a list of `BoardCard`s. */
 export function BoardColumn({
   ref,
   label,
@@ -39,13 +37,9 @@ export function BoardColumn({
   count: ReactNode;
   icon?: ReactNode;
   onAdd?: () => void;
-  /** The add button's name, such as "Add task to In progress". */
   addLabel?: string;
-  /** Names the card list, such as "In progress tasks". */
   listLabel: string;
-  /** The muted line for a column with no cards. Pass it only then. */
   empty?: string;
-  /** A dragged card is over the column. */
   isOver?: boolean;
   children?: ReactNode;
 }) {
@@ -91,10 +85,6 @@ export function BoardColumn({
   );
 }
 
-/**
- * A board card. Put `boardCardTarget` on its title link, or use `Pressable focus="stretched"` for a
- * title button, so the whole card opens it.
- */
 export function BoardCard({
   ref,
   selected = false,
@@ -104,7 +94,6 @@ export function BoardCard({
 }: {
   ref?: Ref<HTMLLIElement>;
   selected?: boolean;
-  /** The copy that follows the pointer while a card is dragged. */
   overlay?: boolean;
   className?: string;
   children: ReactNode;
@@ -123,6 +112,5 @@ export function BoardCard({
   );
 }
 
-/** The card's title link or button. It stretches over the card; controls inside sit above it with `relative`. */
 export const boardCardTarget =
   "font-medium wrap-break-word outline-none after:absolute after:inset-0 after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-ring/50";

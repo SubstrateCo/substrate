@@ -3,16 +3,12 @@ import { noAdhocDateFormat } from "./no-adhoc-date-format.ts";
 
 ruleTester.run("no-adhoc-date-format", noAdhocDateFormat, {
   valid: [
-    // Numbers also have toLocaleString.
     "const label = count.toLocaleString();",
     "const label = stat.toLocaleString();",
     "const label = (total / 100).toLocaleString(undefined, { style: 'currency', currency: 'USD' });",
-    // Reading the time zone does not format anything.
     "const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;",
     "const timezone = new Intl.DateTimeFormat().resolvedOptions().timeZone;",
-    // Constructing a formatter only to validate a time zone.
     'function knownZone(zone) { try { new Intl.DateTimeFormat("en-US", { timeZone: zone }); return true; } catch { return false; } }',
-    // ISO strings are for attributes and API values.
     "export const a = <time dateTime={date.toISOString()}>{formatTime(date)}</time>;",
     "const body = { readAt: new Date().toISOString() };",
     "const list = new Intl.ListFormat('en');",
@@ -36,7 +32,6 @@ ruleTester.run("no-adhoc-date-format", noAdhocDateFormat, {
       errors: [{ messageId: "method", data: { method: "toLocaleTimeString" } }],
     },
     {
-      // An unhelpful receiver name still counts when the options are date options.
       code: "const label = value.toLocaleString('en-US', { month: 'short', day: 'numeric' });",
       errors: [{ messageId: "method", data: { method: "toLocaleString" } }],
     },

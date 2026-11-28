@@ -16,7 +16,6 @@ export function createNotificationPreferencesRoutes(
   service: NotificationPreferencesService,
   scopes: Scopes,
 ) {
-  // Account settings apply in every workspace, so they need no active workspace.
   const account = new Hono<ScopeEnv<UserScope>>()
     .get("/preferences", scopes.user(), async (c) => respond(c, await service.account(c.var.scope)))
     .patch(

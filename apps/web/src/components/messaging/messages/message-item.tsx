@@ -66,7 +66,6 @@ export function MessageItem({
 }) {
   const { organizationId } = useWorkspaceScope();
   const linked = useSearch({ strict: false, select: (search) => search.messageId === message.id });
-  // A top-level target opens as the root of the thread pane, which already marks it.
   const highlighted = linked && !threadRoot && !!message.threadId;
   const [editing, setEditing] = useState(false);
   const { remove } = useMessageMutations(organizationId, message.conversationId, message.id);
@@ -79,7 +78,6 @@ export function MessageItem({
   } = useStateDialog<MessageDialog>(actionsTrigger);
   const reaction = useToggleReaction(organizationId, message.conversationId, message.id);
   const workMood = useAgentWorkMood(message.id);
-  // An agent's reply takes the place of its pending reply, so it fades in instead of appearing.
   const arrivedLive = useArrivedLive(message.createdAt);
   const react = (emoji: string) =>
     reaction.mutate(emoji, {
@@ -117,7 +115,6 @@ export function MessageItem({
                 message={message}
                 context={context}
                 onClose={() => {
-                  // The toolbar is hidden while editing, so it renders before focus returns to it.
                   flushSync(() => setEditing(false));
                   actionsTrigger.current?.focus();
                 }}

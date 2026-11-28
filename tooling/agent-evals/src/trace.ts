@@ -2,7 +2,6 @@ import type { GradedRun } from "./report.ts";
 import { readdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
-/** Prints what the agent did in the runs of a loop: bun src/trace.ts <label> [scenario] [model]. */
 const [label, scenario, model] = process.argv.slice(2);
 if (!label) throw new Error("Usage: trace.ts <label> [scenario] [model]");
 const directory = resolve(import.meta.dirname, "../../../.runtime/evals", label, "runs");

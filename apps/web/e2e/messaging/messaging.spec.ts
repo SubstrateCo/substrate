@@ -44,7 +44,6 @@ test("cross-organization dm and channel creation and bidirectional live messages
 }) => {
   const [sender, partner] = await Promise.all([client(actors.sender), client(actors.partner)]);
   await Promise.all([visit(sender), visit(partner)]);
-  // Each kind starts from the conversation the previous one left open.
   for (const kind of ["dm", "channel"] as const) {
     const name = `partner-${crypto.randomUUID()}`;
     if (kind === "channel") {
@@ -64,7 +63,6 @@ test("cross-organization dm and channel creation and bidirectional live messages
       await to.fill(actors.partner.email);
       await to.press("Enter");
     }
-    // The partner is outside the workspace, so the picker offers "Invite <email>".
     await expect(
       sender.page.getByRole("button", { name: `Remove ${actors.partner.email}`, exact: true }),
     ).toBeVisible();
@@ -109,7 +107,6 @@ test("cross-organization dm and channel creation and bidirectional live messages
       await conversationButton(sender.page, name).click();
     }
     await send(sender.page, outgoing);
-    // The recipient stays on Messages; socket invalidation must discover the new conversation.
     await conversationButton(partner.page, kind === "channel" ? name : actors.sender.name).click();
     await expect(partner.page.getByText(outgoing, { exact: true })).toBeVisible();
     await expectChange(partner, partnerSince, "messaging", channel.id);

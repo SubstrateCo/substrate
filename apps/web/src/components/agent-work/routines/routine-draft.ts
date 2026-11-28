@@ -18,7 +18,6 @@ const longMessages: Record<RoutineField, string> = {
   timezone: messages.timezone,
 };
 
-/** The routine contract's fields, with copy for each rule. */
 export const routineDraftSchema = z
   .object(routineFields)
   .omit({ destination: true })
@@ -42,10 +41,6 @@ export const routineDraftSchema = z
 
 export type RoutineDraft = z.input<typeof routineDraftSchema>;
 
-/**
- * Field errors for a draft, in form order, with the same rules as the routine contract. Empty
- * when the draft can be saved.
- */
 export function routineErrors(draft: RoutineDraft): RoutineErrors {
   const errors: RoutineErrors = {};
   const result = routineDraftSchema.safeParse(draft);

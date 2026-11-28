@@ -9,8 +9,6 @@ import { api } from "../client";
 import { readResult } from "../result";
 import type { z } from "zod";
 
-// The owner's routines. A routine the owner saves is approved as saved; one the agent wrote
-// waits for the owner to approve its revision.
 const routes = api["agent-work"];
 
 export const listRoutines = ({

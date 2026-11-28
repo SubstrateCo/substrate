@@ -22,8 +22,6 @@ export const contactInteractionKind = pgEnum("contact_interaction_kind", [
   "note",
   "other",
 ]);
-// A published interaction's source message is its `source` message reference. A calendar
-// interaction's meeting is a `related_to` link to the calendar event.
 export const contactInteractionOrigin = pgEnum("contact_interaction_origin", [
   "manual",
   "message_publication",
@@ -77,7 +75,6 @@ export const contactInteractions = pgTable(
       table.occurredAt.desc(),
       table.entityId.desc(),
     ),
-    // Workspace timelines and period summaries read the whole organization by time.
     index("contact_interactions_org_timeline_idx").on(
       table.organizationId,
       table.occurredAt.desc(),

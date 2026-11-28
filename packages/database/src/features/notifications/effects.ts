@@ -20,10 +20,6 @@ type Target =
       eventKey: string;
     };
 
-// All notification kinds require a verified, active human workspace member with target access.
-// A recipient gets one alert per event: the first group that names them sets its kind.
-// `seenBy` names actors who have the target in view. Their notice is stored read, for the history,
-// and does not alert them.
 export async function notify(
   ctx: RepositoryContext,
   groups: { kind: Kind; recipients: Recipient[] }[],
@@ -34,7 +30,6 @@ export async function notify(
   if (!recipients.length) return [];
   const actorIdsOf = (rows: Recipient[]) =>
     rows.flatMap((row) => ("actorEntityId" in row ? [row.actorEntityId] : []));
-  // Entity targets reach recipients only by actor.
   const userIdsOf = (rows: Recipient[]) =>
     "entityId" in target ? [] : rows.flatMap((row) => ("userId" in row ? [row.userId] : []));
   const actorIds = actorIdsOf(recipients);
@@ -50,7 +45,6 @@ export async function notify(
     );
     return named ? [sql`WHEN ${named} THEN ${group.kind}::text`] : [];
   });
-  // Every candidate the filter keeps is named by a group, so the CASE always has a match.
   const kind = matches.length ? sql<Kind>`CASE ${sql.join(matches, sql` `)} END` : sql<Kind>`NULL`;
   // Insert-select lists every column in table order. The id and creation time repeat the column
   // defaults. The joins use unique keys, so each actor is one row; the unique event key keeps

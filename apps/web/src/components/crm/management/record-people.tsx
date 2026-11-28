@@ -3,7 +3,6 @@ import { FormMessage } from "@/components/feedback/form-message";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { PersonField } from "@/components/people/person-field";
 
-/** The one workspace person a record is shared with or reassigned to. `value` is their id. */
 export function RecordPersonField({
   directory,
   value,

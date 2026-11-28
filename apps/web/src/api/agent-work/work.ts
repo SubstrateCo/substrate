@@ -2,7 +2,6 @@ import type {
   AgentActivityView,
   AgentConversationWorkView,
   AgentItemCommandResult,
-  AgentNewTopicResult,
   AgentTurnCommandResult,
   AgentWorkTurnView,
 } from "@substrate/contracts/agent-work";
@@ -11,8 +10,6 @@ import type { ApiInput } from "@substrate/contracts/http-result";
 import { api } from "../client";
 import { readResult } from "../result";
 
-// The owner's agent work. The server reads and changes it for any of the owner's devices and
-// sends the agent's home desktop a hint to apply each command.
 const routes = api["agent-work"];
 
 /**
@@ -80,17 +77,6 @@ export const runItemCommand = ({
   read<AgentItemCommandResult>(
     routes.items[":id"][command].$post(
       { param: { id: itemId }, json: { organizationId } },
-      { init: { signal } },
-    ),
-  );
-
-export const startNewTopic = ({
-  data: { conversationId, organizationId },
-  signal,
-}: Scoped<{ conversationId: string }>): Promise<AgentNewTopicResult> =>
-  readResult(
-    routes.conversations[":id"]["new-topic"].$post(
-      { param: { id: conversationId }, json: { organizationId } },
       { init: { signal } },
     ),
   );

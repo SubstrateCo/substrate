@@ -1,10 +1,6 @@
 import type { ConversationVisibility } from "@/lib/messaging/conversations";
 import { Bot, Hash, LockKeyhole, MessageCircle, Users, type LucideProps } from "lucide-react";
 
-/**
- * The icon of a conversation's kind: `Hash` for a public channel, `LockKeyhole` for a private one,
- * `MessageCircle` for a DM, `Users` for a group. Beside it the name carries no "#".
- */
 export function ConversationKindIcon({
   kind,
   private: locked,

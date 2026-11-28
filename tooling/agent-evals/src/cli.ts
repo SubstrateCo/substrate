@@ -7,7 +7,6 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
-/** The models the evals know by a short name. Run evals:models to list a harness's model IDs. */
 const targets: ModelTarget[] = [
   { label: "opus", harness: "claude", model: "opus" },
   { label: "sonnet", harness: "claude", model: "sonnet" },
@@ -23,7 +22,6 @@ const { values } = parseArgs({
     scenarios: { type: "string" },
     concurrency: { type: "string", default: "6" },
     repeat: { type: "string", default: "1" },
-    /** A previous label to compare with. */
     compare: { type: "string" },
   },
 });
@@ -92,7 +90,6 @@ try {
   await rm(accounts, { recursive: true, force: true }).catch(() => {});
 }
 
-// The report covers every run stored under the label, so a partial rerun replaces only its runs.
 const stored: GradedRun[] = [];
 for (const file of await readdir(join(out, "runs")))
   stored.push(JSON.parse(await readFile(join(out, "runs", file), "utf8")));

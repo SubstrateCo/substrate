@@ -71,7 +71,6 @@ export const views = {
   },
 };
 
-/** The title, icon and empty state of the selected label, or else of the view. */
 export function folderView(label: MailLabel | undefined, view: MailView) {
   return label
     ? {

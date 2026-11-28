@@ -1,8 +1,5 @@
 import { isDirectConversation, type ConversationKind } from "./input";
 
-// What the viewer may do in a conversation, from the server's `canManage` and the facts the
-// conversation list returns. `canManage` already excludes DMs, task discussions, and agents.
-
 type ConversationFacts = {
   kind: ConversationKind;
   organizationId: string;

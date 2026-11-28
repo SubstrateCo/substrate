@@ -60,20 +60,15 @@ export function SharingManager({
 }: {
   organizationId: string;
   conversationId: string;
-  /** The conversation's name, or undefined when the viewer may not see it. */
   name: string | undefined;
   onClose: () => void;
-  /** Focus the control that opened the dialog, which a menu item no longer is once it closes. */
   onRestoreFocus?: () => void;
 }) {
   const details = useQuery(sharingOptions(organizationId, conversationId));
-  // Losing access is not a hiccup: nothing cached may stay on screen or stay actionable. A
-  // temporary failure keeps the last list, marked as possibly out of date.
   const load = resourceState(details);
   const blocked = load.status === "unavailable";
   const data = load.data;
   const now = useExpiryTime(data?.invitations.map((invite) => invite.expiresAt));
-  // Focus returns to the row button, or to the invite field once that row is gone.
   const confirmFallback = useRef<HTMLElement>(null);
   const {
     value: confirmation,
@@ -82,8 +77,6 @@ export function SharingManager({
     restoreFocus: restoreConfirmFocus,
   } = useStateDialog<Confirmation>(confirmFallback);
   const action = useSharingAction(organizationId, conversationId);
-  // Lost access discards the confirmation for good, so it can't reopen if access returns. Closing
-  // during render resets it before the blocked render could show it.
   if (blocked && confirmation) closeConfirmation();
   const retry = () => void details.refetch();
   return (

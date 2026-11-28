@@ -173,8 +173,6 @@ export const recordRequests = {
     readResult(api.crm["from-message"].$post({ json: data })),
 };
 
-// One mutation endpoint answers every action, so its typed output is the union of all of them.
-// A create returns the new record; parsing its ID narrows that union at the response boundary.
 const createdRecord = z.object({ entityId: z.uuid() });
 type Create<T, A> = Omit<Extract<T, { action: A }>, "action" | "organizationId">;
 

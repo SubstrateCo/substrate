@@ -8,7 +8,6 @@ test("restart feedback blocks repeat actions during shutdown and recovers from f
   client,
 }) => {
   const user = await client(account);
-  // Exercise renderer feedback only. Native shutdown and installation are tested in desktop.
   await user.page.addInitScript(() => {
     let status: DesktopUpdateStatus = {
       appVersion: "0.1.0",

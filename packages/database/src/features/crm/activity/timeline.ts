@@ -61,10 +61,6 @@ export function interactionScope(
   )!;
 }
 
-/**
- * The same scope as `interactionScope`, as IDs: interactions linked to the record and, unless
- * only links count, the contacts affiliated with the account or taking part in the deal.
- */
 async function scopeMembers(
   context: RepositoryContext,
   entityType: "account" | "deal",
@@ -128,7 +124,6 @@ export async function timeline(
   if (entity.entityType === "contact")
     return presentInteractions(
       context,
-      // View access on a live contact implies requireContact: an active member.
       await contactInteractionRepository(context).listForContact(
         entityId,
         { limit: options.limit, before },
@@ -145,44 +140,33 @@ export async function timeline(
     options.mode === "linked",
   );
   if (!contactIds.length && !interactionIds.length) return [];
-  // A rollup is one row per canonical interaction. It does not copy source identifiers or private
-  // previews; navigation to discussion anchors is independently resolved by the context domain.
-  // The scope is resolved to IDs first, so each page reads those contacts' timeline index and
-  // the linked rows instead of testing every interaction in the organization.
-  return (
-    db
-      .select({
-        entityId: contactInteractions.entityId,
-        contactEntityId: contactInteractions.contactEntityId,
-        kind: contactInteractions.kind,
-        occurredAt: contactInteractions.occurredAt,
-        endedAt: contactInteractions.endedAt,
-        summary: contactInteractions.summary,
-        origin: contactInteractions.origin,
-      })
-      .from(contactInteractions)
-      .where(
-        and(
-          eq(contactInteractions.organizationId, scope.organizationId),
-          context.readable(contactInteractions.entityId, "view", "contact_interaction"),
-          or(
-            contactIds.length
-              ? inArray(contactInteractions.contactEntityId, contactIds)
-              : undefined,
-            interactionIds.length
-              ? inArray(contactInteractions.entityId, interactionIds)
-              : undefined,
-          ),
-          before
-            ? sql`(${contactInteractions.occurredAt}, ${contactInteractions.entityId}) < (${before.occurredAt.toISOString()}::timestamptz, ${before.entityId}::uuid)`
-            : undefined,
+  return db
+    .select({
+      entityId: contactInteractions.entityId,
+      contactEntityId: contactInteractions.contactEntityId,
+      kind: contactInteractions.kind,
+      occurredAt: contactInteractions.occurredAt,
+      endedAt: contactInteractions.endedAt,
+      summary: contactInteractions.summary,
+      origin: contactInteractions.origin,
+    })
+    .from(contactInteractions)
+    .where(
+      and(
+        eq(contactInteractions.organizationId, scope.organizationId),
+        context.readable(contactInteractions.entityId, "view", "contact_interaction"),
+        or(
+          contactIds.length ? inArray(contactInteractions.contactEntityId, contactIds) : undefined,
+          interactionIds.length ? inArray(contactInteractions.entityId, interactionIds) : undefined,
         ),
-      )
-      // Match the timeline index's NULLS LAST order so the index serves the page without a sort.
-      .orderBy(
-        sql`${contactInteractions.occurredAt} desc nulls last`,
-        sql`${contactInteractions.entityId} desc nulls last`,
-      )
-      .limit(pageSize(options.limit))
-  );
+        before
+          ? sql`(${contactInteractions.occurredAt}, ${contactInteractions.entityId}) < (${before.occurredAt.toISOString()}::timestamptz, ${before.entityId}::uuid)`
+          : undefined,
+      ),
+    )
+    .orderBy(
+      sql`${contactInteractions.occurredAt} desc nulls last`,
+      sql`${contactInteractions.entityId} desc nulls last`,
+    )
+    .limit(pageSize(options.limit));
 }

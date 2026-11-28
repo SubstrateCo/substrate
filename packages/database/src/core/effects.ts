@@ -7,7 +7,6 @@ export interface Committed<T> {
   result: T;
   hints: RealtimeHint[];
   mail?: "sharing"[];
-  /** The hints as stored with the write. Publishing them deletes the row; a relay retries. */
   outbox?: OutboxBatch;
 }
 
@@ -31,8 +30,6 @@ export class RepositoryEffects {
     this.hints.set(JSON.stringify(hint), hint);
   }
 
-  // A replayed request changes nothing. It still publishes the original write's hints, so viewers
-  // recover from a first publish that was lost.
   replay(hints: Iterable<RealtimeHint>) {
     for (const hint of hints) this.hint(hint);
   }
@@ -62,14 +59,12 @@ export function collectedEffects(db: DatabaseExecutor) {
   return collectors.get(db);
 }
 
-// A write outside commit() has no collector to publish its hints, so it fails instead.
 export function effectsFor(db: DatabaseExecutor) {
   const effects = collectors.get(db);
   if (!effects) throw new Error("Repository writes must run inside commit().");
   return effects;
 }
 
-// Every nested database transaction gets its own collector. Merge only after its savepoint succeeds.
 export function effectExecutor(db: DatabaseExecutor, effects: RepositoryEffects): DatabaseExecutor {
   if (collectors.get(db) === effects) return db;
   const executor = new Proxy(db, {
@@ -98,7 +93,6 @@ export async function commit<T>(
   let outbox: OutboxBatch | undefined;
   const result = await db.transaction(async (tx) => {
     const value = await work(effectExecutor(tx, effects));
-    // Stored with the write, so a crash or broker outage after the commit cannot lose its hints.
     outbox = await recordOutbox(tx, effects.committed(value).hints);
     return value;
   });
@@ -121,8 +115,6 @@ export type CommittedMethods<T, Reads extends keyof T> = {
       : never;
 };
 
-// Every method not listed as a read runs through `run` and returns its committed effects. A new
-// write is committed by default; a write wrongly listed as a read has no collector and fails.
 export function commitWrites<T extends object, Reads extends keyof T>(
   repository: T,
   reads: readonly Reads[],

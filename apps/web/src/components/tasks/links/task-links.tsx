@@ -16,7 +16,6 @@ import { useTasksMutation } from "@/queries/tasks/mutations";
 import { useLoadedProject } from "@/queries/tasks/use-project";
 import { toast } from "sonner";
 
-/** The task inspector's links section, with the add and remove actions for editors. */
 export function TaskLinks({
   task,
   onSelectTask,
@@ -39,7 +38,6 @@ export function TaskLinks({
       : [];
   const search = useQueries({ queries }).at(0);
   const detail = resource.data;
-  // The task inspector renders this only for a task in its loaded project.
   if (!detail) return null;
   const target = {
     organizationId,

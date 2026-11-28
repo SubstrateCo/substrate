@@ -10,7 +10,6 @@ const pictureTypes = new Map([
 ]);
 const previewFormats = new Set(["jpeg", "png", "webp", "gif"]);
 
-/** Reencodes an accepted image to WebP. Returns null when the image is rejected or undecodable. */
 async function reencode(
   images: ImageCodec,
   bytes: Uint8Array,
@@ -27,7 +26,6 @@ async function reencode(
   }
 }
 
-/** A static JPEG, PNG, or WebP picture of the declared type, as WebP up to 1024 px. */
 export async function normalizePicture(
   images: ImageCodec,
   bytes: Uint8Array,
@@ -47,7 +45,6 @@ export async function normalizePicture(
   return picture;
 }
 
-/** A WebP preview up to 1600 px. GIF animation is kept. Returns null when the file cannot be previewed. */
 export function previewAttachmentImage(
   images: ImageCodec,
   bytes: Uint8Array,

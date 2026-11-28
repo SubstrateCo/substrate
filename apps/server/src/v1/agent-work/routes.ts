@@ -108,7 +108,6 @@ export function createAgentWorkRoutes(
     .post("/device/place", v("json", placeAccessInput), scopes.device("json"), async (c) =>
       respond(c, await device.placeAccess(c.var.scope, c.req.valid("json"))),
     )
-    // A request's status and outcome, such as a proposal the desktop waits on.
     .get(
       "/device/requests/:id",
       v("param", requestParams),

@@ -25,9 +25,6 @@ export function createStorageCleanup(db: Database, fileReferences: SQL) {
     async pruneUnusedFiles(before: Date) {
       const prune = db.transaction(async (tx) => {
         const unused = () => and(not(fileReferences), lt(storedFiles.createdAt, before));
-        // One statement picks a batch and deletes it. A publication that commits while the delete
-        // waits for the row changes its publication time, so the row no longer matches the batch
-        // and the file is kept.
         const published = sql`coalesce(${storedFiles.publishedAt}, '-infinity'::timestamptz)`;
         const batch = tx
           .select({ id: storedFiles.id, published })
@@ -49,8 +46,6 @@ export function createStorageCleanup(db: Database, fileReferences: SQL) {
           .set({ deletedAt: new Date() })
           .where(inArray(fileUploads.id, ids));
       });
-      // A reference that commits while the delete waits for the row fails the foreign key. The
-      // batch rolls back and a later run prunes it without the file that came into use.
       await prune.catch((error: Error) => {
         if (!isForeignKeyViolation(error)) throw error;
       });
@@ -66,8 +61,6 @@ export function createStorageCleanup(db: Database, fileReferences: SQL) {
         .where(and(lt(fileUploads.expiresAt, before), isNull(fileUploads.temporaryCleanedAt)))
         .limit(100);
     },
-    // Cleanup reaches an upload a day after it expired, so it is complete or abandoned. A stored
-    // file keeps its own row, and the row's deletion message is no longer needed.
     async forgetUploads(ids: string[]) {
       if (ids.length) await db.delete(fileUploads).where(inArray(fileUploads.id, ids));
     },

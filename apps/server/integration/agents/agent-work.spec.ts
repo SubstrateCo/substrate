@@ -13,7 +13,6 @@ test("only the owner's home desktop claims work, and only the owner sees and ans
   workspace: createWorkspace,
   request: anonymous,
 }) => {
-  // A fresh workspace, so the owner's Needs-you list holds only this test's request.
   const [scoped] = await createWorkspace(actors.owner);
   const owner = scoped.request;
   const other = actors.outsider.request;
@@ -52,7 +51,6 @@ test("only the owner's home desktop claims work, and only the owner sees and ans
   expect(sources.data.messages[0]).toMatchObject({ body: "Check the build" });
   expect((await home(`host/turns/${claimed.turn.id}/start`, { attempt: 1 })).ok()).toBe(true);
 
-  // The owner's desktop asks through MCP in the claimed turn; only the owner sees and answers it.
   const asked = await owner.post("/api/v1/mcp/call", {
     headers: { origin, "x-substrate-installation": installationId },
     data: {
@@ -96,7 +94,6 @@ test("only the owner's home desktop claims work, and only the owner sees and ans
   expect((await respond(other, otherWorkspace.id)).status()).toBe(404);
   expect((await respond(owner, workspace.id)).ok()).toBe(true);
   expect((await respond(owner, workspace.id)).status()).toBe(409);
-  // The answer is new work in the question's session.
   expect((await claimOne(home)).session.key).toBe(sessionKeys.dm(conversationId));
 });
 
@@ -104,7 +101,6 @@ test("only the home desktop's turn runs tools, and a left conversation's request
   actors,
   workspace: createWorkspace,
 }) => {
-  // A fresh workspace, so the owner's Needs-you list holds only this test's request.
   const [scopedOwner, scopedMember] = await createWorkspace(actors.owner, actors.member);
   const owner = scopedOwner.request;
   const member = scopedMember.request;
@@ -143,7 +139,6 @@ test("only the home desktop's turn runs tools, and a left conversation's request
   });
   expect(root.ok()).toBe(true);
   const rootId: string = (await root.json()).data.id;
-  // The owner asks in their DM; the agent's interactive turn replies in the member's thread.
   const dm = await owner.post("/api/v1/messaging/conversations", {
     headers: { origin },
     data: { organizationId: workspace.id, kind: "agent_dm", agentIds: [agentId] },
@@ -180,12 +175,10 @@ test("only the home desktop's turn runs tools, and a left conversation's request
       body: `${secret} body`,
       ask: { question: `${secret} question?`, options: [{ label: `${secret} option` }] },
     });
-  // Another of the owner's desktops, or a call without a desktop, runs no tool, not even a read.
   expect((await reply(other)).status()).toBe(404);
   expect((await reply()).status()).toBe(404);
   expect((await call(other, "list_projects", {})).status()).toBe(404);
   expect((await reply(home)).ok()).toBe(true);
-  // A stale attempt of the same turn runs nothing.
   const stale = await owner.post("/api/v1/mcp/call", {
     headers: { origin, "x-substrate-installation": home },
     data: {

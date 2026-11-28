@@ -20,7 +20,6 @@ function detail(result: SearchResult) {
   );
 }
 
-/** Record kinds the workspace has enabled, in picker order. */
 export function useLinkableKinds(organizationId: string) {
   const apps = useMessagingApps(organizationId);
   return {
@@ -31,10 +30,6 @@ export function useLinkableKinds(organizationId: string) {
   };
 }
 
-/**
- * Records of one kind the viewer can edit, because linking changes the record. The server checks
- * edit access again when it links.
- */
 export function useLinkableRecords({
   organizationId,
   kind,
@@ -69,10 +64,6 @@ export function useLinkableRecords({
   };
 }
 
-/**
- * Links records to a message, one request per record. Each settles on its own, so a failure keeps
- * the earlier links. Records list their messages too, so every workspace view refreshes.
- */
 export function useLinkRecords(organizationId: string, messageId: string) {
   const scope = useMessagingScope(organizationId);
   const client = useQueryClient();

@@ -9,10 +9,6 @@ const bars = [
   { x: 11.5, y: 3.5, height: 10 },
 ];
 
-/**
- * Priority as three bars, lit up to the level, so every level has the same shape and center:
- * Low is one bar of three, not a stray mark. Urgent is a red alert.
- */
 export function TaskPriorityIcon({
   priority,
   className,

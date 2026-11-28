@@ -9,7 +9,6 @@ import { Kbd } from "@/components/ui/kbd";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { desktopPlatform } from "@/lib/desktop/bridges";
 
-// "channel" lists channels only, with membership. DMs and group messages appear under "all".
 export type SearchKind = "all" | "task" | "project" | "message" | "channel";
 
 const defaultKinds = ["all", "task", "project", "message", "channel"] as const;
@@ -74,8 +73,6 @@ export function WorkspaceSearch({
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, []);
-  // The search input sits outside this panel, in the same search container, so the type
-  // shortcuts listen on that container.
   const [container, setContainer] = useState<HTMLElement | null>(null);
   useLayoutEffect(() => {
     setContainer(panel.current?.closest<HTMLElement>("[data-workspace-search]") ?? null);
@@ -94,7 +91,6 @@ export function WorkspaceSearch({
       ref={panel}
       aria-label="Workspace search"
       className="flex max-h-(--panel-max-height) min-h-0 min-w-0 flex-col overflow-hidden bg-popover"
-      // The panel's measured top is known only at run time.
       style={{ "--panel-max-height": `calc(100dvh - ${panelTop}px - var(--spacing) * 2)` }}
       onKeyDown={(event) => {
         if (

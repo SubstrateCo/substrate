@@ -2,9 +2,6 @@ import { organizationId } from "../workspace.ts";
 import { agentRequestPayload } from "./requests.ts";
 import { z } from "zod";
 
-// Home desktop calls under /agent-work/device/*. The session decides the user; the server checks
-// the registered device and derives every agent from it. Bodies never name the owner.
-
 const id = z.uuid();
 const device = { organizationId, installationId: id };
 

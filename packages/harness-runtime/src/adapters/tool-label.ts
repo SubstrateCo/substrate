@@ -2,13 +2,11 @@ import { z } from "zod";
 
 const maxLength = 120;
 
-/** The host's own MCP server: its name, as the harnesses see it, and its tools' titles. */
 export interface HostTools {
   server: string;
   title(tool: string): string | undefined;
 }
 
-/** Shell executables whose script argument follows one of these flags. */
 const shellFlags: ReadonlyMap<string, RegExp> = new Map([
   ["pwsh", /^-c(?:ommand)?$/i],
   ["powershell", /^-c(?:ommand)?$/i],
@@ -33,7 +31,6 @@ function unquote(value: string) {
   return quote === "'" ? inner.replaceAll("'\\''", "'").replaceAll("''", "'") : inner;
 }
 
-/** The script inside a shell wrapper: pwsh -Command "bun test", bash -lc 'ls', cmd /c dir. */
 function unwrapShell(command: string): string {
   const trimmed = command.trim();
   const first = /^(?:"[^"]*"|'[^']*'|\S+)/.exec(trimmed)?.[0];
@@ -57,10 +54,6 @@ function commandLine(argv: string[]) {
 
 const field = z.string().optional().catch(undefined);
 
-/**
- * The native tool input fields that labels read. Native input is untyped JSON; a field of
- * another type, or input that is not an object, reads as missing.
- */
 export const toolInput = z
   .object({
     code: field,
@@ -83,7 +76,6 @@ export const toolInput = z
 export type ToolInput = z.output<typeof toolInput>;
 type TextField = Exclude<keyof ToolInput, "code">;
 
-/** The first non-empty field, as one line. */
 function text(input: ToolInput, ...keys: TextField[]) {
   for (const key of keys) {
     const value = input[key]?.trim();
@@ -127,7 +119,6 @@ function mcpTool(name: string, servers: readonly string[], hostTools?: HostTools
   return undefined;
 }
 
-/** The host's tools by their titles, other servers' tools as "github · Create issue". */
 function mcpTitle(name: string, servers: readonly string[], hostTools?: HostTools) {
   const own = hostTools?.title(name);
   if (own) return own;
@@ -138,7 +129,6 @@ function mcpTitle(name: string, servers: readonly string[], hostTools?: HostTool
   return `${tool.server} · ${humanize(tool.tool)}`;
 }
 
-/** The command a call runs, without its shell wrapper. */
 function command(input: ToolInput) {
   const description = text(input, "description");
   if (description) return description;
@@ -146,7 +136,6 @@ function command(input: ToolInput) {
   return line ? line.split("\n")[0] : undefined;
 }
 
-/** The host tools that code-mode code calls, such as tools["substrate"].list_tasks(…). */
 function calledTools(code: string, hostTools?: HostTools) {
   const titles = new Set<string>();
   for (const match of code.matchAll(/(?:\.|\[["'])([a-z_]+)(?:["']\])?\s*\(/g)) {
@@ -156,7 +145,6 @@ function calledTools(code: string, hostTools?: HostTools) {
   return [...titles];
 }
 
-/** listTasks, list_tasks, list-tasks → "List tasks". */
 function humanize(name: string) {
   const words = name
     .replace(/([a-z])([A-Z])/g, "$1 $2")
@@ -212,11 +200,6 @@ function describe(
 const short = (label: string) =>
   label.length > maxLength ? `${label.slice(0, maxLength - 1)}…` : label;
 
-/**
- * A short, readable label for one native tool call, such as "List tasks" or "Read · README.md".
- * Steps show it in the work status and the transcript. Parse native input with toolInput.
- * servers: the session's MCP server names, so bare server.tool names read as MCP tools.
- */
 export function toolLabel(
   name: string,
   input: ToolInput = {},
@@ -226,10 +209,8 @@ export function toolLabel(
   return short(describe(name, input, servers, hostTools));
 }
 
-/** Titles that say nothing about the call; the kind and input describe it instead. */
 const genericTitles = new Set(["", "tool", "tool call", "toolcall", "terminal"]);
 
-/** ACP ToolKind; an unknown kind reads as missing. */
 const toolKind = z
   .enum([
     "read",
@@ -246,7 +227,6 @@ const toolKind = z
   .optional()
   .catch(undefined);
 
-/** A label from the ACP tool kind, for calls whose title says nothing. */
 function kindLabel(kind: z.output<typeof toolKind>, input: ToolInput) {
   const path = fileName(text(input, "filePath", "file_path", "path"));
   switch (kind) {
@@ -275,21 +255,13 @@ function kindLabel(kind: z.output<typeof toolKind>, input: ToolInput) {
   }
 }
 
-/** One ACP tool call as the agent announces it. */
 export interface ToolCall {
-  /** Programmatic tool name, when the agent reports one. */
   name?: string;
   title?: string;
-  /** ACP ToolKind: execute, read, edit, delete, move, search, fetch, think, other. */
   kind?: string;
   input: ToolInput;
 }
 
-/**
- * The same label for a tool call whichever agent reports it: a tool name or identifier-like
- * title reads through toolLabel, a generic title through the kind and input, and a command
- * title loses its shell wrapper. Other titles are the agent's own words.
- */
 export function toolCallLabel(
   call: ToolCall,
   servers: readonly string[] = [],

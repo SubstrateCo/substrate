@@ -20,7 +20,6 @@ export const getRelatedContext = ({ data, signal }: ApiInput<z.input<typeof cont
 export const getMessageTargets = ({ data, signal }: ApiInput<z.input<typeof contextTargets>>) =>
   readResult(api.context["message-targets"].$post({ json: data }, { init: { signal } }));
 export type MessageTarget = Awaited<ReturnType<typeof getMessageTargets>>[number];
-/** Names for record IDs. The server returns only the ones the viewer can open. */
 export const getRecordLabels = ({
   data,
   signal,

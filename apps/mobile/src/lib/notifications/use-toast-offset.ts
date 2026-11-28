@@ -5,7 +5,6 @@ import { Keyboard, useWindowDimensions } from "react-native";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-/** Leave the bottom navigation/composer clear, including above the keyboard. */
 export function useToastOffset() {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();

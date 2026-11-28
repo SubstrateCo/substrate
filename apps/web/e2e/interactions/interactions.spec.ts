@@ -30,7 +30,6 @@ async function sampleInteractions(actor: Actor) {
   );
   const source = await conversation(actor);
   const today = new Date();
-  // One page plus one row exercises timeline navigation; only six rows need to be recent.
   const interactions = Array.from({ length: 51 }, (_, i) => {
     const kind = kinds[i % kinds.length]!;
     const occurredAt = new Date(today);
@@ -64,7 +63,6 @@ function total(page: Page) {
   return page.getByRole("definition").first();
 }
 
-/** Adds a filter through the "Filter" button. */
 async function addFilter(page: Page, field: string, option: string) {
   await page.getByRole("button", { name: "Filter", exact: true }).click();
   await page.getByRole("option", { name: field, exact: true }).click();
@@ -74,7 +72,6 @@ async function addFilter(page: Page, field: string, option: string) {
   ).toBeVisible();
 }
 
-/** Changes an active filter's value in place. */
 async function changeFilter(page: Page, field: string, current: string, option: string) {
   await page.getByRole("button", { name: `${field}: ${current}`, exact: true }).click();
   await page.getByRole("option", { name: option, exact: true }).click();
@@ -102,15 +99,12 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
   await expect(
     page.getByRole("group", { name: "Period is Last 30 days", exact: true }),
   ).toBeVisible();
-  // The period is required, so it has no remove button.
   await expect(page.getByRole("button", { name: "Remove Period filter", exact: true })).toHaveCount(
     0,
   );
-  // The dashboard opens on the latest day with interactions, so the day's table has rows.
   await expect(page.getByLabel(/^Selected day: /)).toBeVisible();
   await expect(page.getByRole("link", { name: /^Open interaction:/ }).first()).toBeVisible();
   await page.getByRole("button", { name: "Period: Last 30 days", exact: true }).click();
-  // The dashboard has no all-time view.
   await expect(page.getByRole("option", { name: "All time", exact: true })).toHaveCount(0);
   await page.getByRole("option", { name: "Last 7 days", exact: true }).click();
   await expect(total(page)).toHaveText("6");
@@ -163,7 +157,6 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
       .getByRole("region", { name: "Source messages", exact: true })
       .getByText(summaries.email, { exact: true }),
   ).toBeVisible();
-  // The sheet leaves the timeline usable, and another interaction replaces its content in place.
   const shell = await sourceDetail.elementHandle();
   await list
     .getByRole("link", { name: `Open interaction: ${summaries.meeting}`, exact: true })
@@ -318,8 +311,6 @@ test("dashboard selects today, browses day-specific pages, and handles empty day
       })
       .toBe(true);
     const tip = page.getByRole("status").filter({ hasText: "Message" });
-    // The chart redraws its bars and tooltip offset after the resize settles, so measure, hover,
-    // and check together against the bar as it is now.
     let bar = { x: 0, y: 0, width: 0, height: 0 };
     await expect(async () => {
       bar = await dailyChart.locator("rect").evaluateAll((rectangles) => {
@@ -356,7 +347,6 @@ test("day table cells keep their content inside their columns", async ({ account
   });
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  // "10:48 PM" is one of the widest times the Time column shows.
   yesterday.setHours(22, 48, 0, 0);
   await seedInteractions(
     account,
@@ -382,10 +372,8 @@ test("day table cells keep their content inside their columns", async ({ account
     await page.setViewportSize({ width, height: 900 });
     await page.emulateMedia({ colorScheme });
     await expect(table.getByRole("cell", { name: "Internal note", exact: true })).toBeVisible();
-    // Origin hides in a container narrower than 48rem.
     if (width === 1440)
       await expect(table.getByRole("cell", { name: "Manual", exact: true }).first()).toBeVisible();
-    // Each text box, clipped by any ancestor that hides overflow, stays in its cell's content box.
     const overflows = await table.locator("tbody td").evaluateAll((cells) =>
       cells.flatMap((cell) => {
         const style = getComputedStyle(cell);
@@ -535,7 +523,6 @@ test("empty dashboard and timeline explain empty and unmatched results", async (
   const user = await client(account);
   const { page } = user;
   await page.emulateMedia({ colorScheme: "dark" });
-  // Both views open on the user's own interactions, so they explain that filter.
   const ownEmpty = page.getByRole("heading", {
     name: "You haven’t logged interactions in this period",
     exact: true,

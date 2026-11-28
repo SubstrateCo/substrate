@@ -33,7 +33,6 @@ function SkillList({
     <ConfigurationList label="Custom skills">
       {skills.length ? (
         skills.map((item) => {
-          // The list, the editor and the delete prompt all name the skill by its file name.
           const name = openingName(item);
           return (
             <CatalogRow
@@ -77,9 +76,7 @@ export function SkillsSection({
   fetching: boolean;
   refresh: ReactNode;
   status: ReactNode;
-  /** A reset of the defaults is running. */
   resetting: boolean;
-  /** A delete is running. */
   removing: boolean;
   onReset: () => void;
   onCreate: () => void;

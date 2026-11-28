@@ -15,7 +15,6 @@ test("project icons need edit access to change and view access to read, in the p
     actorEntityId: f.bob,
     level: "view",
   });
-  // A project without an icon has nothing to read.
   expect(await access.canRead({ userId: "alice", organizationId: f.orgA }, project.entityId)).toBe(
     false,
   );

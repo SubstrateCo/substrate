@@ -44,10 +44,6 @@ function NewRoutineButton({ onAdd }: { onAdd: () => void }) {
   );
 }
 
-/**
- * Every routine of one agent, in groups: what needs the owner, the next 24 hours, later, and
- * paused. Search and a filter keep a long list short.
- */
 export function RoutineListView({
   routines,
   now,

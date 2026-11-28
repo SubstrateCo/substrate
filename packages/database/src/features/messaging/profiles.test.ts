@@ -38,7 +38,6 @@ test("person profiles show contact details only to workspace members who share t
     self: true,
     directConversationId: null,
   });
-  // Session check, actor details, access, and the DM shortcut.
   const recording = recordQueries();
   await createMessagingService(recording.db, {
     userId: "alice",
@@ -48,15 +47,12 @@ test("person profiles show contact details only to workspace members who share t
   const profileQuery = recording.queries.find((query) => query.includes('"person_user"'))!;
   expect(profileQuery).toContain('left join "user_agents"');
   expect(profileQuery).not.toMatch(/dn_user|dn_agent/);
-  // Bob cannot see the private channel, so neither the conversation nor Alice resolves through it.
   expect(await rejection(chat("bob").getProfile(hidden.id, f.alice))).toBeInstanceOf(
     AccessDeniedError,
   );
-  // Bob is not in the private channel, so Alice cannot load his profile through it.
   expect(await rejection(chat("alice").getProfile(hidden.id, f.bob))).toBeInstanceOf(
     AccessDeniedError,
   );
-  // Actors from another organization resolve only when they wrote in the conversation.
   expect(await rejection(chat("alice").getProfile(general.id, f.outsider))).toBeInstanceOf(
     AccessDeniedError,
   );
@@ -106,7 +102,6 @@ test("agent profiles show the owner to members and configuration only to the own
     userAgentId: definition!.id,
   });
   const general = await chat("alice").createConversation({ kind: "channel", name: "general" });
-  // Before the agent writes, only its owner can resolve it in a conversation.
   expect((await chat("alice").getProfile(general.id, agent.entityId)).type).toBe("agent");
   expect(await rejection(chat("bob").getProfile(general.id, agent.entityId))).toBeInstanceOf(
     AccessDeniedError,
@@ -146,7 +141,6 @@ test("agent profiles resolve for members while the agent is a live member, befor
     type: "agent",
     name: "Research",
   });
-  // Once it leaves without writing, other members can no longer resolve it.
   await chat("alice").removeAgent(general.id, actorId);
   expect(await rejection(chat("bob").getProfile(general.id, actorId))).toBeInstanceOf(
     AccessDeniedError,

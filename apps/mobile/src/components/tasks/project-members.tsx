@@ -20,7 +20,6 @@ import { Bot, User, UserPlus } from "lucide-react-native";
 
 type Member = ProjectDetail["members"][number];
 
-/** Who can read the project. Owners change levels, add people, and remove them. Agents use their owner's access. */
 export function ProjectMembers({
   scope,
   detail,
@@ -74,7 +73,6 @@ export function ProjectMembers({
           </View>
           <SectionHeader title="People and agents" count={detail.members.length} />
           {detail.members.map((member) => {
-            // The last owner stays fixed so the project always has one.
             const lastOwner = isLastOwner(detail.members, member.actorEntityId);
             return (
               <Row

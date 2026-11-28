@@ -17,10 +17,6 @@ const named = (names: string[]) => {
   return names.length ? `${shown}${more}` : "None";
 };
 
-/**
- * Counts the agent's skills and servers from its files. Only its home desktop can read them;
- * elsewhere the counts are unknown.
- */
 export function ToolsSummary({
   agent,
   homeDevice,

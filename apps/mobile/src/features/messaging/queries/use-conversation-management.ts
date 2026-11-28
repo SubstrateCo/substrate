@@ -23,7 +23,6 @@ import type { z } from "zod";
 
 export type CreateConversationInput = Omit<z.input<typeof conversationInput>, "organizationId">;
 
-/** Creates a conversation. The server returns an existing DM instead of a second one. */
 export function useCreateConversation(organizationId: string) {
   const scope = useMessagingScope(organizationId);
   const client = useQueryClient();
@@ -81,7 +80,6 @@ export function useConversationManagement(organizationId: string, conversationId
   };
 }
 
-/** Joins a public channel from the browse list. */
 export function useJoinChannel(organizationId: string) {
   const refresh = useRefreshMessaging(organizationId);
   return useMutation({
@@ -90,7 +88,6 @@ export function useJoinChannel(organizationId: string) {
   });
 }
 
-/** How much linked work a deletion would detach. Load it only while confirming. */
 export function useDeleteImpact(organizationId: string, conversationId: string, enabled: boolean) {
   const scope = useMessagingScope(organizationId);
   return useQuery({

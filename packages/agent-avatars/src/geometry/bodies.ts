@@ -1,9 +1,5 @@
 import type { AvatarBody } from "../config/presets.ts";
 
-/**
- * Each body shape is a radial profile: the distance from the centre at evenly spaced angles.
- * Every shape shares the same angles, so two shapes morph by blending their radii.
- */
 export const PROFILE_SAMPLES = 72;
 
 const TAU = Math.PI * 2;
@@ -14,17 +10,12 @@ const ORIGIN: Point = [0, 0];
 
 export interface BodyGeometry {
   radii: readonly number[];
-  /** Half width, in body radii. */
   extentX: number;
-  /** Half height, in body radii. */
   extentY: number;
-  /** Distance from the centre to the lowest point, in body radii. */
   bottom: number;
-  /** Eye line, from the centre, in body radii. Positive is down. */
   eyeY: number;
 }
 
-/** Casts a ray from the origin at each angle and keeps the farthest hit on the outline. */
 function radialFromOutline(outline: readonly Point[]): number[] {
   return ANGLES.map((angle) => {
     const dx = Math.cos(angle);
@@ -71,7 +62,6 @@ function capsule(halfWidth: number, halfHeight: number): Point[] {
   ];
 }
 
-/** A drop with its tip up. */
 function teardrop(): Point[] {
   return Array.from({ length: 160 }, (_, i) => {
     const t = (i / 160) * TAU;
@@ -88,7 +78,6 @@ function superellipse(exponent: number): number[] {
   );
 }
 
-/** Averages each radius with its neighbours, which rounds sharp points such as a drop's tip. */
 function soften(radii: number[], passes: number): number[] {
   let out = radii;
   for (let p = 0; p < passes; p++) {
@@ -128,7 +117,6 @@ function geometry(rawRadii: number[], eyeY: number): BodyGeometry {
   };
 }
 
-/** The blob wobbles over time, so its profile depends on `t` (seconds). */
 function blobRadii(t: number): number[] {
   return ANGLES.map(
     (a) =>
@@ -156,7 +144,6 @@ export function bodyGeometry(body: AvatarBody): BodyGeometry {
   return BODY_PROFILES[body];
 }
 
-/** Profile radii for `body` at time `t` (seconds). Only the blob changes over time. */
 export function bodyRadii(body: AvatarBody, t: number): readonly number[] {
   return body === "blob" ? blobRadii(t) : BODY_PROFILES[body].radii;
 }

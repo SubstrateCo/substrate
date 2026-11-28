@@ -40,14 +40,12 @@ const statusNotes: Partial<Record<Mailbox["status"], string>> = {
 
 type Outcome = { isPending: boolean; isError: boolean };
 
-/** The action in progress. The actions disable each other, so at most one runs. */
 function pendingAction(actions: Record<"rename" | "reconnect" | "disconnect", Outcome>) {
   if (actions.rename.isPending) return "rename";
   if (actions.reconnect.isPending) return "reconnect";
   if (actions.disconnect.isPending) return "disconnect";
 }
 
-/** The one error line the actions share. */
 function settingsError(
   box: Mailbox,
   {
@@ -84,7 +82,6 @@ function MailboxSettings({ box, onRename, onReconnect, onDisconnect }: { box: Ma
   });
   const pending = pendingAction({ rename, reconnect, disconnect });
   const error = settingsError(box, { rename, reconnect, disconnect });
-  // The three actions share one error line, so each start clears the others' outcome.
   function clearError() {
     rename.reset();
     reconnect.reset();

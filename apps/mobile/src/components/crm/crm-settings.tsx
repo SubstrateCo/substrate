@@ -8,7 +8,6 @@ import { FormSheet } from "@/features/records/ui/sheet";
 import { ErrorState, LoadingRows } from "@/features/records/ui/states";
 import type { QueryScope } from "@/queries/keys";
 
-/** Members read the settings. Only workspace owners and admins can change them. */
 export function CrmSettingsSheet({
   scope,
   canEdit,

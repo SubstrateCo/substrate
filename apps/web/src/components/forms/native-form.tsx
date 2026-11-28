@@ -13,7 +13,6 @@ import { Textarea } from "@/components/ui/textarea";
 
 const NativeValidation = createContext<ReturnType<typeof useNativeValidation> | null>(null);
 
-/** Gives NativeField the validation state of a form that is not NativeForm, such as FormDialog. */
 export function NativeValidationScope({
   validation,
   children,
@@ -24,11 +23,9 @@ export function NativeValidationScope({
   return <NativeValidation.Provider value={validation}>{children}</NativeValidation.Provider>;
 }
 
-/** A form that shows constraint failures inline in product copy and submits its FormData once. */
 export function NativeForm({
   pending,
   onSubmit,
-  // Gap, not space-y: a form inside a dialog is display: contents, and margins would still apply.
   className = "flex flex-col gap-4",
   children,
 }: {
@@ -65,11 +62,6 @@ type MissingValue =
   | { required: true; missingMessage: string }
   | { required?: false; missingMessage?: undefined };
 
-/**
- * A labelled input, or a textarea with `multiline`, inside NativeForm or a FormDialog with
- * `nativeValidation`. Its error and description ids derive from `id`. A required field names
- * what is missing in `missingMessage` ("Enter a contact name.").
- */
 export function NativeField({
   id,
   label,
@@ -85,7 +77,6 @@ export function NativeField({
     id: string;
     label: string;
     description?: ReactNode;
-    /** A small link on the label row, such as "Forgot password?". */
     labelAction?: ReactNode;
     multiline?: boolean;
     onChange?: ChangeEventHandler<HTMLInputElement | HTMLTextAreaElement>;
@@ -93,7 +84,6 @@ export function NativeField({
   const validation = useContext(NativeValidation);
   if (!validation) throw new Error("NativeField must be inside NativeForm.");
   const error = validation.errors[id];
-  // The error replaces the hint so the two never stack.
   const hint = error ? undefined : description;
   const describedBy = [hint && `${id}-description`, error && `${id}-error`]
     .filter(Boolean)
@@ -112,8 +102,6 @@ export function NativeField({
   return (
     <Field data-invalid={Boolean(error)}>
       {labelAction ? (
-        // The action shares the label row but follows the input in the DOM, so Tab goes from the
-        // previous field to this input first and to the action after it.
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <div className="order-1 grow">{fieldLabel}</div>
           <div className="order-3 w-full">{input}</div>
@@ -136,7 +124,6 @@ export function EmailField({
   autoFocus,
 }: {
   defaultValue?: string;
-  /** For a page whose first task is this field, such as sign-in. */
   autoFocus?: boolean;
 }) {
   return (

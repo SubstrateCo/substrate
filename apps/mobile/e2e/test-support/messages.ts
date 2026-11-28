@@ -7,7 +7,6 @@ export async function openMessageActions(page: Page, messageId: string, body = s
   await message.getByText(body, { exact: true }).click({ delay: 400 });
   const edit = page.getByRole("button", { name: "Edit message", exact: true });
   if (!(await edit.isVisible())) {
-    // Accessible fallback while the native long-press renderer is being wired.
     await message.hover();
     await message.getByRole("button", { name: /^More actions for message from / }).click();
   }

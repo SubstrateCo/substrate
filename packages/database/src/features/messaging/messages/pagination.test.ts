@@ -100,7 +100,6 @@ test("an after cursor returns only newer messages of its thread, oldest first", 
     service.listMessages(conversation.id, threadId, { afterMessageId });
   expect((await after(first.id)).map((row) => row.id)).toEqual([second.id, third.id]);
   expect(await after(third.id)).toEqual([]);
-  // A timeline message is not a cursor inside a thread.
   expect(await rejection(after(second.id, first.id))).toBeInstanceOf(AccessDeniedError);
 });
 

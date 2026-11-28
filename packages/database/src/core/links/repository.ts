@@ -3,14 +3,12 @@ import { RepositoryContext, pageSize, type EntityAccess } from "../repository-co
 import { entityLinks } from "./schema";
 import { and, asc, eq, or, sql, type SQLWrapper } from "drizzle-orm";
 
-/** A `related_to` link connects two entities in no direction. It is stored in ID order. */
 export function relatedPair(entityId: string, otherEntityId: string) {
   return entityId < otherEntityId
     ? { sourceEntityId: entityId, targetEntityId: otherEntityId }
     : { sourceEntityId: otherEntityId, targetEntityId: entityId };
 }
 
-/** Matches a `related_to` link between two entities, with either one stored as the source. */
 export function relatedLink(entityId: string | SQLWrapper, otherEntityId: string | SQLWrapper) {
   return and(
     eq(entityLinks.relationType, "related_to"),
@@ -21,10 +19,8 @@ export function relatedLink(entityId: string | SQLWrapper, otherEntityId: string
   );
 }
 
-// `entityId` is the record being edited; `otherEntityId` only needs to be readable.
 type RelatedInput = { entityId: string; otherEntityId: string };
 
-/** Generic `related_to` links. Task relations (`blocks`, `duplicates`) belong to the task domain. */
 export function linkRepository(context: RepositoryContext) {
   const { scope, db } = context;
   return {
@@ -53,7 +49,6 @@ export function linkRepository(context: RepositoryContext) {
       });
     },
 
-    /** `checked` is the caller's view access to `entityId`, already read in this context. */
     async list(entityId: string, options: { limit?: number } = {}, checked?: EntityAccess) {
       if (checked?.entity.entityId !== entityId) await context.requireAccess(entityId, "view");
       return db
@@ -63,7 +58,6 @@ export function linkRepository(context: RepositoryContext) {
           and(
             eq(entityLinks.organizationId, scope.organizationId),
             or(eq(entityLinks.sourceEntityId, entityId), eq(entityLinks.targetEntityId, entityId)),
-            // The requested endpoint is checked above; check the other one.
             context.readable(
               sql`CASE WHEN ${entityLinks.sourceEntityId} = ${entityId}
                 THEN ${entityLinks.targetEntityId} ELSE ${entityLinks.sourceEntityId} END`,

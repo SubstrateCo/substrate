@@ -31,7 +31,6 @@ function SettingsLink({ children, ...props }: Omit<ComponentProps<typeof Button>
   );
 }
 
-/** The Calendar app: calendars to show on the left, the agenda or week in the middle. */
 export function CalendarWorkspaceView({
   state,
   onRetry,
@@ -49,14 +48,10 @@ export function CalendarWorkspaceView({
   calendarGroups: readonly CalendarGroup[];
   hidden: ReadonlySet<string>;
   onToggleCalendar: (calendarEntityId: string, visible: boolean) => void;
-  /** The filter bar replaces the hidden calendars at once. */
   onHiddenChange: (hidden: ReadonlySet<string>) => void;
   toolbar: ComponentProps<typeof CalendarToolbar>;
-  /** A connected calendar needs the user to grant access again. */
   needsReconnect: boolean;
-  /** The week or agenda, shown once the calendar is ready. */
   body: ReactNode;
-  /** The open event's pane. */
   aside?: ReactNode;
 }) {
   return (
@@ -112,7 +107,6 @@ export function CalendarWorkspaceView({
   );
 }
 
-/** The calendar once it is ready, or why it cannot be shown. */
 function CalendarStateBody({
   state,
   onRetry,
@@ -147,7 +141,6 @@ function CalendarStateBody({
   return body;
 }
 
-/** The agenda view's days, or a notice when nothing is scheduled. */
 export function CalendarAgendaBody(props: ComponentProps<typeof CalendarAgenda>) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">

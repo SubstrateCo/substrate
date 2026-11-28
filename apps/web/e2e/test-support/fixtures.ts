@@ -32,7 +32,6 @@ export interface Actor {
   email: string;
   password: string;
   organizationId: string;
-  /** The active organization's name. Tests may rename the person, so do not derive it from `name`. */
   organizationName: string;
   state: StorageState;
 }
@@ -40,7 +39,6 @@ export interface Client {
   page: Page;
   actor: Actor;
   events: RealtimeEvent[];
-  /** Waits for a realtime event received at or after index `since` that matches. */
   waitForEvent: (
     since: number,
     match: (event: RealtimeEvent) => boolean,
@@ -48,7 +46,6 @@ export interface Client {
   ) => Promise<void>;
 }
 type Actors = { sender: Actor; member: Actor; partner: Actor };
-/** Worker contexts that tests reuse, so the HTTP cache outlives each test. */
 interface ContextPool {
   take: (viewport: ViewportSize | null) => Promise<BrowserContext>;
   release: (contexts: BrowserContext[]) => void;
@@ -56,15 +53,12 @@ interface ContextPool {
 
 const changedContexts = new WeakSet<BrowserContext>();
 
-/** Stops a browser context from being reused, after a change that outlives its pages. */
 export function isolateContext(page: Page) {
   changedContexts.add(page.context());
 }
 
-// Setup calls use the API directly, with the same trusted origin as the renderer.
 const trustedOrigin = () => ({ origin: process.env.PLAYWRIGHT_BASE_URL! });
 
-/** Invites an email to the actor's organization through Better Auth, as an owner does. */
 export async function inviteMember(
   actor: Actor,
   email: string,
@@ -105,7 +99,6 @@ export const test = base.extend<
   {
     client: (actor: Actor) => Promise<Client>;
     account: Actor;
-    /** Signs the actor in again, for tests that sign out. */
     freshSession: (actor: Actor) => Promise<Actor>;
   },
   { actors: Actors; contextPool: ContextPool; workspaceIdentity: Actor }
@@ -119,7 +112,6 @@ export const test = base.extend<
           extraHTTPHeaders: trustedOrigin(),
         });
         requests.push(request);
-        // The member joins the sender's organization below, rather than creating another one.
         return provisionActor(request, `E2E ${role} ${workerInfo.parallelIndex}`, {
           workspace: role !== "member",
         });
@@ -169,7 +161,6 @@ export const test = base.extend<
     { scope: "worker", timeout: 30_000 },
   ],
 
-  // API requests carry the trusted origin, so specs and helpers need no per-call header.
   request: async ({ playwright }, use) => {
     const request = await playwright.request.newContext({
       baseURL: process.env.PLAYWRIGHT_API_URL,
@@ -183,7 +174,6 @@ export const test = base.extend<
     await use(await provisionActor(request, `Account ${randomUUID()}`));
   },
 
-  // A new sign-in needs no email, and signing it out leaves the actor's own session valid.
   freshSession: async ({ playwright }, use) => {
     const requests: APIRequestContext[] = [];
     try {
@@ -250,10 +240,6 @@ export const test = base.extend<
           });
           recorded.push(context);
         } else {
-          // Each window takes a context no other window of this test uses, so windows keep separate
-          // storage. Reusing contexts keeps the HTTP cache, which spares the dev server from
-          // serving every module again. API responses are never cached, so only the session
-          // cookies decide who the window is.
           context = await contextPool.take(viewport);
           taken.push(context);
           await context.clearCookies();
@@ -261,12 +247,8 @@ export const test = base.extend<
         }
         const page = await context.newPage();
         pages.push(page);
-        // Contexts are built here, not by Playwright, so apply the spec's `test.use` media option
-        // to the page. It ends with the page and never reaches a pooled context.
         if (reducedMotion) await page.emulateMedia({ reducedMotion });
         if (record) recordings.push(page);
-        // A reused context keeps local storage. Clear it on this window's first app load only, so
-        // reloads within the test still see what the test stored.
         await page.addInitScript(() => {
           try {
             if (sessionStorage.getItem("e2e-storage-cleared")) return;
@@ -293,7 +275,6 @@ export const test = base.extend<
               if (found()) resolve();
             };
             listeners.add(listener);
-            // A deadline, not a sleep: the wait ends as soon as the event arrives.
             const deadline = setTimeout(resolve, expectTimeout);
             try {
               await promise;
@@ -308,7 +289,6 @@ export const test = base.extend<
       });
     } finally {
       await Promise.all(pages.map((page) => page.close()));
-      // A context that a test changed for good is closed instead of reused.
       const changed = taken.filter((context) => changedContexts.has(context));
       contextPool.release(taken.filter((context) => !changedContexts.has(context)));
       await Promise.all([...changed, ...recorded].map((context) => context.close()));

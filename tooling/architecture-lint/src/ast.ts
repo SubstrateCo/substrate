@@ -7,14 +7,12 @@ export type AstNode = Parameters<Context["sourceCode"]["isGlobalReference"]>[0];
 export type NodeOf<T extends AstNode["type"]> = Extract<AstNode, { type: T }>;
 type OpeningElement = NodeOf<"JSXOpeningElement">;
 
-/** The written name of a JSX element: `Button`, `h1`, or `Tooltip.Trigger`. */
 export function elementName(name: OpeningElement["name"]): string {
   if (name.type === "JSXIdentifier") return name.name;
   if (name.type === "JSXNamespacedName") return `${name.namespace.name}:${name.name.name}`;
   return `${elementName(name.object)}.${name.property.name}`;
 }
 
-/** The import behind a JSX name, without mistaking a shadowing local for that import. */
 export function elementImport(context: Context, node: OpeningElement) {
   const parts = elementName(node.name).split(".");
   const local = parts[0]!;
@@ -46,10 +44,6 @@ export function elementImport(context: Context, node: OpeningElement) {
   }
 }
 
-/**
- * The dotted path of an identifier or a member chain: `c.req.json`. A base that is not a
- * name, such as a call result, is written `()`: `z.object({}).parse` is `().parse`.
- */
 export function memberPath(node: AstNode): string {
   if (node.type === "Identifier") return node.name;
   if (node.type === "ThisExpression") return "this";
@@ -58,10 +52,6 @@ export function memberPath(node: AstNode): string {
   return "()";
 }
 
-/**
- * Compiles a path pattern. `*` matches one name, `**` matches any run of names and dots, and
- * `{a,b}` matches either alternative: `*.req.{json,query}`, `**.safeParse`.
- */
 export function pathPattern(pattern: string) {
   let source = "";
   for (let i = 0; i < pattern.length; i++) {
@@ -83,7 +73,6 @@ export function pathPattern(pattern: string) {
   return new RegExp(`^${source}$`);
 }
 
-/** Whether the name is bound by an import in the module scope around the node. */
 export function isImportBinding(context: Context, node: AstNode, name: string) {
   for (
     let scope: ReturnType<Context["sourceCode"]["getScope"]> | null =

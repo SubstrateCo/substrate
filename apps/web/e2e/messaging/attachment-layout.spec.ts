@@ -3,7 +3,6 @@ import { captureScreenshot } from "../test-support/screenshots";
 import { expect, type Locator, type Page } from "@playwright/test";
 
 async function historyLayout(page: Page, log: Locator) {
-  // Include ResizeObserver and scroll-follow work, not just the first attachment render.
   await page.evaluate(
     () =>
       new Promise<void>((resolve) =>

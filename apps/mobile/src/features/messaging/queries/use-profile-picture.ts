@@ -7,8 +7,6 @@ import { onPrivateStateReset } from "@/auth/private-state";
 
 type Lease = { file: Promise<PrivateFile>; controller: AbortController; users: number };
 
-// Avatars of one person share a single download and file while any of them is mounted. The last
-// one to unmount releases it; a private-state reset releases every file.
 const leases = new Map<string, Lease>();
 onPrivateStateReset(() => {
   for (const lease of leases.values()) lease.controller.abort();
@@ -19,7 +17,6 @@ function acquire(key: string, path: string, userId: string) {
   let lease = leases.get(key);
   if (!lease) {
     const controller = new AbortController();
-    // A picture that is not on this server's managed paths throws here; it shows initials.
     let file: Promise<PrivateFile>;
     try {
       file = loadPrivateImage(path, { userId, organizationId: null }, controller.signal);
@@ -47,10 +44,6 @@ function acquire(key: string, path: string, userId: string) {
   };
 }
 
-/**
- * A profile picture's local URI, or nothing while it loads or fails. The bytes come through the
- * authenticated byte route, so no image request carries the session or follows a storage redirect.
- */
 export function useProfilePicture(path: string | null | undefined) {
   const userId = authClient.useSession().data?.user.id;
   const [loaded, setLoaded] = useState<{ key: string; uri: string }>();

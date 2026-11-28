@@ -60,7 +60,6 @@ test("a response must pick an offered option, answer only asked questions, and a
       answers: { env: ["A"], count: ["2"], q2: ["A"] },
     }),
   ).toBe(false);
-  // count is required: a missing or blank answer does not match.
   expect(responseMatchesPayload(questions, { type: "questions", answers: { env: ["A"] } })).toBe(
     false,
   );
@@ -91,7 +90,6 @@ test("reply.ask becomes one question that accepts only its own answer", () => {
       },
     ],
   });
-  // Without options the owner must be able to type, even if the agent disallowed it.
   const closed = askRequestPayload(
     agentAsk.parse({ question: "Which?", options: [], allowCustom: false }),
   );

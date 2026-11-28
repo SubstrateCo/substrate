@@ -44,7 +44,6 @@ test("latest reactions stay fully visible without moving readers of older messag
   await expect(reaction).toHaveCount(0);
   await expect.poll(bottomGap).toBeLessThan(2);
 
-  // A remote reaction must also follow when the reader is near, not exactly at, the bottom.
   await log.evaluate((node) => {
     node.scrollTop -= 60;
   });
@@ -57,7 +56,6 @@ test("latest reactions stay fully visible without moving readers of older messag
   await expect(reaction).toHaveAttribute("aria-pressed", "false");
   await expect.poll(bottomGap).toBeLessThan(2);
 
-  // Remove the remote reaction, then add it again while the reader is well above the bottom.
   expect((await react()).ok()).toBe(true);
   await expect(reaction).toHaveCount(0);
   await log.evaluate((node) => {
@@ -68,7 +66,6 @@ test("latest reactions stay fully visible without moving readers of older messag
   const readingPosition = await log.evaluate((node) => node.scrollTop);
   expect((await react()).ok()).toBe(true);
   await expect(reaction).toHaveCount(1);
-  // Let layout and ResizeObserver callbacks finish before checking that the reader did not move.
   await page.evaluate(
     () =>
       new Promise<void>((resolve) =>

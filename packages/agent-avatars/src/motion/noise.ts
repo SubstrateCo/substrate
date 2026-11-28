@@ -1,8 +1,5 @@
-/** Seeded, stateless noise, so each avatar moves on its own schedule. */
 export interface Noise {
-  /** Smooth value noise in [-1, 1]. */
   smooth(channel: number, t: number): number;
-  /** A random value in [-1, 1] that holds for about `hold` seconds, then jumps. */
   step(channel: number, t: number, hold: number): number;
 }
 

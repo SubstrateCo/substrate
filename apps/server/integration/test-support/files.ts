@@ -29,12 +29,10 @@ export async function createUpload(
 }
 
 export async function putBytes(anonymous: APIRequestContext, ticket: UploadTicket, bytes: Buffer) {
-  // This context has no user cookies; signed storage requests must not carry app credentials.
   let response: APIResponse;
   try {
     response = await anonymous.put(ticket.uploadUrl, { headers: ticket.headers, data: bytes });
   } catch {
-    // Do not include a credential-bearing signed URL in failure output.
     throw new Error("The signed storage upload could not be sent.");
   }
   expect(response.ok(), "The signed upload accepts the supplied bytes").toBe(true);

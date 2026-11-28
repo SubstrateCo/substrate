@@ -6,10 +6,6 @@ import { interactionSourcesOptions } from "./options";
 
 const none: Record<string, InteractionSourceEvent> = {};
 
-/**
- * The meetings behind a list's calendar interactions, read in one request. Interactions from other
- * origins, or from meetings the viewer cannot read, have no entry.
- */
 export function useInteractionSources(
   organizationId: string,
   rows: readonly { entityId: string; origin: string }[],

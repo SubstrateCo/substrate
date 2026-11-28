@@ -29,25 +29,20 @@ type TurnProps = {
   openRequest?: AgentRequestView;
   onTranscript: (turnId: string) => void;
   onVisibilityChange?: TurnVisibilityChange;
-  /** Shows the latest activity after the label. The pending reply shows it on its own line. */
   inlineActivity?: boolean;
 };
 
-/** One turn's status line, with its own clock so only this text renders each second. */
 export function TurnLabel({ turn, openRequest }: Pick<TurnProps, "turn" | "openRequest">) {
   const now = useNow(liveTurnStatuses.includes(turn.status));
   return <>{turnLabel(turn, now, openRequest)}</>;
 }
 
-/** One turn's status tag, with its own clock so a live turn does not render the whole list. */
 export function TurnStatusTag({ turn }: Pick<TurnProps, "turn">) {
   const now = useNow(liveTurnStatuses.includes(turn.status));
   return <WorkStatusTag status={{ tone: turnTone(turn), label: turnLabel(turn, now) }} />;
 }
 
-/** One turn's status, for the header of the reply it belongs to. */
 export function TurnStatus(props: TurnProps) {
-  // Muted turns mount no clock and no actions.
   if (turnTone(props.turn, props.openRequest) === "muted") return null;
   return <LiveTurnStatus {...props} />;
 }
@@ -91,13 +86,11 @@ function LiveTurnStatus({
   );
 }
 
-/** What live work is doing, on the line where the agent's reply will go. */
 function activityLine(turn: AgentWorkTurnView) {
   if (turn.activity) return turn.activity;
   return turn.status === "assigned" ? "Getting started…" : "Thinking…";
 }
 
-/** A failed turn's note, or the owner's actions for a turn that needs attention. */
 function TurnBody({
   turn,
   agentName,
@@ -123,11 +116,6 @@ function TurnBody({
   return null;
 }
 
-/**
- * One turn's body, where it belongs: its error and attention card under the agent's reply,
- * whose header shows the status. Before the agent replies, a separate reply row after the
- * source message stands in. Quiet turns keep their result in that same row.
- */
 export function TurnWork({
   agentName,
   underReply,
@@ -135,14 +123,11 @@ export function TurnWork({
   ...props
 }: Omit<TurnProps, "inlineActivity"> & {
   agentName: string;
-  /** The turn shows under the agent's own message, not under the owner's. */
   underReply: boolean;
-  /** The turn's items that the desktop couldn't confirm the agent received. */
   uncertainItemIds?: readonly string[];
 }) {
   const { turn, openRequest } = props;
   const { userId } = useWorkspaceScope();
-  // Only the owner sees agent work, so the agent is in the viewer's own catalog.
   const { data: avatar } = useQuery(agentAvatarQueryOptions(userId, turn.userAgentId));
   const tone = turnTone(turn, openRequest);
   if (underReply)

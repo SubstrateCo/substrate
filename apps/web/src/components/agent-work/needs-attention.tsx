@@ -14,24 +14,16 @@ const failures: Record<NeedsAttentionAction, string> = {
   discard: "We couldn’t discard the message. Try again.",
 };
 
-/**
- * The owner's actions for a turn that needs attention, from any device. uncertainItemIds are the
- * turn's items the home desktop couldn't confirm the agent received; with them, the card offers
- * Resend and Discard for those items. The caller puts it in `NeedsAttentionCard` or
- * `NeedsAttentionInline`.
- */
 export function NeedsAttention({
   turn,
   agentName,
   uncertainItemIds = [],
 }: {
-  /** A Needs you entry has no error; the transcript shows it. */
   turn: Pick<AgentWorkTurnView, "id" | "attentionReason"> & { error?: string | null };
   agentName: string;
   uncertainItemIds?: readonly string[];
 }) {
   const { userId, organizationId } = useWorkspaceScope();
-  // One mutation, so the card shows only the latest attempt and its failure.
   const attempt = useAttentionAction(userId, organizationId);
   const pending = attempt.isPending ? attempt.variables.kind : undefined;
   const failure = attempt.isError

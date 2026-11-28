@@ -25,7 +25,6 @@ const recordKinds: Partial<Record<LinkedWork["entityType"], RecordTarget["kind"]
   contact_interaction: "interaction",
 };
 
-/** The record panel target for linked work, or nothing for kinds the shell does not open. */
 export function linkedWorkTarget(link: LinkedWork): RecordTarget | undefined {
   const kind = recordKinds[link.entityType];
   if (!kind) return undefined;
@@ -34,10 +33,6 @@ export function linkedWorkTarget(link: LinkedWork): RecordTarget | undefined {
   return target;
 }
 
-/**
- * The references in a message that the viewer may open, keyed by `kind:id`. A token missing here
- * shows as unavailable, never with a guessed name.
- */
 export function resolveReferences(context: MessageContext | undefined) {
   const resolved = new Map<string, ResolvedReference>();
   if (!context) return resolved;
@@ -80,7 +75,6 @@ export function resolveReferences(context: MessageContext | undefined) {
   return resolved;
 }
 
-/** Labels of resolved references, so an edit shows names instead of tokens. */
 export function referenceLabels(resolved: Map<string, ResolvedReference>) {
   return Object.fromEntries([...resolved].map(([key, reference]) => [key, reference.label]));
 }

@@ -41,7 +41,6 @@ test("project owners and organization owners and admins archive and restore; oth
   workspace,
 }) => {
   const [owner, member] = await workspace(actors.owner, actors.member);
-  // The member owns this project; the organization owner has no grant on it.
   const memberProject = await create(member, { action: "createProject", name: "Member plan" });
   await result(await write(owner, { action: "archiveProject", projectEntityId: memberProject }));
   await result(await write(member, { action: "restoreProject", projectEntityId: memberProject }));
@@ -73,7 +72,6 @@ test("project owners and organization owners and admins archive and restore; oth
   await result(await write(owner, { action: "archiveProject", projectEntityId: shared }));
   await rejected(await write(member, { action: "restoreProject", projectEntityId: shared }));
 
-  // An organization admin manages a project nobody shared with them.
   const privateProject = await create(owner, { action: "createProject", name: "Private plan" });
   await rejected(
     await write(member, { action: "archiveProject", projectEntityId: privateProject }),
@@ -118,7 +116,6 @@ test("only archived projects are deleted, and archived work rejects writes", asy
       success: false,
       error: { message: archivedMessage },
     });
-    // A member without access gets the normal access error and no archive state.
     await rejected(await write(member, input), [archivedMessage, "Wrapped up"]);
   }
   const comment = await owner.request.post("/api/v1/messaging/messages", {
@@ -131,7 +128,6 @@ test("only archived projects are deleted, and archived work rejects writes", asy
   });
   expect(comment.status()).toBe(400);
 
-  // Reads still work for readers.
   const detail = await result<{ project: { archivedAt: string | null }; tasks: unknown[] }>(
     await project(owner, projectEntityId),
   );

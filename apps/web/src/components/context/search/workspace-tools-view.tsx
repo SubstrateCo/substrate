@@ -16,7 +16,6 @@ export function WorkspaceTools({
   openRequest,
 }: {
   locationKey: string;
-  /** A new value opens the panel with an empty query and focuses the input. */
   openRequest?: number;
   renderSearch: (query: string, onClose: () => void) => ReactNode;
 }) {
@@ -39,7 +38,7 @@ export function WorkspaceTools({
   const input = useRef<HTMLInputElement>(null);
   const container = useRef<HTMLDivElement>(null);
   const results = useRef<HTMLDivElement>(null);
-  const activationTimeout = useRef<number | undefined>(undefined);
+  const closeAfterNavigation = useRef<number | undefined>(undefined);
   const desktop = !!desktopPlatform();
   const searchHotkey = useShortcut("search.open");
   function close() {
@@ -58,24 +57,22 @@ export function WorkspaceTools({
   const onPointerDown = useEffectEvent((event: PointerEvent) => {
     if (event.target instanceof Node && !container.current?.contains(event.target)) setOpen(false);
   });
-  const onResultClick = useEffectEvent((event: MouseEvent) => {
+  const closeAfterResultLinkNavigates = useEffectEvent((event: MouseEvent) => {
     const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
     if (!link || !results.current?.contains(link)) return;
-    // Observe native link activation, including Enter and clicks stopped by a result.
-    // Dismiss after the router handler and the browser's default action have had their turn.
-    window.clearTimeout(activationTimeout.current);
-    activationTimeout.current = window.setTimeout(() => setOpen(false));
+    window.clearTimeout(closeAfterNavigation.current);
+    closeAfterNavigation.current = window.setTimeout(() => setOpen(false));
   });
   useEffect(() => {
     const dismiss = (event: PointerEvent) => onPointerDown(event);
-    const observeActivation = (event: MouseEvent) => onResultClick(event);
+    const captureResultLinkClick = (event: MouseEvent) => closeAfterResultLinkNavigates(event);
     const search = container.current;
     document.addEventListener("pointerdown", dismiss);
-    search?.addEventListener("click", observeActivation, true);
+    search?.addEventListener("click", captureResultLinkClick, true);
     return () => {
       document.removeEventListener("pointerdown", dismiss);
-      search?.removeEventListener("click", observeActivation, true);
-      window.clearTimeout(activationTimeout.current);
+      search?.removeEventListener("click", captureResultLinkClick, true);
+      window.clearTimeout(closeAfterNavigation.current);
     };
   }, []);
   useHotkey(

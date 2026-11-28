@@ -11,12 +11,6 @@ import { z } from "zod";
 
 type CalendarProviderConfig = ServerEnvironment["calendarProviders"];
 
-/**
- * Social providers exist only to link integration accounts to a signed-in user.
- *
- * Each link requests identity and the selected server product. Do not fold other grants in the
- * Google Cloud project (such as the desktop Gmail client) into the server's refresh token.
- */
 export function calendarSocialProviders(config: CalendarProviderConfig) {
   return {
     ...(config.google && {
@@ -32,12 +26,9 @@ export function calendarSocialProviders(config: CalendarProviderConfig) {
         disableImplicitSignUp: true,
       },
     }),
-    // Microsoft is not implemented: add `microsoft` here with its calendar scope when an adapter
-    // exists in v1/calendar/providers.ts.
   };
 }
 
-/** The provider a Better Auth request body names, if any. */
 export const requestedProvider = z.object({ provider: z.string() }).catch({ provider: "" });
 
 const serverScopes = new Set<string>([
@@ -47,8 +38,6 @@ const serverScopes = new Set<string>([
   "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/userinfo.profile",
 ]);
-// Only start a redirect. Imported tokens, extra OAuth state and custom provider parameters
-// are not inputs to the Calendar connection.
 export const googleRedirectLink = z.strictObject({
   provider: z.literal("google"),
   callbackURL: z.string().optional(),

@@ -39,8 +39,6 @@ function DialogOverlay({
   );
 }
 
-// A column: DialogHeader and DialogFooter stay fixed and DialogBody scrolls between them.
-// A form that is a direct child does not take part in the layout, so its body and footer do.
 const dialogContentVariants = cva(
   "fixed top-dialog-top left-1/2 z-50 flex max-h-dialog-height w-overlay-width -translate-x-1/2 flex-col overflow-hidden rounded-xl border bg-popover text-sm text-popover-foreground shadow-floating duration-200 ease-out outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-97 data-closed:animate-out data-closed:duration-150 data-closed:fade-out-0 data-closed:zoom-out-97 [&>form]:contents",
   {
@@ -133,7 +131,6 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-/** The only part of a dialog that scrolls. */
 function DialogBody({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div

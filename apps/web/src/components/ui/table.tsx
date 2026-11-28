@@ -2,8 +2,6 @@ import * as React from "react";
 
 import { cn } from "cn";
 
-// Column layout from data attributes, so `AppTable` sets it without class names: `data-align="end"`
-// right-aligns tabular figures and `data-hide-below` hides a column in a narrow container.
 const tableColumnClasses =
   "data-[align=end]:text-right data-[align=end]:tabular-nums data-[hide-below=3xl]:hidden data-[hide-below=3xl]:@3xl:table-cell data-[hide-below=4xl]:hidden data-[hide-below=4xl]:@4xl:table-cell";
 
@@ -89,7 +87,6 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        // 36px rows: text cells py-2; cells with a control (button, select, avatar) py-1.
         "px-3 py-2 align-middle whitespace-nowrap has-[[role=checkbox]]:pr-0 data-controls:py-1",
         tableColumnClasses,
         className,

@@ -8,7 +8,6 @@ import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { X } from "lucide-react-native";
 
-/** A page sheet for a messaging panel that has no single save action, such as members. */
 export function PanelSheet({
   title,
   onClose,
@@ -19,7 +18,6 @@ export function PanelSheet({
   title: string;
   onClose: () => void;
   trailing?: ReactNode;
-  /** Off for content that scrolls by itself, such as a list. */
   scroll?: boolean;
   children: ReactNode;
 }) {

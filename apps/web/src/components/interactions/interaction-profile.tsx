@@ -19,7 +19,6 @@ import { crmLink } from "@/lib/navigation/record-links";
 import { interactionProfileOptions } from "@/queries/context/interactions";
 import { ArrowUpRight, List, Network } from "lucide-react";
 
-/** What differs between a person's and an organization's profile. */
 const profileKinds = {
   person: {
     section: "people",
@@ -31,7 +30,6 @@ const profileKinds = {
       </ContactLink>
     ),
     subject: (entityId: string) => ({ contactEntityId: entityId, accountEntityId: undefined }),
-    /** Only an organization's activity can widen to its related people. */
     scoped: false,
   },
   account: {
@@ -61,10 +59,8 @@ export function InteractionProfile({
   type: "person" | "account";
   period: TimelineInput;
   tab: "activity" | "map";
-  /** The activity period that `period` covers. */
   days: InteractionDays;
   onDaysChange: (days: InteractionDays) => void;
-  /** The primary create button, last in the header. */
   createAction?: ReactNode;
 }) {
   const { organizationId } = useWorkspaceScope();

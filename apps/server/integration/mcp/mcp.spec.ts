@@ -10,7 +10,6 @@ test("MCP calls require a verified owner, active workspace, trusted origin and s
   workspace: createWorkspace,
   request: anonymous,
 }) => {
-  // A fresh workspace, so the agent can list no projects that other tests created.
   const [scoped] = await createWorkspace(actors.owner);
   const owner = scoped.request;
   const other = actors.outsider.request;
@@ -18,7 +17,6 @@ test("MCP calls require a verified owner, active workspace, trusted origin and s
   const otherWorkspace = { id: actors.outsider.organizationId };
   const installationId = crypto.randomUUID();
   await registerDevice(owner, installationId);
-  // Saved from the desktop, so the agent is homed there.
   const saved = await owner.post("/api/v1/agents/actors/save", {
     headers: { origin, "x-substrate-installation": installationId },
     data: { name: "Research", instructions: "Help", harness: "opencode", enabled: true },
@@ -38,7 +36,6 @@ test("MCP calls require a verified owner, active workspace, trusted origin and s
   const home = host(owner, workspace.id, installationId);
   const claimed = await claimOne(home);
   expect((await home(`host/turns/${claimed.turn.id}/start`, { attempt: 1 })).ok()).toBe(true);
-  // The desktop host attaches its leased turn to every call.
   const turn = { turnId: claimed.turn.id, attempt: claimed.turn.attempt };
   const data = { organizationId: workspace.id, agentId, tool: "list_projects", input: {}, turn };
   const headers = { origin, "x-substrate-installation": installationId };

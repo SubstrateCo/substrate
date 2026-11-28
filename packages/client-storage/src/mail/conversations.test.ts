@@ -102,7 +102,6 @@ test("older pages from the last shown time return every conversation once, also 
       nickname: null,
       protectedGrant: "fixture",
     });
-    // 30 messages share one timestamp, so a page boundary falls inside the tie.
     const times = Array.from({ length: 140 }, (_, i) => (i >= 40 && i < 70 ? 1_000 : 2_000 - i));
     await db.commit(id, null, {
       cursor: "cached",
@@ -250,7 +249,6 @@ test("threads, unread totals, filtered matches and color overrides stay bound to
         await db.cachedPage({ ...q, ...cursor, seen: [JSON.stringify([a, "thread", "t"])] })
       ).items.map((row) => row.id),
     ).not.toContain(thread.id);
-    // A reply arriving after navigation began cannot push an unvisited thread out of the snapshot.
     await db.cacheOlder(a, "fixture", [mail("subsequent reply", "t", 7, sent)]);
     expect((await db.cachedPage({ ...q, ...cursor, before: 6 })).items.map((m) => m.id)).toContain(
       thread.id,
@@ -261,7 +259,6 @@ test("threads, unread totals, filtered matches and color overrides stay bound to
     await db.labelVisibility(a, { area: "sidebar", labelId: "Label_1", mode: "unread" });
     await db.labelVisibility(a, { area: "rows", labelId: "Label_1", visible: false });
     expect(await visible(a)).toEqual(["Label_1"]);
-    // Both unread copies in A disappear; the copy with the same label ID in B must not keep A's filter visible.
     await db.commit(a, "a", {
       messages: [],
       removed: ["original", "received"],

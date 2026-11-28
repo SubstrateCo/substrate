@@ -33,7 +33,6 @@ type Panel =
   | { kind: "manage" }
   | { kind: "invitations" };
 
-/** The drawer's content: channels, partner channels, and direct messages. */
 export function ConversationList({
   organizationId,
   selectedId,

@@ -39,7 +39,6 @@ function StepButton({
   );
 }
 
-/** The period's name, paging, and calendar view. */
 export function CalendarToolbar({
   title,
   view,
@@ -50,7 +49,6 @@ export function CalendarToolbar({
 }: {
   title: string;
   view: CalendarViewMode;
-  /** The period already includes today. */
   showsToday: boolean;
   onToday: () => void;
   onStep: (direction: 1 | -1) => void;

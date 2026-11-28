@@ -17,7 +17,6 @@ type PanelSearch = {
 
 const returning = new WeakSet<RouterHistory>();
 
-/** Close, Escape and outside dismissal all navigate through the router's draft blockers. */
 export function usePanelReturn() {
   const router = useRouter();
   return (search: PanelSearch) => {

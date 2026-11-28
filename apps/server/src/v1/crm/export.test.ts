@@ -58,7 +58,6 @@ function fixture(admin = true) {
   return { scope, listAccounts };
 }
 
-// Parse the result independently, including doubled quotes and embedded CR/LF.
 function parseCsv(csv: string) {
   const rows: string[][] = [];
   let row: string[] = [];
@@ -160,7 +159,6 @@ test("streams every page beyond the former 1,000-record limit", async () => {
   const input = { organizationId: "org", kind: "accounts" as const, archived: "all" as const };
   const result = await exportCrm(scope, input);
   expect(result.success).toBe(true);
-  // First page is fetched eagerly so access/app errors fail before streaming starts; remaining pages stay lazy.
   expect(listAccounts).toHaveBeenCalledTimes(1);
   if (result.success) {
     const text = (

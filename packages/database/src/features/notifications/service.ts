@@ -117,15 +117,10 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
               eq(notifications.recipientActorEntityId, ctx.scope.actorEntityId),
             ),
           );
-        // A deleted message removes its notification. Restart the authorized feed when its cursor
-        // vanished; never resolve an anchor owned by another recipient or workspace.
         if (anchor)
           boundary = sql`(${notifications.createdAt}, ${notifications.id}) < (${anchor.at}::timestamptz, ${anchor.id}::uuid)`;
       }
-      // One statement filters by the target's current access before LIMIT, so hidden targets
-      // cost no extra round trips.
       const projectEntityId = sql`coalesce(${tasks.projectEntityId}, ${projects.entityId})`;
-      // Who acted: the message author, or whoever recorded the assignment event.
       const actor = alias(actors, "notice_actor");
       const noticeProject = alias(projects, "notice_project");
       const ownParticipant = alias(messagingParticipants, "own_participant");
@@ -148,11 +143,9 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
           conversationPrivate: messagingConversations.private,
           threadId: messagingMessages.threadId,
           body: messagingMessages.body,
-          // Null when the notice has no actor.
           actorName: sql<string | null>`${joinedActorName(actor)}`,
           actorImage: joinedActorPicture(actor),
           actorAvatar: joinedActorAvatar(actor),
-          // The recipient's settings decide the alert flag. Each join matches at most one row.
           accountPreferences: accountColumns,
           workspacePreferences: workspaceColumns,
           conversationPreferences: {
@@ -238,7 +231,6 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
         )
         .orderBy(desc(notifications.createdAt), desc(notifications.id))
         .limit(limit);
-      // The query above checked each message's conversation, so its body may be quoted.
       const excerpts = await messageExcerpts(
         ctx,
         db,
@@ -334,7 +326,6 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
   };
 }
 
-// Trusted non-HTTP entry point. HTTP handlers use the middleware's scoped repository instead.
 export function createFeedService(db: DatabaseExecutor, scope: SessionIdentity) {
   type Repository = ReturnType<typeof createFeedRepository>;
   const run = async <T>(work: (repository: Repository) => Promise<T>) => {

@@ -4,18 +4,10 @@ import { turnAttentionReasons, turnInterruptions, turnOutcomes } from "../turns.
 import { turnSourceMessageSchema, turnUsageSchema } from "./turns.ts";
 import { z } from "zod";
 
-// Host calls under /agent-work/host/*. The device scope resolves the host from the session and
-// the installation; the server derives every agent, session and turn from its own rows.
-
 const id = z.uuid();
 const device = { organizationId, installationId: id };
-/** The attempt the host runs. A call for an older attempt changes nothing. */
 const attempt = z.number().int().min(1).max(1000);
 const itemIds = (max: number) => z.array(id).max(max).default([]);
-/**
- * Proposals whose decision a held tool call of the turn returned to the agent. Their
- * approval_result items in the turn's session are consumed, so they never start a turn.
- */
 const decidedRequestIds = z.array(id).max(100).optional();
 
 /** The :id route parameter of turn and item calls. */

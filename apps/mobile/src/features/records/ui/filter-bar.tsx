@@ -51,11 +51,6 @@ import {
 const compact = "h-8 min-h-8 rounded-md shadow-none";
 const hitSlop = 6;
 
-/**
- * A horizontally scrolling "Filter" button, then one pill per active filter, then "Clear". Fully
- * controlled: the screen owns `value` and maps it to its query. Pills follow the order of `fields`.
- * `trailing` sits after the scrolling row and never scrolls or shrinks.
- */
 export function FilterBar<V extends FilterValues>({
   fields,
   value,
@@ -69,7 +64,6 @@ export function FilterBar<V extends FilterValues>({
   label?: string;
   trailing?: ReactNode;
 }) {
-  // `null` opens the field list; a field ID opens that field's editor.
   const [open, setOpen] = useState<{ fieldId: string | null } | null>(null);
   return (
     <View className="flex-row items-center border-b border-border bg-background">
@@ -128,18 +122,12 @@ export function FilterBar<V extends FilterValues>({
   );
 }
 
-/**
- * The scrolling pill row. A soft fade marks each side that hides more pills, and clears once that
- * side is fully visible. The fade is the bar's background token in stepped opacity strips, so it
- * follows light and dark without a gradient dependency. It ignores touches.
- */
 function ScrollHintRow({ label, children }: { label: string; children: ReactNode }) {
   const metrics = useRef<ScrollMetrics>({ offset: 0, viewport: 0, content: 0 });
   const [edges, setEdges] = useState<ScrollEdges>({ start: false, end: false });
   const update = (next: Partial<ScrollMetrics>) => {
     metrics.current = { ...metrics.current, ...next };
     const hidden = scrollEdges(metrics.current);
-    // Scroll events arrive every frame. Re-render only when a fade appears or clears.
     setEdges((current) =>
       current.start === hidden.start && current.end === hidden.end ? current : hidden,
     );
@@ -198,7 +186,6 @@ function EdgeFade({ side }: { side: "start" | "end" }) {
   );
 }
 
-/** One active filter as `[field operator value │ ×]`. A required field has no remove button. */
 function FilterPill({
   entry,
   onPress,
@@ -244,10 +231,6 @@ function FilterPill({
   );
 }
 
-/**
- * The field list, then one field's editor. A single choice applies and closes; a multiple choice
- * toggles values until Done. Typed values apply with Apply once they are valid.
- */
 function FilterSheet<V extends FilterValues>({
   fields,
   value,
@@ -325,7 +308,6 @@ function FilterSheet<V extends FilterValues>({
   );
 }
 
-/** One field's editor: option rows, or typed dates or a number with Apply. */
 function FieldEditor({
   field,
   entry,
@@ -431,7 +413,6 @@ function OptionValues({
   );
 }
 
-/** Start and end dates typed as YYYY-MM-DD. Apply stays off until the range is valid. */
 function DateRangeEditor({
   field,
   range,
@@ -443,7 +424,6 @@ function DateRangeEditor({
 }) {
   const [draft, setDraft] = useState<DateRange>(range ?? { from: "", through: "" });
   const error = dateRangeError(draft);
-  // Each input reports its own malformed date; the range error covers order.
   const shownError = validDate(draft.from) && validDate(draft.through) ? error : null;
   return (
     <>
@@ -470,7 +450,6 @@ function DateRangeEditor({
   );
 }
 
-/** A whole number typed with the number pad. Apply stays off until it is within bounds. */
 function NumberEditor({
   field,
   value,
@@ -538,8 +517,6 @@ function SheetRow({
       onPress={onPress}
       className={cn(
         "h-auto min-h-12 justify-start gap-3 rounded-none border-b border-border px-5 py-2",
-        // The button's web style narrows padding for a row with a direct icon child, such as the
-        // selected row's check. Keep every row's inset the same.
         Platform.select({ web: "has-[>svg]:px-5" }),
       )}
     >

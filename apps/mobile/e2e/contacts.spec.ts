@@ -54,7 +54,6 @@ test("Expo web preview: contact methods, affiliations, interactions, and linked 
   await expect(page.getByLabel("Phone number", { exact: true })).toBeVisible();
   await captureScreenshot(page, info, "contact-add-phone");
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
-  // Selecting a different type is a real edit, even when no number has been entered.
   await page.getByRole("alertdialog").getByRole("button", { name: "Discard", exact: true }).click();
   for (const [action, title, name] of [
     ["Website", "Add website", "contact-add-website"],

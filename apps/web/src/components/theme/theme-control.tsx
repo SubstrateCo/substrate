@@ -8,7 +8,6 @@ const options = [
   { value: "system", label: "System", icon: Monitor },
 ] as const;
 
-/** The only theme picker. It is labelled "Theme" wherever it appears. */
 export function ThemeControl({ iconOnly = false }: { iconOnly?: boolean }) {
   const { theme, setTheme } = useTheme();
   return (

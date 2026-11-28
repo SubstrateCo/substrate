@@ -7,7 +7,6 @@ function usableLabel(node: AstNode | null | undefined): boolean {
   if (node.type === "JSXExpressionContainer") return usableLabel(node.expression);
   if (node.type === "Literal") return false;
   if (node.type === "Identifier" && node.name === "undefined") return false;
-  // Dynamic labels cannot be proved empty by this rule.
   return true;
 }
 

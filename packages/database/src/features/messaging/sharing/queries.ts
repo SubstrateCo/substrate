@@ -158,7 +158,6 @@ export function sharingQueries(
                     ),
                   )
                 : undefined,
-              // Host DMs are shared by their creator only, above. Partners share DMs they can see.
               and(
                 eq(messagingConversations.kind, "dm"),
                 ne(messagingConversations.organizationId, scope.organizationId),

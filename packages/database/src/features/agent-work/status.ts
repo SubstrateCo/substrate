@@ -36,10 +36,6 @@ async function countBy(
   return new Map(rows.map((row) => [row.userAgentId, row.count]));
 }
 
-/**
- * Where a session's work shows: an unattended turn's destination, else where it came from. Null
- * when it has no place or the owner cannot open its conversation now.
- */
 export function workPlace(
   session: Pick<
     typeof agentSessions.$inferSelect,
@@ -58,7 +54,6 @@ export function workPlace(
   return place && visible.has(place.conversationId) ? place : null;
 }
 
-/** The IDs of the conversations the owner can open now, among these. */
 export async function visibleAmong(
   db: DatabaseExecutor,
   identity: SessionIdentity,
@@ -73,11 +68,6 @@ export async function visibleAmong(
   return new Set(rows.map((row) => row.id));
 }
 
-/**
- * The status of each of the owner's agents in the organization, derived from its requests,
- * turns and items, with its home desktop. The live place and activity are hidden once the owner
- * cannot open the live conversation, because activity may quote it.
- */
 export async function statusViews(
   db: DatabaseExecutor,
   identity: SessionIdentity,

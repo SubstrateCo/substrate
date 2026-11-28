@@ -30,7 +30,6 @@ test("a turn that ended, or continued as a newer attempt, runs no more calls", a
     executeAgentTool(f.db, caller, "reply", { requestId, body: "Late" }, context);
   await f.db.update(agentTurns).set({ attempt: 2 }).where(eq(agentTurns.id, context.turnId));
   expect(await rejection(reply())).toBeInstanceOf(ConflictError);
-  // The new attempt runs.
   await executeAgentTool(
     f.db,
     caller,
@@ -60,7 +59,6 @@ test("a turn that ended, or continued as a newer attempt, runs no more calls", a
 test("the server turn decides the session, places, mode and handoff, not the host", async () => {
   const x = await mcpFixture(f);
   const channel = await x.alice.createConversation({ kind: "channel", name: "general" });
-  // A routine turn has no origin: it posts to its destination, or where reply.to names.
   const routine = routineTurn({ conversationId: channel.id, threadId: null });
   const sent = await x.call("reply", { requestId: crypto.randomUUID(), body: "Weekly" }, routine);
   expect(sent.conversationId).toBe(channel.id);

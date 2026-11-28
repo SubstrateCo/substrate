@@ -10,10 +10,6 @@ export interface Place {
   anchorMessageId: string | null;
 }
 
-/**
- * Checks that the owner can see the conversation, that the thread is a root message in it, and
- * that the anchor message is in it. A request or reply is placed only where its owner can look.
- */
 export async function requirePlace(
   db: DatabaseExecutor,
   scope: SessionIdentity,

@@ -1,9 +1,3 @@
-/**
- * A scriptable ACP v1 agent for tests, built with the SDK's agent() app. With 2 in
- * protocolVersions it also speaks v2 (fake-agent-v2.ts). Run it in-process with
- * startFakeAgent, or as a stdio process: `bun fake-agent.ts` with the script as JSON in
- * FAKE_ACP_SCRIPT.
- */
 import type { AcpProcess } from "../acp/connection.ts";
 import type { JsonValue } from "../json.ts";
 import {
@@ -62,61 +56,41 @@ export type FakeStep =
       elicitation: {
         message: string;
         requestedSchema: ElicitationSchema;
-        /** The agent withdraws the request with $/cancel_request after this delay. */
         withdrawAfterMs?: number;
       };
     }
-  /**
-   * Sends one inner MCP request over `mcp/message` to the session's ACP-declared server with
-   * this name, and records its outcome in record.mcp.
-   */
   | { mcp: { server: string; method: string; params?: { [key: string]: JsonValue } } }
-  /** Blocks until session/cancel arrives; the prompt then stops with "cancelled". */
   | { waitForCancel: true }
-  /** Blocks until a `_session/steering` request arrives. */
   | { waitForSteer: true }
-  /** Ends the agent: process.exit in stdio mode, a closed connection in-process. */
   | { exit: number };
 
 export interface FakeAgentScript {
-  /** Versions the agent speaks. Default [1]. */
   protocolVersions?: number[];
-  /** Answer an unsupported version with -32022 instead of selecting another version. */
   rejectUnsupportedVersion?: boolean;
   agentInfo?: { name: string; version: string };
   agentCapabilities?: AgentCapabilities;
-  /** InitializeResponse._meta: the `_session/steering` extension advertisement. */
   meta?: { steering: { supported: boolean } };
   authMethods?: AuthMethod[];
-  /** Session setup fails with auth_required until authenticate succeeds. */
   requireAuth?: boolean;
-  /** Slash commands, sent in available_commands_update after session setup. */
   commands?: string[];
   configOptions?: SessionConfigOption[];
-  /** Simulate an agent that acknowledges config changes without applying them. */
   ignoreConfigChanges?: boolean;
-  /** Steps per prompt text; other prompts run defaultTurn. */
   turns?: Record<string, FakeStep[]>;
   defaultTurn?: FakeStep[];
   stopReason?: StopReason;
   promptUsage?: Usage;
-  /** v2 initialize and session data, used when protocolVersions includes 2. */
   v2?: FakeV2Options;
 }
 
-/** What the fake agent received and answered. */
 export interface FakeAgentRecord {
   calls: { method: string; params: object }[];
   permissions: (RequestPermissionResponse | FakeV2Answers["permission"])[];
   elicitations: (CreateElicitationResponse | FakeV2Answers["elicitation"])[];
   steers: string[];
-  /** Inner MCP outcomes, or the outer ACP error of a failed `mcp/message`. */
   mcp: (McpOutcome | { acpError: { code: number; message: string } })[];
-  /** Wait steps the agent has reached, in order. */
   waits: ("waitForCancel" | "waitForSteer")[];
 }
 
-/** Called after the fake adds a call or a wait to its record. */
 export type FakeRecordChanged = () => void;
 
 const acpError = z.object({ code: z.number(), message: z.string() });
@@ -150,7 +124,6 @@ function fakeAgentApp(
   let sessions = 0;
   let configOptions = structuredClone(script.configOptions ?? []);
   let running: { cancelled: boolean; cancel(): void; steer(): void } | undefined;
-  /** ACP-declared MCP servers per session: name to serverId. */
   const acpServers = new Map<string, Map<string, string>>();
   const caller = new McpOverAcpCaller({ clientInfo: { name: "fake-agent", version: "1.0.0" } });
   const declare = (sessionId: string, servers: unknown[]) =>
@@ -405,10 +378,6 @@ function fakeAgentApp(
     });
 }
 
-/**
- * Serves one connection. A script that speaks v2 goes behind the SDK's protocol router, which
- * selects v1 or v2 per initialize and answers -32022 when no version fits.
- */
 interface FakeConnection {
   close(): void;
   closed: Promise<void>;
@@ -441,11 +410,9 @@ function connectFakeAgent(
 
 export interface FakeAgent extends AcpProcess {
   record: FakeAgentRecord;
-  /** Resolves once the record satisfies check, at once if it already does. */
   until(check: (record: FakeAgentRecord) => boolean): Promise<void>;
 }
 
-/** Starts the fake agent in-process. Its shape matches a spawned agent process. */
 export function startFakeAgent(script: FakeAgentScript): FakeAgent {
   const record = newRecord();
   const waiters = new Set<{ check(record: FakeAgentRecord): boolean; resolve(): void }>();
@@ -480,7 +447,6 @@ export function startFakeAgent(script: FakeAgentScript): FakeAgent {
   };
 }
 
-// Stdio mode: the spawning test passes the script in the child's environment only.
 if (process.env.FAKE_ACP_SCRIPT !== undefined) {
   const script: FakeAgentScript = JSON.parse(process.env.FAKE_ACP_SCRIPT);
   const record = newRecord();

@@ -4,10 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { CircleAlert, X } from "lucide-react";
 
-/**
- * The update notice inside the shared toast frame. The text gets the full width and the action sits
- * under it as a real button, so a long label never squeezes the description into a narrow column.
- */
 export function UpdateToast({
   content,
   pending,
@@ -15,7 +11,6 @@ export function UpdateToast({
   onClose,
 }: {
   content: UpdateNoticeContent;
-  /** True while an update command runs, from this notice or from settings. */
   pending: boolean;
   onAction: () => void;
   onClose: () => void;

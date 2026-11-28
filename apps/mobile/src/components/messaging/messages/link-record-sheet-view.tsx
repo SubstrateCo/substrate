@@ -24,7 +24,6 @@ import { ErrorState } from "@/features/records/ui/states";
 import { cn } from "@/lib/utils";
 import { Check, Link2, Search } from "lucide-react-native";
 
-/** Chooses existing records to link to a message. Selection survives kind and search changes. */
 export function LinkRecordSheetView({
   kinds,
   kind,
@@ -57,7 +56,6 @@ export function LinkRecordSheetView({
   onClose: () => void;
 }) {
   const [chosen, setChosen] = useState(() => new Map<string, LinkableRecord>());
-  // Records that became linked, such as after a partial failure, leave the selection.
   const selection = [...chosen.values()].filter(
     (record) => kinds.includes(record.kind) && !linkedIds.has(record.id),
   );

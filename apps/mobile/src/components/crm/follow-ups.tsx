@@ -21,10 +21,6 @@ import { FormSheet } from "@/features/records/ui/sheet";
 import { SectionQuery } from "@/features/records/ui/states";
 import type { QueryScope } from "@/queries/keys";
 
-/**
- * Open tasks linked to a CRM record. The server reads and creates them only while both CRM and
- * Tasks are on, so the section hides otherwise.
- */
 export function FollowUps({
   scope,
   entityId,

@@ -6,8 +6,6 @@ import { authClient } from "@/api/auth/client";
 import { unwrap } from "@/api/auth/result";
 import { queryKeys } from "@/queries/keys";
 
-// Names, roles, and membership show in the switcher, the frame, and member lists. The detail
-// key also covers the frame's summary and the people pickers.
 const refreshOrganization = (queryClient: QueryClient, organizationId: string) =>
   Promise.all([
     queryClient.invalidateQueries({ queryKey: queryKeys.organizations }),
@@ -32,7 +30,6 @@ export function organizationMutationOptions(queryClient: QueryClient, organizati
         await authClient.organization.removeMember({ organizationId, memberIdOrEmail: memberId }),
       ),
     onSuccess: async () => {
-      // Removal also clears the person's conversation access.
       await Promise.all([
         onSuccess(),
         queryClient.invalidateQueries({ queryKey: queryKeys.messaging(organizationId) }),

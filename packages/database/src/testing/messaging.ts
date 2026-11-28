@@ -8,7 +8,6 @@ import { createSharingService } from "../features/messaging/sharing/service";
 import { member, user } from "../schema";
 import { and, asc, eq, ne } from "drizzle-orm";
 
-// Existing domain tests need an already-approved collaboration fixture, not pending invitations.
 async function acceptFixtureInvitations(db: DatabaseExecutor, conversationId: string) {
   const invites = await db
     .select()

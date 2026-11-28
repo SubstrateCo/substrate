@@ -12,7 +12,6 @@ export const organizationsQueryOptions = () =>
       unwrap(await authClient.organization.list({ fetchOptions: { signal } })),
   });
 
-/** Members, invitations and settings. Organization settings screens use it. */
 export const organizationQueryOptions = (organizationId: string) =>
   queryOptions({
     queryKey: queryKeys.organizationDetail(organizationId),
@@ -27,10 +26,8 @@ export const organizationQueryOptions = (organizationId: string) =>
     retry: false,
   });
 
-/** The organization's name and logo, and the viewer's role. The workspace frame holds it. */
 export const currentOrganizationQueryOptions = (organizationId: string | null | undefined) =>
   queryOptions({
-    // Without an organization the read is skipped; its key only needs to be well formed.
     queryKey: queryKeys.organizationSummary(organizationId ?? ""),
     queryFn: organizationId
       ? ({ signal }) => getCurrentOrganization({ data: { organizationId }, signal })

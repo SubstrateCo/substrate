@@ -82,7 +82,6 @@ test("references are checked on send, resolve with live access, and expose safe 
     ),
   ).toBeInstanceOf(AccessDeniedError);
   expect(await f.db.select().from(messagingMessages)).toEqual(before);
-  // Preserve authorship history while revoking visibility in this workspace.
   await f.db
     .update(messagingParticipants)
     .set({ leftAt: new Date() })

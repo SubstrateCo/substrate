@@ -15,10 +15,6 @@ const empty = "__empty__";
 
 type Option<T extends string> = { value: T; label: string; icon?: ReactNode };
 
-/**
- * A labelled select. An option whose value is `""` is the empty choice, such as "None". The error
- * replaces the description, so the two never stack.
- */
 export function SelectField<T extends string>({
   label,
   value,
@@ -53,7 +49,6 @@ export function SelectField<T extends string>({
     <Field className={className ?? "min-w-0"} data-invalid={invalid}>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
       <Select
-        // An unknown value, such as no choice yet, shows the placeholder.
         value={known ? value || empty : ""}
         disabled={disabled}
         onValueChange={(next) => {
@@ -93,7 +88,6 @@ export function SelectField<T extends string>({
   );
 }
 
-/** The label and a field-height placeholder while the options load. */
 export function SelectFieldLoading({ label }: { label: string }) {
   return (
     <Field aria-hidden>

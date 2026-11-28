@@ -44,7 +44,6 @@ import { createFeedRepository } from "./features/notifications/service";
 import { projectRepository } from "./features/projects/repository";
 import { taskRepository } from "./features/tasks/repository";
 
-/** A heartbeat keeps the device online and renews the leases of the turns it runs. */
 async function touchHost(db: DatabaseExecutor, userId: string, installationId: string) {
   const device = await touchDevice(db, userId, installationId);
   await renewLeases(db, device.id);
@@ -271,14 +270,12 @@ function standalone(
 export function createRepositories(
   db: DatabaseExecutor,
   options: {
-    /** How long `forSession` keeps a person's resolved workspace for reads. Off by default. */
     workspaceCacheMs?: number;
     now?: () => number;
   } = {},
 ) {
   const workspaces = createWorkspaceCache(db, options.workspaceCacheMs ?? 0, options.now);
   return {
-    /** Drops kept workspaces, after a membership, role, actor or profile change. */
     forgetWorkspaces: () => workspaces.forget(),
     async forDeviceSession(identity: DeviceIdentity) {
       const device = await requireDevice(db, identity);

@@ -54,7 +54,6 @@ type Props = {
   onOpenConversation?: (conversationId: string, messageId?: string) => void;
 };
 
-/** A task, read through its project. Without a project ID the server tells us which project. */
 export function TaskDetailView(props: Props) {
   const scope = useRecordScope(props.organizationId);
   const location = useQuery({

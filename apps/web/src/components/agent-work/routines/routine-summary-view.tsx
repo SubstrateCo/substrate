@@ -15,10 +15,6 @@ import { ArrowRight, CalendarClock, Plus } from "lucide-react";
 
 const countLabel = (count: number) => `${count} ${count === 1 ? "routine" : "routines"}`;
 
-/**
- * The routines in the settings overview: every routine that needs the owner, then the next runs.
- * However many routines the agent has, this stays a few rows long; the rest are one click away.
- */
 export function RoutineSummaryView({
   routines,
   now,

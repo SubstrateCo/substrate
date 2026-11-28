@@ -4,7 +4,6 @@ import { FormDialog } from "@/components/feedback/form-dialog";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { SelectField } from "@/components/forms/select-field";
 
-/** The parent choice in the destination project, once it loads and the viewer can edit it. */
 function ParentTaskField({
   parentId,
   parents,

@@ -15,13 +15,11 @@ import type { DeviceScope } from "../../shared/scope-types";
 import { serviceResult } from "../../shared/service-result";
 import type { z } from "zod";
 
-/** Drops the device fields that the scope already checked. */
 function body<T extends { organizationId: string; installationId: string }>(input: T) {
   const { organizationId: _, installationId: __, ...rest } = input;
   return rest;
 }
 
-/** The host API: the agent's home device claims, runs and reports its turns. */
 export function createHostService({ publish }: { publish: CommittedPublisher }) {
   return {
     claim(this: void, scope: DeviceScope, input: z.output<typeof hostClaimInput>) {

@@ -17,10 +17,6 @@ const appSettingsSchema = z.object({
   data: z.object({ organizationId: z.string(), enabledApps: z.array(z.enum(appIds)) }),
 });
 
-/**
- * The backend answered that this account or membership is no longer valid. Other failures,
- * such as network errors and 5xx answers, are transient.
- */
 export class HarnessAccessDenied extends Error {}
 
 const deniedStatuses = new Set([401, 403, 404]);
@@ -43,7 +39,6 @@ async function readVerifiedSession(
   if (!response.ok) throw new Error("Session unavailable.");
   const result = verifiedSessionSchema.safeParse(await response.json());
   signal?.throwIfAborted();
-  // A valid answer without a verified user and an active organization denies access.
   if (!result.success) throw new HarnessAccessDenied("Session is not verified.");
   return result.data;
 }
@@ -100,7 +95,6 @@ export class DesktopSessionAuthority {
     return pending;
   }
 
-  /** Mail reads private local data and can run without the renderer or a realtime connection. */
   async readAppSettings(auth: Authorization, caller?: AbortSignal) {
     const signal = caller ? AbortSignal.any([this.lifetime.signal, caller]) : this.lifetime.signal;
     const url = new URL("/api/v1/organizations/apps", this.options.backend);
@@ -120,7 +114,6 @@ export class DesktopSessionAuthority {
     return data;
   }
 
-  /** A catalog request must not configure a worker after the backend workspace changed. */
   async confirm(auth: Authorization, caller?: AbortSignal) {
     const signal = caller ? AbortSignal.any([this.lifetime.signal, caller]) : this.lifetime.signal;
     signal.throwIfAborted();
@@ -130,7 +123,6 @@ export class DesktopSessionAuthority {
       false,
       signal,
     );
-    // A late response from an old generation cannot invalidate the current one.
     signal.throwIfAborted();
     if (latest.user.id !== auth.userId) throw new HarnessAccessDenied("Account changed.");
     if (latest.session.activeOrganizationId !== auth.organizationId) {

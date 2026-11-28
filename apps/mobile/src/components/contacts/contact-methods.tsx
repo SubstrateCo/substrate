@@ -37,7 +37,6 @@ type Removal = {
   label: string;
 };
 
-/** Emails, phone numbers, websites and addresses. */
 export function ContactMethods({
   scope,
   contact,

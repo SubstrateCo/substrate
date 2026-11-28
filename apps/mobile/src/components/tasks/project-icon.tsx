@@ -41,9 +41,7 @@ export function ProjectIcon({
         }
         lease = file;
         setLoaded({ key, file });
-      } catch {
-        // The default project icon also covers unavailable or unreadable pictures.
-      }
+      } catch {}
     })();
     return () => {
       unsubscribe();

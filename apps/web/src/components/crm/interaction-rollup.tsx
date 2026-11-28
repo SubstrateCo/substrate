@@ -27,7 +27,6 @@ import { crmTimelineOptions } from "@/queries/crm/options";
 import { keepPageWhileTurning } from "@/queries/page-turn";
 import { Users } from "lucide-react";
 
-/** One required field: the timeline always reads one scope. */
 const interactionScopeFields: FilterField<InteractionScopeFieldId>[] = [
   {
     id: "scope",
@@ -160,6 +159,5 @@ export function InteractionRollup({
   );
 }
 
-/** The timeline returns up to this many interactions per page. */
 const pageSize = 50;
 const interactionRow = "grid min-w-0 gap-1 rounded-md px-2 py-1.5 hover:bg-row-hover";

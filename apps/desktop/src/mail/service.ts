@@ -38,7 +38,7 @@ export function createMailService(options: MailSessionOptions) {
           );
       }
     });
-    void job.catch(() => {}); // Status is reported by accounts(); never log private provider output.
+    void job.catch(() => {});
   }
   async function authorize(local: LocalMail, chooseClient = false, sealed?: string) {
     local.abort.signal.throwIfAborted();
@@ -51,7 +51,6 @@ export function createMailService(options: MailSessionOptions) {
       () => pickGoogleClient(signal),
     );
     if (!client) return null;
-    // A native dialog may have been open across sign-out or a workspace change.
     signal.throwIfAborted();
     await checked(local.auth, signal);
     const grant = await connectGoogle(client, (url) => shell.openExternal(url), signal);
@@ -133,7 +132,6 @@ export function createMailService(options: MailSessionOptions) {
                 deadline,
               ),
           );
-          // Never mistake a revoked workspace/app for an offline Gmail mailbox.
           await checked(local.auth, local.abort.signal);
           return result;
         }),
@@ -178,7 +176,6 @@ export function createMailService(options: MailSessionOptions) {
         if (!grant) return "cancelled";
         return use(q, async (active): Promise<"connected" | "different-account"> => {
           if (active !== local || local.abort.signal.aborted) throw new Error("Session changed.");
-          // The store matches Google's verified subject, not the address or the local nickname.
           if (!(await local.db.reconnect(q.mailboxId, grant))) return "different-account";
           await local.jobs.cancel(q.mailboxId);
           requestSync(local, q.mailboxId);
@@ -190,8 +187,6 @@ export function createMailService(options: MailSessionOptions) {
       labelVisibility: (q) => use(q, (local) => local.db.labelVisibility(q.mailboxId, q.change)),
       disconnect: (q) =>
         use(q, async (local) => {
-          // Abort first and enqueue local removal immediately. A slow provider must not
-          // keep the grant available. Any late sync commit requires a matching checkpoint.
           await Promise.all([local.jobs.cancel(q.mailboxId), local.db.disconnect(q.mailboxId)]);
         }),
       sync: (q) =>

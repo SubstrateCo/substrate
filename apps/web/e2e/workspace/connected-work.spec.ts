@@ -27,7 +27,6 @@ test("follow existing message-task links and find the task in search", async ({
   await visit(sender, channel.id);
   const sourceMessage = sender.page.getByRole("article").filter({ hasText: source });
   await expect(sourceMessage).toBeVisible();
-  // Messages show no attached-work panel; the link lives on the task's side.
   await expect(sourceMessage.getByRole("link", { name: new RegExp(title) })).toHaveCount(0);
   const searchInput = sender.page.getByRole("combobox", { name: "Search workspace", exact: true });
   await searchInput.click();

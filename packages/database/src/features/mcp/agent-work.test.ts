@@ -14,7 +14,6 @@ import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
 
-/** Alice's agent in a live DM turn, with tool calls as its home desktop makes them. */
 async function liveAgent() {
   const x = await hostFixture(f);
   const host = await hostWork(f.db, x.agent.identity);
@@ -29,7 +28,6 @@ async function liveAgent() {
     // SAFETY: execution parses its payload with the output schema registered for K.
     return result.output as McpOutput<K>;
   };
-  /** Claims and starts the next turn on the home desktop. */
   const next = async () => {
     const [claimed] = await x.claim();
     if (!claimed) throw new Error("Nothing to claim.");
@@ -123,7 +121,6 @@ test("a parent's message queues in the helper's session; stopping the helper sto
     status: "stopping",
     interruption: "stop",
   });
-  // The parent's unread message is dropped with the helper.
   expect((await x.itemRow(queued[0]!.id)).status).toBe("dropped");
   expect(
     await rejection(
@@ -145,7 +142,6 @@ test("routines change only in interactive turns, and the agent's routines wait f
     destination: { conversationId: x.dm.id, threadId: null },
   });
   expect((await x.call("list_routines", {}, x.main.context)).items).toEqual([created]);
-  // A background turn reads routines, but does not change them.
   const background = await x.turn(routineTurn({ conversationId: x.dm.id, threadId: null }));
   expect((await x.call("list_routines", {}, background)).items).toHaveLength(1);
   const refused = await rejection(

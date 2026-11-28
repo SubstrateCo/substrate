@@ -11,15 +11,12 @@ export function createIntegrationService(deps: {
   desktopScheme: DesktopScheme;
 }) {
   return {
-    /** A single-use ticket for the signed-in session to link a Google product in a browser. */
     createGoogleLinkTicket(scope: IdentityScope, product: GoogleProduct) {
       return serviceResult(() => deps.googleLink.create(scope.session.session, product));
     },
-    /** Google's consent screen and state cookies, or null when the ticket cannot be used. */
     startGoogleLink(ticket: string) {
       return deps.googleLink.start(ticket);
     },
-    /** Where a failed start sends the person: their settings in the desktop app. */
     returnURL: desktopLink("/settings/user", deps.desktopScheme),
   };
 }

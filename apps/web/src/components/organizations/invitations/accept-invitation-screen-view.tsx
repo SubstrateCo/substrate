@@ -27,7 +27,6 @@ export function AcceptInvitationScreen({
   signOut,
 }: {
   state: InvitationScreenState<Invitation>;
-  /** A refresh failed: the loaded invitation stays on screen. */
   stale?: boolean;
   pending?: boolean;
   error?: Error | null;
@@ -35,7 +34,6 @@ export function AcceptInvitationScreen({
   onAccept: () => void;
   declining?: boolean;
   onDecline: () => void;
-  /** The decline confirmation, while it is open. */
   declineDialog?: ReactNode;
   signOut: ReactNode;
 }) {

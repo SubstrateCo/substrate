@@ -62,7 +62,6 @@ function pauseDescription(pausedUntil: string | null) {
   return "Stop all alerts on every workspace for a time.";
 }
 
-/** Whether alerts show at all: on or off, paused, or limited to a schedule. */
 export function AlertSettings({
   preferences,
   pending,
@@ -72,7 +71,6 @@ export function AlertSettings({
   preferences: AccountNotificationPreferences;
   pending: boolean;
   onChange: (change: AccountChange) => void;
-  /** Saves the schedule with this change, or turns it on with default hours. */
   onScheduleChange: (change: Partial<Omit<NotificationSchedule, "timeZone">>) => void;
 }) {
   const off = !preferences.alertsEnabled;
@@ -121,7 +119,6 @@ export function AlertSettings({
   );
 }
 
-/** How an alert looks and sounds. */
 export function AlertAppearanceSettings({
   preferences,
   pending,
@@ -180,7 +177,6 @@ export function AlertAppearanceSettings({
   );
 }
 
-/** The viewer's own settings in the active workspace. */
 export function WorkspaceAlertSettings({
   preferences,
   pending,

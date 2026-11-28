@@ -84,7 +84,6 @@ test("the timeline marks the thread with unread replies until it is opened", asy
       body,
       threadId,
     });
-  // Outside DMs, replies count as unread only in threads the reader follows, such as their own.
   const quiet = await say("Quiet root", undefined, member);
   const busy = await say("Busy root", undefined, member);
   const read = await say("Already read reply", quiet.id);
@@ -93,7 +92,6 @@ test("the timeline marks the thread with unread replies until it is opened", asy
   });
   expect(marked.ok()).toBe(true);
   await say("Unread reply", busy.id);
-  // Reading this newer timeline message does not read the thread, which has its own position.
   await say("Later update");
 
   const reader = await client(member);
@@ -109,7 +107,6 @@ test("the timeline marks the thread with unread replies until it is opened", asy
   await expect(
     root("Quiet root").getByRole("button", { name: "1 reply", exact: true }),
   ).toBeVisible();
-  // The timeline is read, but the reply stays unread until the reader opens its thread.
   const row = conversationButton(page, channel.name);
   await expect(row.getByLabel("1 unread message", { exact: true })).toBeVisible();
   await expect(unreadThread).toBeVisible();
@@ -152,7 +149,6 @@ test("a conversation opens at a stable New divider and mentions show a badge unt
     data: { organizationId: member.organizationId, conversationId: channel.id, messageId: read },
   });
   expect(marked.ok()).toBe(true);
-  // The reader's own newer message is never the first unread one.
   await say(member, "My own note");
   await say(sender, "First new message");
   await say(sender, `@[person:${memberActorId}] please review`);
@@ -174,7 +170,6 @@ test("a conversation opens at a stable New divider and mentions show a badge unt
   await expect(first).toBeInViewport();
   expect(await top(message("My own note"))).toBeLessThan(await top(divider));
   expect(await top(divider)).toBeLessThan(await top(first));
-  // The newest message is out of view, so the conversation stays unread.
   await expect(message("New 30")).not.toBeInViewport();
   await expect(row.getByLabel("1 mention, 32 unread messages", { exact: true })).toBeVisible();
 
@@ -183,7 +178,6 @@ test("a conversation opens at a stable New divider and mentions show a badge unt
   });
   await expect(message("New 30")).toBeInViewport();
   await expect(row.getByLabel(/unread|mention/)).toHaveCount(0);
-  // Reading moves the cursor but not the divider, also when more messages arrive.
   await say(sender, "Arrives while open");
   await expect(message("Arrives while open")).toBeInViewport();
   await expect(divider).toHaveCount(1);
@@ -191,7 +185,6 @@ test("a conversation opens at a stable New divider and mentions show a badge unt
   expect(await top(message("My own note"))).toBeLessThan(await top(divider));
   await expect(row.getByLabel(/unread|mention/)).toHaveCount(0);
 
-  // With nothing unread, the conversation opens at the newest message without a divider.
   await page.reload();
   await expect(message("Arrives while open")).toBeInViewport();
   await expect(divider).toHaveCount(0);

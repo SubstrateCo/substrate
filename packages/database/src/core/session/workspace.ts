@@ -50,15 +50,11 @@ function prepareHumanWorkspace(db: DatabaseExecutor) {
     .prepare("human_workspace");
 }
 
-// Reuse compiled SQL, never identity or authorization results. Transactions keep their own executor.
 const humanWorkspaceQueries = new WeakMap<
   DatabaseExecutor,
   ReturnType<typeof prepareHumanWorkspace>
 >();
 
-// Verifies the session identity, membership and active actor in one statement, and reads
-// whether the user is an owner or admin of the organization now. Only a human's first workspace
-// use provisions an actor.
 export async function workspaceContext(db: DatabaseExecutor, scope: SessionIdentity) {
   let actor: { entityId: string; name: string; type: "human" | "agent" } | undefined;
   let userName: string;

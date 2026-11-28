@@ -20,10 +20,6 @@ import { X } from "lucide-react";
 const segmentClassName =
   "flex h-full min-w-0 items-center gap-1 px-2 hover:bg-row-hover aria-expanded:bg-row-hover";
 
-/**
- * One active filter as `[field │ operator │ value │ ×]`. The operator and value edit in place;
- * a required field has no remove button.
- */
 export function FilterPill({
   field,
   clause,
@@ -90,7 +86,6 @@ export function FilterPill({
             className={`${segmentClassName} font-medium`}
           >
             {summary.icons.length > 0 && (
-              // Option icons come unsized; bare icons take the field icon's size.
               <span
                 aria-hidden="true"
                 className="flex shrink-0 items-center gap-0.5 [&>svg]:size-3.5 [&>svg]:shrink-0"

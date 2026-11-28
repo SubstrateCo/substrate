@@ -10,7 +10,6 @@ type Batch = Parameters<typeof getMessageTargets>[0]["data"];
 
 const view = (conversationId: string, id: string) => ({ id, conversationId, body: id });
 
-// Fakes the server, which leaves out the targets the viewer can't open, and records each batch.
 const fakeServer = (hidden: string[] = [], fail = false) => {
   const requests: Batch[] = [];
   const request: typeof getMessageTargets = async ({ data }) => {
@@ -66,11 +65,9 @@ test("concurrent message targets share one request per organization and keep the
   expect(client.getQueryData(messageTargetOptions("org", "c2", "b").queryKey)).toMatchObject({
     message: { id: "b", conversationId: "c2" },
   });
-  // A target the batch leaves out fails like the single read's access denial.
   const denied = reason(results[2]);
   expect(denied).toBeInstanceOf(ApiError);
   expect(denied).toMatchObject({ code: "NOT_FOUND", status: 404 });
-  // Later reads start a new batch.
   await load(client, "org", "c1", "d");
   expect(requests).toHaveLength(3);
 });

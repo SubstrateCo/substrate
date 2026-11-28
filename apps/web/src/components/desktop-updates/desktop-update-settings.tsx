@@ -11,7 +11,6 @@ import { updatesBridge } from "@/lib/desktop/bridges";
 import { useDesktopUpdateCommand } from "@/queries/desktop/mutations";
 import { ArrowUpRight } from "lucide-react";
 
-// Only packaged desktop builds update. Browsers and development builds show nothing.
 export function DesktopUpdateSettings() {
   const bridge = updatesBridge();
   if (!bridge) return null;
@@ -91,7 +90,6 @@ function DesktopUpdateSettingsView({
   );
 }
 
-/** Restart once an automatic update is ready, download a manual one, or check again. */
 function UpdateControl({
   status: { install, state },
   pending,

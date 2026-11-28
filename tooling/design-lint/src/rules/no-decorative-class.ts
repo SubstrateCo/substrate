@@ -3,7 +3,6 @@ import { see } from "../design-doc.ts";
 
 type Finding = { messageId: string; className: string };
 
-/** The utility without its variants, important marks, and negative sign: `hover:-mt-1` → `mt-1`. */
 function utility(token: string) {
   const base = token.slice(token.lastIndexOf(":") + 1).replace(/^!|!$/g, "");
   return base.startsWith("-") ? base.slice(1) : base;
@@ -29,11 +28,9 @@ function check(token: string): string | undefined {
   return undefined;
 }
 
-// A fade from one surface to transparent, such as an edge that hints at more content below.
 const SURFACE_STOP =
   /^(?:from|via|to)-(?:transparent|background|card|popover|surface|inset|muted|sidebar)(?:\/\d+)?$/;
 
-/** Tokens in a string that read as a class list. Prose such as "Use uppercase" is skipped. */
 function findings(value: string): Finding[] {
   const tokens = value.split(/\s+/).filter(Boolean);
   const classList = tokens.some((token) =>

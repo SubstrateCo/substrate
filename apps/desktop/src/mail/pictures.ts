@@ -18,8 +18,6 @@ export function pictureURL(raw: string) {
   return url;
 }
 
-/** Match complete src/background attributes and CSS url() references, including HTML-escaped
- * query strings. A substring of a link or a renderer-supplied destination is not sufficient. */
 export function referencedPicture(html: string, source: string) {
   const url = pictureURL(source);
   if (!url) return null;
@@ -51,8 +49,6 @@ export async function readMailPicture(initial: URL, parent: AbortSignal): Promis
     const addresses = await lookup(url.hostname, { all: true });
     if (!addresses.length || addresses.some((a) => !isPublicRoutableHost(a.address))) return null;
     const address = addresses.find((a) => a.family === 4) ?? addresses[0]!;
-    // Connect to the checked address itself (no second DNS lookup). TLS verifies the original
-    // hostname, and each redirect goes through the same checks. No app cookies or referrer.
     const response = await new Promise<IncomingMessage>((resolve, reject) => {
       get(
         {

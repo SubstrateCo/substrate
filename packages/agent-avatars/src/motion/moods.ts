@@ -5,17 +5,12 @@ import type { MoodPose } from "./pose.ts";
 const TAU = Math.PI * 2;
 
 const deadzone = (value: number, zone: number) => (Math.abs(value) < zone ? 0 : value);
-/** A soft square wave between -1 and 1. */
 const sway = (t: number, period: number, sharpness = 3) =>
   Math.tanh(sharpness * Math.sin((t * TAU) / period));
 const bump = (p: number, center: number, width: number) => Math.exp(-(((p - center) / width) ** 2));
 
 type MoodTarget = (t: number, noise: Noise) => Partial<MoodPose>;
 
-/**
- * Each mood maps the seconds since it started to a target pose. Springs chase the target,
- * so these functions can jump (a glance, a saccade) and still look smooth.
- */
 export const MOOD_TARGETS: Record<Mood, MoodTarget> = {
   waiting(t, noise) {
     const gazeX = deadzone(noise.step(1, t, 2.6), 0.35) * 0.75;

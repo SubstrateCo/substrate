@@ -22,18 +22,14 @@ export type SearchResultItem = {
   kind: string;
   title: string;
   link: RecordLink;
-  // Task results only.
   projectName?: string;
   status?: TaskStatus;
-  // Conversation, channel, and message results.
   conversationKind?: ConversationKind;
   conversationName?: string;
   private?: boolean;
-  // Message results only: one line with references resolved for the viewer.
   excerpt?: string;
   authorName?: string;
   createdAt?: string;
-  // Channel results only.
   membership?: "joined" | "left" | "none";
   memberCount?: number;
 };
@@ -45,7 +41,6 @@ function conversationNoun(item: SearchResultItem) {
   return item.private ? "Private channel" : "Channel";
 }
 
-/** Where a message was sent: "#launch", a lock and the private channel's name, or the DM or group name. */
 function Place({ item }: { item: SearchResultItem }) {
   const name = item.conversationName ?? "a conversation";
   if (!item.conversationKind) return name;
@@ -58,7 +53,6 @@ function Place({ item }: { item: SearchResultItem }) {
   );
 }
 
-/** The query's matches in bold, case-insensitively. */
 function Highlight({ text, query }: { text: string; query: string }) {
   const needle = query.trim().toLowerCase();
   if (needle.length < 2) return text;
@@ -138,7 +132,6 @@ export function SearchResult({ item, query }: { item: SearchResultItem; query: s
   const { icon, title, kind, detail } = describe(item);
   return (
     <SearchRowFrame>
-      {/* Enter follows the row's router link, so unsaved-draft guards see the navigation. */}
       <CommandItem
         value={item.id}
         onSelect={() => link.current?.click()}
@@ -148,8 +141,6 @@ export function SearchResult({ item, query }: { item: SearchResultItem; query: s
         <SearchResultContent icon={icon}>
           <Link
             ref={link}
-            // Two lines at rest. The selected row shows the whole title and context, so a
-            // keyboard user can tell long results with the same start apart before opening one.
             className="line-clamp-2 block wrap-anywhere outline-none group-data-[selected=true]/command-item:line-clamp-none focus-visible:underline"
             {...item.link}
             aria-label={`${kind}: ${title}`}

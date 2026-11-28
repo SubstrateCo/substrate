@@ -25,7 +25,6 @@ export function mailReads(run: RunTransaction, org: string) {
         const unread = membership("unread", Date.now());
         const remote = sql`(select value from json_each(${JSON.stringify(ids)}))`;
         const selectIds = () => tx.select({ id: mailMessages.remoteId }).from(mailMessages);
-        // Walk local unread flags and look up remote unread IDs, without reading message bodies.
         const localOnly = selectIds().where(
           and(scope, unread, sql`${mailMessages.remoteId} not in ${remote}`),
         );
@@ -87,7 +86,6 @@ export function mailReads(run: RunTransaction, org: string) {
           .select({
             mailboxId: mailConnections.id,
             newCount: sql<number>`count(*) filter (where ${membership("new", now)})`,
-            // A page fetched after the last snapshot can already contain additional unread mail.
             unreadCount: sql<number>`max(coalesce(${mailConnections.unreadTotal}, 0), count(*) filter (where ${membership("unread", now)}))`,
             draftCount: sql<number>`count(*) filter (where ${membership("drafts", now)})`,
           })
@@ -106,8 +104,6 @@ export function mailReads(run: RunTransaction, org: string) {
             ),
           )
           .groupBy(mailConnections.id);
-        // Limit after matching the folder and collapsing threads. A busy Sent folder
-        // or a long conversation must not push older Inbox entries off page one.
         const { items } = await cachedConversations(tx, org, q);
         return {
           items,

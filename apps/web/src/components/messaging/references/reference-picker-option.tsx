@@ -69,10 +69,8 @@ export function ReferencePickerOption({
   kind: ReferenceKind;
   title: string;
   image?: string | null;
-  /** An agent's look. */
   avatar?: AgentAvatarCode | null;
   description?: string;
-  /** Tasks only: replaces the kind icon. */
   status?: TaskStatus;
   selected: boolean;
   onFocus: () => void;

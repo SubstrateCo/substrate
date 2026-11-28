@@ -16,10 +16,6 @@ const ownedTables: OwnedInsertsOptions = {
 
 const TESTS = ["**/*.test.ts", "**/test-support.ts", "**/testing/**"];
 
-/**
- * Architecture lint: layer rules from `architecture.config.json`, plus the AGENTS.md rules
- * for agent-work state and adapter capabilities. Paths are relative to the repository root.
- */
 export const architectureConfig = {
   jsPlugins: [{ name: "architecture", specifier: "./tooling/architecture-lint/src/index.ts" }],
   rules: {
@@ -35,7 +31,6 @@ export const architectureConfig = {
       },
     },
     {
-      // Every status in agent work belongs to a machine; elsewhere only machine writes are checked.
       files: [
         "packages/database/src/features/agent-work/**",
         "packages/client-storage/src/agent-work/**",

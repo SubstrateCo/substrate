@@ -3,14 +3,12 @@ import { z } from "zod";
 
 const identifier = z.string().min(1).max(200);
 
-// Audience keys select recipients; the server must still authorize each delivery.
 export const realtimeKeys = {
   organization: (organizationId: string) => ["organization", organizationId] as const,
   conversation: (conversationId: string) => ["conversation", conversationId] as const,
   actor: (organizationId: string, actorEntityId: string) =>
     ["actor", organizationId, actorEntityId] as const,
   user: (userId: string) => ["user", userId] as const,
-  // Members who can read the entity through its access container.
   entity: (organizationId: string, entityId: string) =>
     ["entity", organizationId, entityId] as const,
 };
@@ -40,34 +38,23 @@ export const realtimeDomain = z.enum([
 ]);
 export type RealtimeDomain = z.infer<typeof realtimeDomain>;
 
-// Narrows a messaging change. "messages": message content changed, but membership and
-// conversation details did not. "reactions": only the reactions of one message changed.
-// "read": only the viewer's read position, so only unread state, changed. Optional: without it,
-// clients refresh the whole messaging domain.
-//
-// "activity" narrows an agent-work change: only a live turn's activity text changed. What waits
-// for the owner, and what the host must run, did not.
-export const realtimeScope = z.enum(["messages", "reactions", "read", "activity"]);
+const messagingScopes = ["messages", "reactions", "read"] as const;
+const agentWorkScopes = ["activity"] as const;
+export const realtimeScope = z.enum([...messagingScopes, ...agentWorkScopes]);
 export type RealtimeScope = z.infer<typeof realtimeScope>;
 
-// A hint names at most this many tasks; a larger change names only the project.
 export const realtimeTaskLimit = 50;
 
-// Identifiers of the changed records. A hint carries them only to an audience that can see those
-// records, and never carries record data. Each is optional: without it, clients refresh more.
 export const realtimeDetail = {
   scope: realtimeScope.optional(),
   messageId: identifier.optional(),
-  // The thread of the changed message: null for the main timeline.
   threadId: identifier.nullable().optional(),
-  // The project of the changed work. Without taskIds, the project itself or any of its tasks.
   projectId: identifier.optional(),
-  // The changed tasks, all in projectId.
   taskIds: z.array(identifier).min(1).max(realtimeTaskLimit).optional(),
 };
 
 interface MessagingDetail {
-  scope?: Exclude<RealtimeScope, "activity">;
+  scope?: (typeof messagingScopes)[number];
   messageId?: string;
   threadId?: string | null;
 }
@@ -87,7 +74,7 @@ export type RealtimeHint =
   | (Audience & { domain: "messaging" } & MessagingDetail)
   | (Audience & { domain: "tasks"; scope?: never } & WorkDetail)
   | (Audience & { domain: "context"; scope?: never; messageId?: string } & WorkDetail)
-  | (Audience & { domain: "agent-work"; scope?: "activity" })
+  | (Audience & { domain: "agent-work"; scope?: (typeof agentWorkScopes)[number] })
   | (Audience & {
       domain: Exclude<RealtimeDomain, "messaging" | "tasks" | "context" | "agent-work">;
       scope?: never;

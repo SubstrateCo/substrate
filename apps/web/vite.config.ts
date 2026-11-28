@@ -11,7 +11,6 @@ export default defineConfig(({ mode }) => {
     "../..",
     "",
   );
-  // The dev server serves the public web origin and proxies the API origin.
   const webURL = new URL(
     process.env.SUBSTRATE_WEB_URL ?? env.SUBSTRATE_WEB_URL ?? "http://localhost:3000",
   );
@@ -29,7 +28,6 @@ export default defineConfig(({ mode }) => {
     },
     envDir: "../..",
     build: {
-      // The app, and the transparent window that shows screen notifications.
       rolldownOptions: {
         input: {
           main: fileURLToPath(new URL("./index.html", import.meta.url)),

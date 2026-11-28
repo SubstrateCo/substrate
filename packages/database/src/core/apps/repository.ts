@@ -44,8 +44,6 @@ export function appRepository(context: RepositoryContext, identity: SessionIdent
         enabledApps: apps,
       });
       if (!parsed.success) throw new ValidationError("Invalid app settings.");
-      // One statement writes every app, and only for an owner or admin. Concurrent updates write
-      // the rows in the same order, so the settings always match one whole update.
       const values = sql.join(
         organizationOptionalAppIds.map(
           (appId) => sql`(${appId}::text, ${apps.includes(appId)}::boolean)`,

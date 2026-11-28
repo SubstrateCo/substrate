@@ -42,7 +42,6 @@ test("a context outside a session lists and opens nothing once its actor is disa
   const context = new RepositoryContext(f.db, { organizationId: f.orgA, actorEntityId: f.bob });
   expect(await bob.projects.list()).toHaveLength(1);
   await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, f.bob));
-  // Lists and requireAccess check the actor in the same statement.
   expect(await bob.projects.list()).toEqual([]);
   expect(await bob.contacts.listContacts()).toEqual([]);
   expect(await rejection(context.requireAccess(project.entityId, "view"))).toBeInstanceOf(

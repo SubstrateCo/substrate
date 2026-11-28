@@ -71,7 +71,6 @@ test("an agent keeps at most the maximum number of servers", async () => {
   for (let index = 0; index < maxHarnessMcpServers; index++)
     await store.mcpServers.save("org-1", "agent-1", { ...remote, id: `server-${index}` }, index);
   await rejects(store.mcpServers.save("org-1", "agent-1", { ...remote, id: "one-more" }, 100));
-  // Replacing an existing server stays possible at the limit.
   await store.mcpServers.save(
     "org-1",
     "agent-1",

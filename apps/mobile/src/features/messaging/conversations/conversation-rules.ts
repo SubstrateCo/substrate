@@ -4,13 +4,11 @@ import type { Conversation, ConversationMember } from "../types";
 
 type Named = Pick<Conversation, "name" | "kind"> & { task?: Conversation["task"] };
 
-// The server names unnamed DMs and groups after their other members.
 export function conversationName(conversation: Named): string {
   if (conversation.task) return conversation.task.title;
   return conversation.name || (conversation.kind === "channel" ? "Untitled channel" : "Only you");
 }
 
-/** Running text: only a public channel gets "#". */
 export function conversationLabel(conversation: Named & { private: boolean }): string {
   const name = conversationName(conversation);
   return conversation.kind === "channel" && !conversation.private ? `#${name}` : name;
@@ -19,7 +17,6 @@ export function conversationLabel(conversation: Named & { private: boolean }): s
 export type UnreadRow = { conversationId: string; unreadCount: number; mentionCount: number };
 export type SidebarConversation = Conversation & { unreadCount: number; mentionCount: number };
 
-/** Joined conversations in the sidebar's sections. Task discussions live with their task. */
 export function sidebarSections(
   conversations: readonly Conversation[],
   unread: readonly UnreadRow[] = [],
@@ -42,14 +39,12 @@ export function sidebarSections(
   };
 }
 
-/** Public channels the person can read but has not joined or has left. */
 export function browsableChannels(conversations: readonly Conversation[]) {
   return conversations.filter(
     (conversation) => conversation.kind === "channel" && !conversation.joined && !conversation.task,
   );
 }
 
-// Only people can own, leave, or receive a conversation. Agents are members without a user.
 export function humanMembers(members: readonly ConversationMember[]) {
   return members.flatMap((member) =>
     member.type === "human" && member.userId ? [{ userId: member.userId, name: member.name }] : [],
@@ -70,15 +65,10 @@ export function leaveConsequence(conversation: Conversation) {
 
 export type AgentOption = { agentId: string; name: string; actorId?: string };
 
-/**
- * Joins the viewer's enabled agents with their agent members here. Members that match no enabled
- * agent stay removable.
- */
 export function conversationAgentOptions(
   agents: readonly { id: string; name: string; enabled: boolean }[],
   members: readonly ConversationMember[],
 ): AgentOption[] {
-  // The server sets agentId only for the viewer's own agents.
   const own = members.filter((member) => member.type === "agent" && member.agentId);
   const matched = new Set<string>();
   const options = agents.flatMap((agent): AgentOption[] => {
@@ -103,7 +93,6 @@ export function conversationAgentOptions(
   ];
 }
 
-/** The viewer's open DM with their agent, so a new message reuses it. */
 export function agentDirectMessage(conversations: readonly Conversation[], agentId: string) {
   return conversations.find(
     (conversation) =>

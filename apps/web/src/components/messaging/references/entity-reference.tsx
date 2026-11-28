@@ -20,11 +20,9 @@ export type WorkspaceReference = {
   kind: ReferenceKind;
   label: string;
   link?: RecordLink;
-  /** Tasks only: shown as the chip's icon, with the label for screen readers. */
   status?: { value: TaskStatus; label: string };
 };
 
-// A person mention keeps the `@` glyph; every other kind uses its shared icon.
 const referenceIcons = {
   person: AtSign,
   agent: entityKinds.agent.icon,
@@ -98,7 +96,6 @@ function ResolvedReference({ reference }: { reference: WorkspaceReference }) {
   );
 }
 
-/** The kind icon and label. A task shows its status icon, named for screen readers. */
 function ReferenceContent({ reference, label }: { reference: WorkspaceReference; label: string }) {
   const { status } = reference;
   if (status)

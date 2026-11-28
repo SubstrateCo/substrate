@@ -3,10 +3,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { initials } from "@/lib/people/initials";
 
-/**
- * A workspace's logo, or its initials, on a neutral rounded-square tile. Without a `name` it is a
- * loading placeholder; with `opening` it shows a spinner while the workspace opens.
- */
 export function WorkspaceTile({
   name,
   logo,

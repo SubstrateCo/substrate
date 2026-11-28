@@ -34,7 +34,6 @@ test("one owner-only run status follows its source visibility and keeps run cont
     conversationId: channel.id,
     threadId: null,
   });
-  // A browser has no bridge: the server's work shows here, and Stop goes to the server.
   const user = await client(owner);
   await visit(user, channel.id);
   const inline = user.page.getByRole("region", { name: "Jarvis reply", exact: true });
@@ -56,7 +55,6 @@ test("one owner-only run status follows its source visibility and keeps run cont
   await expect(user.page.getByRole("tooltip")).toHaveCount(0);
   await captureScreenshot(user.page, "agent-run-status-inline");
 
-  // Make the source leave the viewport without changing its turn or access.
   for (let index = 0; index < 40; index++) {
     await post(owner, "messaging/messages", {
       conversationId: channel.id,
@@ -74,14 +72,12 @@ test("one owner-only run status follows its source visibility and keeps run cont
     "data-variant",
     "destructive-ghost",
   );
-  // The notice floats over the timeline: the timeline and the composer keep their place.
   expect(await timeline.boundingBox()).toEqual(before.timeline);
   expect(await composer.boundingBox()).toEqual(before.composer);
   await captureScreenshot(user.page, "agent-run-status-offscreen");
   await floating.getByRole("button", { name: "Show Jarvis’s work", exact: true }).click();
   await expect(inline).toBeInViewport();
   await expect(floating).toHaveText("");
-  // The summary comes from the server; the timeline stays on the home desktop.
   await inline.getByRole("button", { name: /Open transcript/ }).click();
   const transcript = user.page.getByRole("complementary", { name: "Agent transcript" });
   await expect(transcript).toBeVisible();
@@ -95,7 +91,6 @@ test("one owner-only run status follows its source visibility and keeps run cont
     "aria-busy",
     "true",
   );
-  // The home desktop sees the stopping turn and ends it.
   await finishTurn(owner, turn, { status: "cancelled", interruption: "stop" });
   await expect(inline.getByRole("button", { name: /^Stopped/ })).toBeVisible();
   await expect(inline.getByRole("button", { name: "Stop run", exact: true })).toHaveCount(0);
@@ -133,7 +128,6 @@ test("a queued status expanding the last message stays fully visible at the bott
   const user = await client(owner);
   await visit(user, channel.id);
   const timeline = user.page.getByRole("log", { name: "Messages", exact: true });
-  // The server queues the message as it posts. Its receipt arrives with the realtime hint.
   const body = "Please review the release checklist next.";
   await post(owner, "messaging/messages", {
     conversationId: channel.id,
@@ -187,7 +181,6 @@ test("quiet agent work stays in its own message row between human messages", asy
   });
   await finishTurn(owner, turn, { status: "completed", outcome: "silent" });
   await expect(pending.getByText("Checked · nothing to report", { exact: true })).toBeVisible();
-  // Agent work is a sibling row, not nested in any user's article.
   await expect(user.page.getByRole("article").filter({ has: pending })).toHaveCount(0);
   await expect(pending.getByRole("article")).toHaveCount(1);
   await expect(pending.getByText("We still need the desktop app.")).toHaveCount(0);
@@ -220,7 +213,6 @@ test("finished work moves to the published result and keeps its existing transcr
     conversationId: channel.id,
     threadId: null,
   });
-  // The agent's home desktop: its bridge serves the transcript the server doesn't keep.
   const user = await client(owner);
   await localAgentWork(user, {
     agentId: agent.id,
@@ -239,7 +231,6 @@ test("finished work moves to the published result and keeps its existing transcr
   const result = user.page
     .getByRole("article")
     .filter({ hasText: "The main risk is the pending security review." });
-  // The reply takes the pending row's place: its byline stays where the row's was.
   await expect(result.getByRole("button", { name: /Working ·/ })).toBeVisible();
   const replyName = await result.getByText("Jarvis", { exact: true }).boundingBox();
   expect(Math.abs(replyName!.y - pendingName!.y)).toBeLessThanOrEqual(4);

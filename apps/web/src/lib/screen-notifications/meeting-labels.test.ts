@@ -1,7 +1,6 @@
 import { meetingTiming } from "./meeting-labels";
 import { describe, expect, test } from "bun:test";
 
-// Local times, so the range reads the same in every time zone.
 const at = (hours: number, minutes: number, seconds = 0) =>
   new Date(2026, 10, 22, hours, minutes, seconds);
 

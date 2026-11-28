@@ -3,7 +3,7 @@ import type { MailAPI, MailScope, MailLabelFilter } from "@substrate/contracts/m
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { useMailChanges, useReaderSelection } from "./inbox-actions";
 import {
@@ -24,6 +24,7 @@ import { folderView } from "./mail-views";
 import { MailboxDialogs } from "./mailboxes/mailbox-dialogs";
 import { CompactMailboxPicker, MailboxSidebar, MobileViewPicker } from "./mailboxes/mailboxes";
 import { Reader } from "./reader/reader";
+import { useLatest } from "./use-latest";
 import { ErrorState } from "@/components/feedback/error-state";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
@@ -111,12 +112,7 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
       navigate("unread");
     },
   };
-  // The actions close over the selection and label filter. Consumers call the latest ones
-  // through a stable context value, so a new selection doesn't change the context.
-  const latest = useRef({ changeMessage, labelActions, focusList, onManage: nav.onManage });
-  useLayoutEffect(() => {
-    latest.current = { changeMessage, labelActions, focusList, onManage: nav.onManage };
-  });
+  const latest = useLatest({ changeMessage, labelActions, focusList, onManage: nav.onManage });
   const workspace = useMemo<InboxWorkspaceValue>(
     () => ({
       api,
@@ -131,12 +127,11 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
         focusList: () => latest.current.focusList(),
       },
     }),
-    [api, scope],
+    [api, scope, latest],
   );
   const current = folderView(selectedLabel, view);
   const syncing = busy || sync.isPending;
   const syncAccount = () => sync.mutate(account);
-  // Failed authority checks must also hide cached account names, counts and the open reader.
   const unreadable = accounts.isError || page.isError || thread.isError;
   if (unreadable || paging.failed)
     return (

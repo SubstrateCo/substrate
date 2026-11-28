@@ -35,7 +35,6 @@ test("publication is consented, idempotent, organization-visible, and cannot rev
   expect(visible).not.toHaveProperty("messageId");
   await rejection(f.forActor(f.outsider, f.orgB).contactInteractions.get(first.result.entityId));
   await repos.contactInteractions.update(first.result.entityId, { summary: "Later correction" });
-  // A repeat, even with a different summary, returns the published interaction unchanged.
   const replay = await alice.contactInteractions.publishInteraction({
     ...input,
     summary: "Changed replay",

@@ -9,7 +9,6 @@ export interface MessageNotice {
   kind: string;
   createdAt: string;
   readAt: string | null;
-  /** The server's decision from the recipient's settings. The notice stays in the feed either way. */
   alert: boolean;
   messageId: string | null;
   conversationId: string | null;
@@ -33,7 +32,6 @@ export interface NativeAlert {
 }
 
 const defaultPreferences: AlertPreferences = { preview: "hidden", sound: true, flash: "idle" };
-// More new alerts than this in one window become one summary alert.
 const burstLimit = 3;
 const burstWindow = 60_000;
 const soundWindow = 10_000;
@@ -59,11 +57,6 @@ function targetOf(row: MessageNotice, organizationId: string): NoticeTarget | nu
   return null;
 }
 
-/**
- * The text of one alert. `count` is the number of unread notices the alert stands for. A hidden
- * preview never shows names or message text, so they stay out of the system notification history.
- */
-/** The renderer page a clicked alert opens. */
 export function noticeURL(target: NoticeTarget, rendererURL: string) {
   const paths = { message: "/messages", task: "/tasks", feed: "/notifications" };
   const destination = new URL(paths[target.kind], rendererURL);
@@ -83,7 +76,6 @@ function alertTitle(row: MessageNotice, count: number, hidden: boolean) {
     return hidden
       ? `${count} new notifications`
       : `${count} new in ${row.sourceName ?? "Substrate"}`;
-  // A task title is content; a message title is a fixed label such as "You were mentioned".
   if (row.kind === "assignment")
     return hidden ? "Task assigned to you" : `Task assigned: ${row.title}`;
   if (hidden || !row.sourceName) return row.title;
@@ -98,7 +90,6 @@ export function alertText(row: MessageNotice, count: number, preview: AlertPrefe
   return { title, body: `${sender}: ${row.excerpt}` };
 }
 
-// Hints contain no content. Every display and click reads the recipient's current, access-filtered feed.
 export function createMessageNotifications(options: {
   read(organizationId: string): Promise<MessageNotice[]>;
   readPreferences(): Promise<AlertPreferences>;
@@ -115,9 +106,7 @@ export function createMessageNotifications(options: {
   let newest = "";
   let initialized = false;
   let preferences = defaultPreferences;
-  // The newest notice seen per session and workspace, kept across reconnects for the summary.
   const resume = new Map<string, string>();
-  // One open alert per conversation or task, with the unread notices it stands for.
   const groups = new Map<string, { dismiss: () => void; ids: Set<string> }>();
   let shownAt: number[] = [];
   let soundAt = -Infinity;
@@ -177,7 +166,6 @@ export function createMessageNotifications(options: {
     seen = new Set(rows.map((row) => row.id));
     newest = rows.reduce((at, row) => (row.createdAt > at ? row.createdAt : at), "");
     initialized = true;
-    // A reconnect shows one summary of what arrived while away. A new launch or sign-in stays quiet.
     if (!since) return;
     const missed = rows.filter(
       (row) => row.alert && !row.readAt && row.createdAt > since && targetOf(row, id),
@@ -194,7 +182,6 @@ export function createMessageNotifications(options: {
     sessionKey = options.sessionKey();
     const epoch = generation;
     if (!id) return;
-    // Baseline is quiet: signing in does not replay old notifications.
     work = Promise.all([options.read(id), refreshPreferences(epoch)])
       .then(([rows]) => {
         if (current(epoch)) baseline(id, epoch, rows);
@@ -237,7 +224,6 @@ export function createMessageNotifications(options: {
           new Set(arrivals.map(groupOf)).size > burstLimit ||
           (arrivals.length > 0 && shownAt.length >= burstLimit);
         if (burst) {
-          // A burst becomes one summary alert that replaces the conversation alerts.
           const ids = new Set(arrivals.map((row) => row.id));
           for (const [key, group] of groups) {
             for (const groupId of group.ids) if (unread.has(groupId)) ids.add(groupId);
@@ -248,7 +234,6 @@ export function createMessageNotifications(options: {
           }
           summary(id, epoch, ids);
         } else {
-          // Each conversation or task gets one alert per batch, for its newest notice.
           const batches = new Map<string, { row: MessageNotice; ids: Set<string> }>();
           for (const row of arrivals) {
             const key = groups.has("summary") ? "summary" : groupOf(row);
@@ -268,8 +253,6 @@ export function createMessageNotifications(options: {
             });
           }
         }
-        // An alert is stale once all its notices are read here or on another device, or are gone
-        // from the feed because their target was deleted or became inaccessible.
         for (const [key, group] of groups) {
           for (const groupId of group.ids) if (!unread.has(groupId)) group.ids.delete(groupId);
           if (group.ids.size) continue;

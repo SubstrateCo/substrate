@@ -52,7 +52,6 @@ for (const kind of ["channel", "group"] as const) {
     await picker.fill(agent.name);
     await expect(dialog.getByRole("option").filter({ hasText: agent.name })).toHaveCount(0);
     await picker.fill(actors.member.email);
-    // Existing members must not appear as selectable workspace people.
     await expect(dialog.getByRole("option").filter({ hasText: actors.member.name })).toHaveCount(0);
   });
 }
@@ -96,7 +95,6 @@ test("a partial add keeps only the failed agent selected and reports the saved p
   await dialog.getByRole("option").filter({ hasText: actors.member.email }).click();
   await picker.fill(agent.name);
   await dialog.getByRole("option").filter({ hasText: agent.name }).click();
-  // A real concurrent change makes the selected agent ineligible before the form submits.
   const deleted = await actors.sender.request.post("/api/v1/agents/actors/delete", {
     data: { id: agent.id },
   });

@@ -35,23 +35,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export type MessagingScreenProps = {
   organizationId: string;
-  /** Without one, the screen opens the first joined conversation, or asks to choose. */
   conversationId?: string;
-  /** A linked message: a timeline message opens there, a reply opens its thread. */
   targetMessageId?: string;
-  /** Opens a thread. The conversation is passed because the screen may pick it by itself. */
   onOpenThread: (threadId: string, conversationId?: string) => void;
-  /**
-   * Starts a record from a message: a task, a CRM record, or a logged interaction. The shell opens
-   * the source form. Without it, these message actions are hidden.
-   */
   onCreateFromMessage?: (source: MessageSource) => void;
   onOpenRecord: (target: RecordTarget) => void;
-  /** Opens a profile in the shell. Without it, a conversation-scoped profile sheet opens here. */
   onOpenProfile?: (target: MessagingProfileTarget) => void;
-  /** Opens the conversations drawer. */
   onOpenConversations?: () => void;
-  /** Opens another conversation, or a thread in it, from a reference or a profile. */
   onOpenConversation?: (target: MessagingConversationTarget) => void;
 };
 
@@ -131,8 +121,6 @@ function OpenConversation({
   const management = useConversationManagement(organizationId, conversation.id);
   const insets = useSafeAreaInsets();
 
-  // A linked reply opens its thread once; a linked timeline message anchors the timeline until
-  // the person jumps to the latest.
   const linked = target.data;
   const handled = useRef<string | undefined>(undefined);
   useEffect(() => {

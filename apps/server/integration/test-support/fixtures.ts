@@ -8,15 +8,8 @@ import { randomUUID } from "node:crypto";
 
 const origin = appOrigin;
 
-/** A verified account whose session is active in `organizationId`. */
 export type Actor = WorkspaceAccount & { name: string };
 
-/**
- * One set per worker. The owner and member share the owner's workspace; the outsider and the
- * recipient each own a workspace. After each test the fixtures restore the owner's avatar and
- * workspace logo, and the workspace fixture restores active workspaces; a failed test restarts
- * the worker and so recreates the actors.
- */
 export type Actors = { owner: Actor; member: Actor; outsider: Actor; recipient: Actor };
 
 async function activate(actor: Actor, organizationId: string) {
@@ -54,10 +47,6 @@ async function join(owner: Actor, member: Actor, organizationId: string) {
 export const test = base.extend<
   {
     actors: Actors;
-    /**
-     * Creates a workspace owned by `owner`, joins `member` to it, and activates it for both.
-     * Returns both actors scoped to it. Teardown activates each actor's own workspace again.
-     */
     workspace: {
       (owner: Actor): Promise<[Actor]>;
       (owner: Actor, member: Actor): Promise<[Actor, Actor]>;
@@ -100,7 +89,6 @@ export const test = base.extend<
     { scope: "worker", timeout: 60_000 },
   ],
 
-  // The owner is shared by every test of the worker, so its pictures are restored after each.
   actors: async ({ workerActors }, use) => {
     const { owner } = workerActors;
     const before = { image: await image(owner), logo: await logo(owner) };

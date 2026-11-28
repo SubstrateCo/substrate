@@ -4,7 +4,6 @@ import { contactAddresses, contactUrls } from "./details.schema";
 import { contactIdentifiers, contacts } from "./schema";
 import { and, asc, eq } from "drizzle-orm";
 
-/** The contact's profile, in one query that also checks that the actor can read it. */
 export async function readContactProfile(ctx: RepositoryContext, contactId: string) {
   const [profile] = await ctx.db
     .select()
@@ -20,7 +19,6 @@ export async function readContactProfile(ctx: RepositoryContext, contactId: stri
   return profile;
 }
 
-/** Reads of each detail collection of a contact, in ID order. Callers check access first. */
 export function contactDetailRows(ctx: RepositoryContext, contactId: string) {
   const owned = (table: typeof contactIdentifiers | typeof contactAddresses | typeof contactUrls) =>
     and(eq(table.organizationId, ctx.scope.organizationId), eq(table.contactEntityId, contactId));

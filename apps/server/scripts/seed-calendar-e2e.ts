@@ -167,7 +167,6 @@ try {
     const contactEntityId = recorded.createdContactEntityIds[0];
     if (!contactEntityId || recorded.interactionEntityIds.length !== 1)
       throw new Error("The fixture meeting must record one contact interaction.");
-    // Keep reads active, but never let the background worker call Google for this fixture.
     await tx
       .update(calendars)
       .set({ nextSyncAt: null })

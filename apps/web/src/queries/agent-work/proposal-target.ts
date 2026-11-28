@@ -13,13 +13,8 @@ import {
 import { recordLabelsOptions } from "@/queries/context/links";
 import { projectQueryOptions } from "@/queries/tasks/options";
 
-/** The label read takes at most this many IDs. */
 const labelBatch = 50;
 
-/**
- * The records a proposal names, resolved through the viewer's own reads. The server returns
- * labels only for records the viewer can open, so any other ID resolves as hidden.
- */
 export function useProposalTarget(
   organizationId: string,
   request: AgentRequestView,
@@ -39,7 +34,6 @@ export function useProposalTarget(
   const pending = reads.some((read) => read.isPending);
   const failed = reads.some((read) => read.isError);
 
-  // A task change also names the task's project and parent, which its project's detail holds.
   const taskId = action && proposalDetailTask(action);
   const taskLabel = taskId ? labels.get(taskId) : undefined;
   const projectId = taskLabel?.type === "task" ? (taskLabel.projectId ?? undefined) : undefined;
@@ -52,7 +46,6 @@ export function useProposalTarget(
     label: (id) => {
       const label = labels.get(id);
       if (label) return label;
-      // A failed read names nothing, so its records stay hidden and approval stays blocked.
       return pending && !failed ? undefined : null;
     },
     project: (id) => {

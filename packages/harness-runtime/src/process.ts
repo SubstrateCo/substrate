@@ -14,7 +14,6 @@ export type NativeProcess = ChildProcessWithoutNullStreams &
     close: [number | null, NodeJS.Signals | null];
   }>;
 
-/** Windows command extensions in lookup order: PATHEXT, then .PS1 for PowerShell-only shims. */
 export function windowsCommandExtensions(pathext: string | undefined): string[] {
   const parsed = (pathext ?? "")
     .split(";")
@@ -25,16 +24,19 @@ export function windowsCommandExtensions(pathext: string | undefined): string[] 
   return [...new Set([...extensions, ".ps1"])];
 }
 
-/** Native Windows programs that shell:false can start. */
 export function isWindowsNative(file: string): boolean {
   return [".exe", ".com"].includes(extname(file).toLowerCase());
 }
 
-/**
- * Every file named `name` on PATH, in lookup order, with symlinks resolved. On Windows each
- * folder is tried with every command extension, and a file without one never counts. Launcher
- * scripts such as npm's .cmd shims are included: callers decide whether they can follow them.
- */
+async function existingFile(candidate: string): Promise<string | undefined> {
+  try {
+    await access(candidate);
+    return await realpath(candidate);
+  } catch {
+    return undefined;
+  }
+}
+
 export async function findCommands(
   name: string,
   path: string,
@@ -47,15 +49,10 @@ export async function findCommands(
     const folder = directory.trim().replace(/^"+|"+$/g, "");
     if (!folder) continue;
     for (const extension of extensions) {
-      try {
-        const candidate = join(folder, name + extension);
-        await access(candidate);
-        const resolved = await realpath(candidate);
-        if (windows && !extensions.includes(extname(resolved).toLowerCase())) continue;
-        if (!found.includes(resolved)) found.push(resolved);
-      } catch {
-        /* Not at this PATH entry; try the next one. */
-      }
+      const resolved = await existingFile(join(folder, name + extension));
+      if (!resolved) continue;
+      if (windows && !extensions.includes(extname(resolved).toLowerCase())) continue;
+      if (!found.includes(resolved)) found.push(resolved);
     }
   }
   return found;

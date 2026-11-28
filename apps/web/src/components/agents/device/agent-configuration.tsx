@@ -32,7 +32,6 @@ import { toast } from "sonner";
 
 function skillLists(scannedSkills: HarnessSkill[] | undefined, showDefaults: boolean) {
   if (!scannedSkills) return { skills: [], managedSkills: showDefaults ? startupSkills : [] };
-  // Substrate rewrites its own skills on every sync, so they are not listed as editable.
   const isStartupSkill = (skill: HarnessSkill) => startupSkillIds.includes(skill.id);
   return {
     skills: scannedSkills.filter((skill) => !isStartupSkill(skill)),
@@ -71,7 +70,6 @@ function RefreshConfiguration({
 type ConfigurationDialog =
   | { kind: "editSkill"; id?: string }
   | { kind: "deleteSkill"; skill: { id: string; name: string } }
-  /** The server being edited, or none for a new one. */
   | { kind: "editServer"; server?: HarnessMcpServer }
   | { kind: "deleteServer"; server: HarnessMcpServer }
   | { kind: "reset" };
@@ -85,7 +83,6 @@ export function AgentConfiguration({
   agentId?: string;
   harness: HarnessKind;
   section: AgentSection;
-  /** The agent's home desktop. Its skills and MCP servers are edited only there. */
   homeDevice: { name: string; current: boolean } | null;
 }) {
   const { userId, organizationId } = useWorkspaceScope();
@@ -196,7 +193,6 @@ export function AgentConfiguration({
   );
 }
 
-/** The open editor or confirmation, if any. Each closes itself once its change is saved. */
 function ConfigurationDialogs({
   dialog,
   skill,
@@ -206,7 +202,6 @@ function ConfigurationDialogs({
   restoreFocus,
 }: {
   dialog: ConfigurationDialog | undefined;
-  /** The skill being edited, or none for a new one. */
   skill: HarnessSkill | undefined;
   servers: HarnessMcpServer[];
   mutations: Pick<

@@ -22,7 +22,6 @@ test("every semantic color matches browser-resolved web CSS, including aliases a
 
   const reference = await page.evaluate(
     ({ source, scheme, exported, mobile }) => {
-      // The browser, not the generator, resolves the original stylesheet's cascade and aliases.
       const frame = document.createElement("iframe");
       frame.hidden = true;
       document.body.append(frame);

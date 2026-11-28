@@ -2,7 +2,6 @@ import type { AppType } from "@substrate/server/api";
 
 import { hc } from "hono/client";
 
-/** The same-origin RPC client. Tests pass a fake `fetch` to see and answer its requests. */
 export const createApi = (fetch: typeof globalThis.fetch = globalThis.fetch) =>
   hc<AppType>("/", { fetch, init: { credentials: "same-origin" } });
 

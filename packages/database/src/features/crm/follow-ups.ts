@@ -26,7 +26,6 @@ export async function createFollowUp(
   const { scope } = context;
   return context.transaction(async (ctx) => {
     await requireAppsEnabled(ctx, ["crm", "tasks"]);
-    // The request identity is actor-scoped, independent of the chosen source.
     const fingerprint = requestFingerprint({
       source: input.entityId,
       project: input.projectEntityId,

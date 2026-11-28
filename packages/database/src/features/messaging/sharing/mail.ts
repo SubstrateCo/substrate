@@ -60,7 +60,6 @@ export async function finishSharingMail(
       ),
     )
     .returning();
-  // The sharing list shows delivery. A lease lost to another sender changes nothing here.
   const hints = finished ? await sharingInvitationHints(db, finished) : [];
   for (const hint of hints) effectsFor(db).hint(hint);
   return null;

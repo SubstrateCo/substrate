@@ -57,7 +57,6 @@ test("starting an agent DM leaves a pre-existing ordinary DM unchanged", async (
   const input = { kind: "agent_dm" as const, agentIds: [agent.agentId] };
   const existing = await alice.createConversation(input);
   await alice.sendMessage(existing.id, "Existing history");
-  // The old system stored an owner-agent pair as an ordinary DM.
   await f.db
     .update(messagingConversations)
     .set({

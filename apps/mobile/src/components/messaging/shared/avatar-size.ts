@@ -1,4 +1,3 @@
-/** Avatar sizes shared by people and agents, so rows line up whoever is in them. */
 export const AVATAR_SIZES = {
   sm: { px: 24, box: "size-6" },
   md: { px: 32, box: "size-8" },

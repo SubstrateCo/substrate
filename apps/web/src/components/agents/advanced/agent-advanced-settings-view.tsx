@@ -11,10 +11,6 @@ const appLabels: Record<AgentOptionalAppId, string> = {
   inbox: "Inbox",
 };
 
-/**
- * Where the agent works: its own folder, a chosen one, or unknown here because only its home
- * desktop keeps the folder.
- */
 export type WorkingFolder =
   | { kind: "here"; path: string | null; reading: boolean }
   | { kind: "elsewhere"; deviceName: string | null };
@@ -28,10 +24,6 @@ function folderDetail(folder: WorkingFolder) {
   return folder.path ?? "Its own folder in Substrate.";
 }
 
-/**
- * What Substrate gives the agent and where it works. Each control saves at once, so the section
- * has no footer and holds no draft. Replies, messages, search and helpers always stay on.
- */
 export function AgentAdvancedSettingsView({
   folder,
   guide,
@@ -48,7 +40,6 @@ export function AgentAdvancedSettingsView({
 }: {
   folder: WorkingFolder;
   guide: boolean;
-  /** The optional apps the organization has on, and whether this agent uses each one. */
   apps: readonly { app: AgentOptionalAppId; enabled: boolean }[];
   saving: boolean;
   choosing: boolean;

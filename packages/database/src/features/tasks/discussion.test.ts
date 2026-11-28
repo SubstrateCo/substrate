@@ -248,7 +248,6 @@ test("an enabled owner agent gets work for a normal mention but never for the sa
   const project = await alice.projects.create({ name: "Agent task" });
   const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Discussion" });
   const conversationId = await alice.tasks.ensureDiscussion(task.entityId);
-  // A historical agent participant makes this input wake-eligible without granting any access.
   await f.db.insert(messagingParticipants).values({
     conversationId,
     organizationId: f.orgA,

@@ -13,7 +13,6 @@ afterEach(async () => {
   await rm(root, { recursive: true, force: true });
 });
 
-/** A CLI on PATH that answers --version: the test runtime itself, which prints its own version. */
 async function installCli(name: string) {
   const directory = join(root, "bin");
   await mkdir(directory, { recursive: true });
@@ -42,7 +41,6 @@ const environment = (path: string, packages: Record<string, string> = {}): Detec
   resolvePackage: (name) => packages[name],
 });
 
-/** An npm global install folder: a .cmd shim beside node_modules, as `npm i -g` lays it out. */
 async function installNpmShim(name: string, nativeSegments?: string[]) {
   const directory = join(root, "npm");
   await mkdir(directory, { recursive: true });

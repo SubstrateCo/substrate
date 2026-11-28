@@ -13,10 +13,6 @@ export const harnessOptions: {
 export const harnessLabel = (harness: string) =>
   harnessOptions.find((option) => option.value === harness)?.label ?? harness;
 
-/**
- * Harnesses to offer: the detected ones, plus the agent's current harness so its setting stays
- * visible. Before the desktop reports detection, every harness is offered.
- */
 export function visibleHarnessOptions(
   inspections: HarnessInspection[] | undefined,
   current: AgentConfiguration["harness"],

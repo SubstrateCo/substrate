@@ -56,7 +56,6 @@ const reasons = (...values: string[]) => ({
 });
 
 describe("Google failures", () => {
-  // Each reply fails once; retryable ones fail on every retry too.
   const classify = async (reply: Exclude<Reply, "network">) => {
     const error = await failure(
       client(Array(googleMaxRetries + 1).fill(reply)).google.get(url, json),
@@ -174,7 +173,6 @@ describe("Google retries", () => {
     ]);
     expect(await google.get(url, json)).toEqual({ ok: true });
     expect(requests).toHaveLength(4);
-    // random() = 0.5 waits 75% of each step: 500 ms, 1 s, 2 s.
     expect(sleeps).toEqual([375, 750, 1500]);
   });
 

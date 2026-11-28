@@ -31,7 +31,6 @@ export const adapterCapabilitiesSchema = z.object({
 });
 export type AdapterCapabilities = z.infer<typeof adapterCapabilitiesSchema>;
 
-/** Token counts as reported. contextUsed and contextWindow drive epoch rotation. */
 const usageSchema = z.object({
   inputTokens: z.number().optional(),
   outputTokens: z.number().optional(),
@@ -146,7 +145,6 @@ export interface HarnessCommandResults {
 export type HarnessCommandResult<C extends HarnessCommand = HarnessCommand> =
   HarnessCommandResults[C["type"]];
 
-/** Canonical events. Raw native payloads stay inside adapters, except request data. */
 const harnessEventBodySchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("turn.started") }),
   z.object({

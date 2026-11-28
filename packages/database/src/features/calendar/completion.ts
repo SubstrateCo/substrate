@@ -95,8 +95,6 @@ export function recordMeetingInteractions(
     const owner = await ownerContext(tx, calendar);
     if (!owner) return nothing();
 
-    // Compare-and-set: of two concurrent runs, only the first marks the meeting and continues.
-    // A failure later in this transaction rolls the mark back.
     const [marked] = await tx
       .update(calendarEvents)
       .set({ interactionsRecordedAt: now })
@@ -121,7 +119,6 @@ export function recordMeetingInteractions(
   });
 }
 
-// The owner's own scope, resolved the way a session is. Null when the owner can no longer act.
 async function ownerContext(db: DatabaseExecutor, calendar: typeof calendars.$inferSelect) {
   try {
     const { context } = await workspaceContext(db, {
@@ -138,8 +135,6 @@ async function ownerContext(db: DatabaseExecutor, calendar: typeof calendars.$in
 type Attendee = typeof calendarEventAttendees.$inferSelect;
 type Person = { email: string; normalizedEmail: string; displayName: string | null };
 
-// Attendees who are not the owner, a room, a decliner, or a verified member of the organization.
-// A member match only skips the attendee; it never links the attendee to a user.
 async function outsidePeople(ctx: RepositoryContext, attendees: Attendee[]): Promise<Person[]> {
   const candidates = attendees.flatMap((attendee) => {
     if (attendee.isSelf || attendee.isResource || attendee.responseStatus === "declined") return [];
@@ -153,7 +148,6 @@ async function outsidePeople(ctx: RepositoryContext, attendees: Attendee[]): Pro
         { email: value, normalizedEmail: normalizedValue, displayName: attendee.displayName },
       ];
     } catch (error) {
-      // An address that a contact cannot store is skipped.
       if (error instanceof ValidationError) return [];
       throw error;
     }
@@ -181,8 +175,6 @@ async function outsidePeople(ctx: RepositoryContext, attendees: Attendee[]): Pro
   });
 }
 
-// The oldest live contact with each email in the organization, or a new one. A person whose
-// contact is archived in CRM is skipped, as publication refuses archived contacts.
 async function resolveContacts(ctx: RepositoryContext, people: Person[]) {
   const matches = await ctx.db
     .select({
@@ -241,18 +233,15 @@ async function resolveContacts(ctx: RepositoryContext, people: Person[]) {
     if (match) {
       if (match.archivedAt) continue;
       contactIds.add(match.contactEntityId);
-      // Only a name the calendar generated is replaced; a name a person typed is kept.
       if (
         displayName !== match.contactName &&
         [match.email, person.email].some((email) =>
           isGeneratedContactName(match.contactName, email),
         )
       )
-        // The normal update path: it records CRM `updated` activity and the contact's hint.
         await repository.updateContact(match.contactEntityId, { displayName });
       continue;
     }
-    // The normal creation path: it records CRM `created` activity and the contact's hint.
     const contact = await repository.createContact({ displayName });
     await repository.addIdentifier(contact.entityId, {
       type: "email",
@@ -271,8 +260,6 @@ async function createInteractions(
   contactIds: string[],
 ) {
   const { organizationId, actorEntityId } = ctx.scope;
-  // Claims each contact's container version in ID order, as publication does, so concurrent
-  // writers to the same contacts conflict instead of interleaving.
   const parents = await ctx.requireStructuralAccessAll(contactIds, "edit");
   const linked = await ctx.db
     .select({ contactEntityId: contactInteractions.contactEntityId })

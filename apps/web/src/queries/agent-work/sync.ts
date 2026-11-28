@@ -7,11 +7,6 @@ import { useEffect } from "react";
 import { queryKeys } from "../keys";
 import { agentWorkBridge } from "@/lib/desktop/bridges";
 
-/**
- * The local reads a bridge change hint names. A hint without IDs refreshes all local reads.
- * The homed agents always refresh, because every change can start or end a live turn. Server
- * work changes through realtime hints, not through the bridge.
- */
 export function bridgeChangeTargets(
   userId: string,
   organizationId: string,
@@ -29,12 +24,6 @@ function startsWith(key: QueryKey, prefix: QueryKey) {
   return prefix.length < key.length && partialMatchKey(key, prefix);
 }
 
-/**
- * Collects the keys of bridge change hints for a short window, then invalidates each distinct
- * key once. The desktop sends several hints within milliseconds, each naming the homed agents.
- * A key that another pending key covers, such as any local read under the all-local key, is
- * dropped.
- */
 export function createBridgeChangeBatcher(
   userId: string,
   organizationId: string,
@@ -62,7 +51,6 @@ export function createBridgeChangeBatcher(
   };
 }
 
-/** Keeps local transcripts fresh on the home desktop. Mount once in the workspace frame. */
 export function useAgentWorkBridgeSync(userId: string | undefined, organizationId?: string | null) {
   const client = useQueryClient();
   useEffect(() => {

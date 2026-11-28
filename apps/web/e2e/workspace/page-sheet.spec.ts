@@ -4,7 +4,6 @@ import { visit } from "../test-support/fixtures";
 import { test } from "../test-support/workspace-fixtures";
 import { expect } from "@playwright/test";
 
-// Keep normal-motion coverage for sheet transitions and focus restoration.
 test.use({ reducedMotion: "no-preference" });
 
 test("contact sheets keep the list stable, replace records, and restore focus in dark mode", async ({

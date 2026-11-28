@@ -11,7 +11,6 @@ export interface WorkspaceScope {
   admin: boolean;
 }
 
-// Agent configuration and home-device selection belong to the person, across workspaces.
 export interface OwnerSessionIdentity {
   userId: string;
   installationId?: string;

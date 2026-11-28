@@ -7,7 +7,6 @@ import { useTheme } from "@/theme/provider";
 import { CircleCheck, Info, OctagonX, TriangleAlert } from "lucide-react-native";
 import { Toaster as Sonner } from "sonner";
 
-/** Hover or hold to expand upward. Release touch or leave hover to collapse. */
 export function Toaster() {
   const { colorScheme, colors, metrics } = useTheme();
   const offset = useToastOffset();

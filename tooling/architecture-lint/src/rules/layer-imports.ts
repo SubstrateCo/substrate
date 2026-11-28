@@ -3,7 +3,6 @@ import type { ArchitectureConfig } from "../layers/config.ts";
 import type { ImportTarget, LayerModel } from "../layers/model.ts";
 import { layerFinding } from "./layer-finding.ts";
 
-/** A forbidImports entry: an exact target label, or a `/regex/` for the label or specifier. */
 function importTest(entry: string) {
   const end = entry.lastIndexOf("/");
   if (entry.startsWith("/") && end > 0) {
@@ -33,10 +32,6 @@ function typeOnly(node: AstNode) {
   return node.type === "ExportAllDeclaration" && node.exportKind === "type";
 }
 
-/**
- * Import boundaries from `architecture.config.json`: the built-in X3 check of each layer's
- * `mayImport` list, and every rule with `forbidImports`.
- */
 export function layerImports(config: ArchitectureConfig, model: LayerModel): Rule {
   const rules = config.rules
     .filter((rule) => rule.forbidImports?.length)

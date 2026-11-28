@@ -6,7 +6,6 @@ test("a conversation with exactly one page of messages keeps them after Older me
   client,
 }) => {
   const channel = await conversation(actors.sender, [actors.member.email]);
-  // The page size is 50, so the only signal that nothing is older is an empty older page.
   for (let index = 0; index < 50; index++)
     await post(actors.sender, "messaging/messages", {
       conversationId: channel.id,
@@ -70,7 +69,6 @@ test("scrolling up offers a quiet scroll to latest, and only a newer message off
   await expect(newMessages).toHaveCount(0);
   await expect(scrollToLatest).toHaveCount(0);
 
-  // Sending while scrolled up shows the sent message, not a New messages offer.
   await log.evaluate((node) => {
     node.scrollTop = 0;
   });

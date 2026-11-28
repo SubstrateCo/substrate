@@ -10,7 +10,6 @@ export interface MotionFrame {
   elapsed: number;
 }
 
-/** Encode only frames received from the real Chromium page; never generate substitute footage. */
 export async function encodeMotion(
   frames: MotionFrame[],
   directory: string,

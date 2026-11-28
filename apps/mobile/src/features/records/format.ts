@@ -40,7 +40,6 @@ const accessCopy: Partial<Record<ServiceErrorCode, string>> = {
   PAYLOAD_TOO_LARGE: "That's too large to save.",
 };
 
-/** Copy that is safe to show for a failed request. */
 export function errorText(error: Error | null, fallback = "Something went wrong. Try again.") {
   if (error instanceof ApiError) return error.userMessage ?? accessCopy[error.code] ?? fallback;
   if (error instanceof NetworkError) return "Couldn't reach the server. Check your connection.";
@@ -55,7 +54,6 @@ function inThisYear(date: Date) {
   return date.getFullYear() === new Date().getFullYear();
 }
 
-/** A calendar date stored as YYYY-MM-DD, shown in the reader's locale without a time zone shift. */
 export function formatDate(value: string | null | undefined) {
   if (!value) return "";
   const [year, month, day] = value.slice(0, 10).split("-").map(Number);
@@ -76,7 +74,6 @@ export function nowTime() {
   return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 }
 
-/** A local YYYY-MM-DD date and 24-hour HH:MM time as an instant, or null when either is invalid. */
 export function localInstant(date: string, time: string) {
   if (!validDate(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return null;
   const [year = 0, month = 0, day = 0] = date.split("-").map(Number);

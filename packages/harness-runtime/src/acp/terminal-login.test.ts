@@ -8,7 +8,6 @@ import {
 import { describe, expect, test } from "bun:test";
 import { tmpdir } from "node:os";
 
-// The launch runs a script with Bun; the method's arguments follow the script's own.
 const script = `
 const [mode, ...rest] = process.argv.slice(1);
 if (mode === "argv") { console.log(JSON.stringify(rest)); process.exit(0); }
@@ -47,7 +46,6 @@ function run(args: string[], env?: Record<string, string>) {
         else waiters.push(waiter);
     },
   });
-  /** Resolves once the output contains text. */
   const printed = (text: string) =>
     output().includes(text)
       ? Promise.resolve()

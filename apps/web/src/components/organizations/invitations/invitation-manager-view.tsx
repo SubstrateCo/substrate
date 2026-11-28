@@ -21,10 +21,6 @@ export type InvitationListItem = {
 
 const inviteDescription = "Invite people by email. They join with the role you pick.";
 
-/**
- * `framed` shows the form in a settings card with sent invitations below it.
- * Otherwise, setup shows only the form with its own heading.
- */
 export function InvitationManager({
   roles,
   invitations,
@@ -39,7 +35,6 @@ export function InvitationManager({
   onCancel,
   onCopyLink,
 }: {
-  /** The roles the viewer may invite with. */
   roles: readonly InvitationRoleOption[];
   invitations?: InvitationListItem[];
   loading?: boolean;
@@ -51,7 +46,6 @@ export function InvitationManager({
   onRetry: () => void;
   onInvite: (email: string, role: OrganizationRole, resend?: boolean) => void;
   onCancel: (id: string) => void;
-  /** Copies an invitation's link to the clipboard. Rejects when it could not. */
   onCopyLink: (id: string) => Promise<void>;
 }) {
   const busy = sending || canceling;
@@ -65,7 +59,6 @@ export function InvitationManager({
       />
     </div>
   );
-  // The table brings its own border, so the list is never framed in a second card.
   const sent = (
     <section aria-labelledby="sent-invitations-title" className="space-y-3">
       <GroupTitle id="sent-invitations-title" title="Sent invitations" />

@@ -22,7 +22,6 @@ import { useCrmMutation } from "@/queries/crm/mutations";
 
 const permissions = permissionLevels.map((value) => ({ value, label: crmAccessLabels[value] }));
 
-/** Direct access to a record. Show it only to readers whose capabilities allow `canManageAccess`. */
 export function RecordSharing({
   entityId,
   name,
@@ -32,7 +31,6 @@ export function RecordSharing({
 }: {
   entityId: string;
   name: string;
-  /** The record kind in copy, such as "deal". */
   noun: string;
   onClose: () => void;
   onRestoreFocus?: () => void;
@@ -143,7 +141,6 @@ export function RecordSharing({
   );
 }
 
-/** The record's grants. A failed refresh keeps the loaded grants under the error. */
 function DirectAccessBody<T>({
   state,
   directoryReady,

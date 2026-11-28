@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-/** The status icon of a task row. For editors it opens a menu that changes the status. */
 export function TaskStatusMenu({
   status,
   title,

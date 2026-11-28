@@ -20,7 +20,6 @@ import { and, desc, eq, isNull, sql, type SQL, type SQLWrapper } from "drizzle-o
 type Timestamp = Date | string;
 type Page = ReturnType<typeof newestFirstPagination>;
 
-/** Each type's query reads one page of rows older than the cursor, in the same order. */
 function window(p: Page, time: SQL, id: SQLWrapper) {
   return {
     take: p.take,
@@ -30,10 +29,6 @@ function window(p: Page, time: SQL, id: SQLWrapper) {
   };
 }
 
-/**
- * Merges newest-first rows of several types into one page. Each type's query already returned its
- * newest rows past the cursor, so the newest rows of the merge are the page.
- */
 export async function newestPage<T extends { id: string; at: Timestamp }>(
   p: Page,
   branches: Promise<T[]>[],
@@ -51,7 +46,6 @@ export async function newestPage<T extends { id: string; at: Timestamp }>(
   return { items: page.items.map(({ row }) => row), nextCursor: page.nextCursor };
 }
 
-/** Agent search: names and titles, or words in text. Each type is one small query. */
 export function mcpSearchQueries(ctx: RepositoryContext, identity: SessionIdentity) {
   const { db, scope } = ctx;
   const updatedAt = newest(entities.updatedAt);

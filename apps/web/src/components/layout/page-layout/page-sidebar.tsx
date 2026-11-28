@@ -6,7 +6,6 @@ import { PageHeader } from "@/components/layout/page-header";
 import { ResizableHandle, ResizablePanel } from "@/components/ui/resizable";
 import { cn } from "cn";
 
-// Leading pane. Every sidebar has the same default, minimum, and maximum width.
 const width = { default: 240, min: 180, max: 360 };
 
 export function PageSidebar({
@@ -61,7 +60,6 @@ export function PageSidebarHeader({
   actions?: ReactNode;
   className?: string;
 }) {
-  // The pane header without its border: the sidebar background already separates it.
   return (
     <PageHeader
       variant="pane"
@@ -73,7 +71,6 @@ export function PageSidebarHeader({
   );
 }
 
-/** The title of a group of sidebar rows: one `h-7` band. The rows follow at `gap-0.5`. */
 export function PageSidebarGroupTitle({
   as: Title = "h2",
   className,
@@ -92,7 +89,6 @@ export function PageSidebarGroupTitle({
 }
 
 export function PageSidebarContent({ className, ...props }: ComponentProps<"div">) {
-  // Always follows PageSidebarHeader, so it needs no top padding.
   return (
     <div
       data-slot="page-sidebar-content"

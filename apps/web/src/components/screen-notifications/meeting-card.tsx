@@ -11,10 +11,6 @@ import { meetingTiming } from "@/lib/screen-notifications/meeting-labels";
 import { cn } from "cn";
 import { Video, X } from "lucide-react";
 
-/**
- * A meeting reminder inside the shared toast frame: the calendar's color, the title, when it starts,
- * and the actions under the text, like the update toast.
- */
 export function MeetingCard({
   notification,
   onAction,

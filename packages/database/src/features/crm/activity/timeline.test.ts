@@ -37,7 +37,6 @@ test("an account timeline page filters by its contacts before loading interactio
   const rows = await timeline(context, account.entityId);
   expect(rows.map((row) => row.entityId)).toEqual([call.entityId]);
   const { query, parameters } = pageStatement(recorded, "contact_interactions");
-  // The scope is resolved before the page, so no per-row test of links or affiliations remains.
   expect(query).not.toContain('"entity_links"');
   expect(query).not.toContain('"crm_affiliations"');
   expect(query).toContain('"contact_interactions"."contact_entity_id"');

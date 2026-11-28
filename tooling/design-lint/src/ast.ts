@@ -22,7 +22,6 @@ export function hasSpread(element: OpeningElement) {
   return element.attributes.some((item) => item.type === "JSXSpreadAttribute");
 }
 
-/** A string the expression always evaluates to, such as `"icon-sm"` or `` `icon-sm` ``. */
 function staticString(node: AstNode | null | undefined): string | undefined {
   if (!node) return undefined;
   // oxlint-disable-next-line deslop/no-runtime-typeof -- ESTree Literal values include strings, numbers, booleans, and null.
@@ -39,10 +38,6 @@ export function attributeString(element: OpeningElement, name: string) {
 
 export type StringSite = { value: string; node: AstNode };
 
-/**
- * The strings an expression can produce through literals, templates, conditionals, logical
- * operators, arrays, and object keys, which is the shape `cn(...)` and `clsx(...)` accept.
- */
 export function possibleStrings(node: AstNode | null | undefined): StringSite[] {
   if (!node) return [];
   if (node.type === "Literal")
@@ -94,7 +89,6 @@ function isClassFunction(callee: AstNode) {
   return callee.type === "Identifier" && CLASS_FUNCTIONS.has(callee.name);
 }
 
-// Expressions that pass a value through to the text they produce.
 const TEXT_PASS_THROUGH = new Set<AstNode["type"]>([
   "JSXExpressionContainer",
   "TemplateLiteral",
@@ -104,7 +98,6 @@ const TEXT_PASS_THROUGH = new Set<AstNode["type"]>([
   "BinaryExpression",
 ]);
 
-/** Whether a value ends up as JSX children, where it is rendered to the page as text. */
 export function isRenderedChild(node: AstNode) {
   for (let parent = node.parent; parent; parent = parent.parent) {
     if (parent.type === "JSXElement" || parent.type === "JSXFragment") return true;
@@ -113,7 +106,6 @@ export function isRenderedChild(node: AstNode) {
   return false;
 }
 
-/** The property name of `a.b` or `a?.b`, or undefined for computed access. */
 export function memberName(node: AstNode): string | undefined {
   if (node.type !== "MemberExpression" || node.computed) return undefined;
   return node.property.type === "Identifier" ? node.property.name : undefined;

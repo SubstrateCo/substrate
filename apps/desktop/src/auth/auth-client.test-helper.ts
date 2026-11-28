@@ -1,6 +1,5 @@
 import { mock } from "bun:test";
 
-// Keep Electron and fetch mocks inside this helper process, not the test runner.
 Object.defineProperty(process, "type", { value: "browser", configurable: true });
 const restoring = process.argv[2] === "restored-session";
 let ready = !restoring;
@@ -86,7 +85,6 @@ if (restoring) {
   );
   process.exit(0);
 }
-// Establish the original native cookie before measuring subsequent signals.
 await authClient.$fetch("/get-session");
 invalidated = 0;
 changed = 0;

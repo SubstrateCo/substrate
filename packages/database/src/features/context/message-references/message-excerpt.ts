@@ -6,7 +6,6 @@ import { messagingReferencePage } from "./messaging-references";
 
 const token = /@\[(task|project|person|agent|channel|thread):([0-9a-f-]{36})\]/gi;
 
-// Neutral words for references the reader cannot open. They never name the record.
 const unavailable = new Map([
   ["task", "a task"],
   ["project", "a project"],
@@ -33,7 +32,6 @@ export function excerptText(body: string, labels: ReadonlyMap<string, string>, l
     .replace(/\s+/g, " ")
     .trim();
   if (text.length <= length) return text;
-  // Cut at a word boundary when one is near, so the line does not end mid-word.
   const cut = text.slice(0, length - 1);
   const word = cut.replace(/\s+\S*$/, "");
   return `${word.length > length / 2 ? word : cut.trimEnd()}…`;

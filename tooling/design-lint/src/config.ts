@@ -5,10 +5,6 @@ const WEB = "apps/web/src";
 const DIALOG_INSETS =
   "Dialog parts own the insets: DialogHeader px-5 pt-5 pb-4, DialogBody px-5 pb-5 gap-4, DialogFooter px-5 py-3.";
 
-/**
- * Shared blocks outside components/ui that own their look through variants, so callers may only
- * place them. Paths are relative to components/.
- */
 const SHARED_BLOCKS = [
   "people/person-avatar",
   "people/actor-avatar",
@@ -26,11 +22,6 @@ const escape = (path: string) => path.replaceAll("/", "\\/");
 const ALIAS_MESSAGE =
   "Import design components through the @/components alias, not a relative path: design lint recognizes components by the import, so a relative import skips their contracts.";
 
-/**
- * Design-contract lint for the renderer: `@shadcn/lint` contracts for the primitives in
- * `components/ui`, plus the `design/*` rules from this package. Paths are relative to the
- * repository root, where `oxlint.config.ts` lives.
- */
 export const designConfig = {
   jsPlugins: [{ name: "design", specifier: "./tooling/design-lint/src/index.ts" }],
   settings: {
@@ -49,7 +40,6 @@ export const designConfig = {
           {
             pattern: "^Button$",
             allow: ["layout"],
-            // Not size-*: "[&_svg]:size-3.5" sizes the icon inside, which is allowed.
             deny: ["h-*", "min-h-*", "max-h-*"],
             message: {
               layout:
@@ -109,7 +99,6 @@ export const designConfig = {
           },
           {
             pattern: "^Heading$",
-            // outline-none: a heading that takes focus with tabIndex={-1} after a step changes.
             allow: ["layout", "spacing", "wrap-*", "break-*", "truncate", "outline-none"],
             message:
               '"{{className}}" restyles <Heading>. Pick the type role with variant ({{variants}}); use variant="inherit" when a container such as CardTitle sets the type.',
@@ -147,14 +136,12 @@ export const designConfig = {
               '"{{className}}" restyles <Tag>, which owns its border, radius, and type. For a status pass tone ("working", "success", "warning", "destructive") with an icon; inside a one-line row use size="sm". A surface that carries a status reuses toneBorder and toneFill from "@/components/feedback/tag".',
           },
           {
-            // The board is the scroll container, so the page inset sits on it.
             pattern: "^Board$",
             allow: ["layout", "spacing"],
             message:
               '"{{className}}" restyles <Board>, which owns the column row and its gap-4. Columns are BoardColumn.',
           },
           {
-            // A card fades while it is dragged.
             pattern: "^BoardCard$",
             allow: ["layout", "opacity-*"],
             message:
@@ -175,7 +162,6 @@ export const designConfig = {
     "shadcn/no-unknown-classes": [
       "error",
       {
-        // Hooks for component stylesheets (desktop-frame.css, typeset.css) and Sonner.
         allow: [
           "desktop-title-bar",
           "desktop-title-bar-search",
@@ -220,7 +206,6 @@ export const designConfig = {
                 message: 'Use the panels from "@/components/ui/resizable".',
               },
               {
-                // One icon per concept: block the lucide synonyms that drift in.
                 name: "lucide-react",
                 importNames: [
                   "Trash",
@@ -254,7 +239,6 @@ export const designConfig = {
             patterns: [
               { regex: "^\\.\\.?/(?:.*/)?ui/", message: ALIAS_MESSAGE },
               {
-                // Each shared block's file name is unique under components/, so its last segment names it.
                 regex: `^\\.\\.?/(?:.*/)?(?:${SHARED_BLOCKS.map((path) => path.split("/").pop()).join("|")})$`,
                 message: ALIAS_MESSAGE,
               },
@@ -273,8 +257,6 @@ export const designConfig = {
       },
     },
     {
-      // ActorAvatar itself, and views that only ever show agents: their settings, their pages,
-      // their pending replies, and the agent DM row.
       files: [
         `${WEB}/components/people/actor-avatar.tsx`,
         `${WEB}/components/agents/**`,
@@ -291,7 +273,6 @@ export const designConfig = {
       rules: { "no-restricted-imports": "off" },
     },
     {
-      // Vendored shadcn primitives define the treatments these rules point to.
       files: [`${WEB}/components/ui/**`],
       rules: {
         "design/icon-button-name": "off",
@@ -301,7 +282,6 @@ export const designConfig = {
       },
     },
     {
-      // Tests build dates to check them.
       files: [`${WEB}/**/*.test.ts`, `${WEB}/**/*.test.tsx`],
       rules: {
         "design/no-adhoc-date-format": "off",

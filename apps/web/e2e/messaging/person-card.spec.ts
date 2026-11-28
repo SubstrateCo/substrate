@@ -31,7 +31,6 @@ test("a message author's profile previews on hover and opens by keyboard", async
   await viewer.page.keyboard.press("Enter");
   const message = profile.getByRole("button", { name: "Message", exact: true });
   await expect(message).toBeVisible();
-  // The profile may load after focus moves into the popover.
   if (!(await message.evaluate((element) => element === document.activeElement)))
     await viewer.page.keyboard.press("Tab");
   await expect(message).toBeFocused();

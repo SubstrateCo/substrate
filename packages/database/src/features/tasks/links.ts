@@ -60,8 +60,6 @@ export type TaskLinkRow = {
   targetReadable: boolean;
 };
 
-// Links that match `where`, with both tasks and their projects live, in no order. Order by
-// "createdAt", then id.
 function linkRows(ctx: RepositoryContext, where: SQL) {
   return sql`
     SELECT link.id, link.relation_type AS kind, link.created_at AS "createdAt",
@@ -91,7 +89,6 @@ function linkRows(ctx: RepositoryContext, where: SQL) {
   `;
 }
 
-// An end the reader cannot open keeps its place in the link but loses every field.
 export function toLinkView(row: TaskLinkRow): TaskLinkView {
   return {
     id: row.id,
@@ -147,7 +144,6 @@ export function linksOfTask(ctx: RepositoryContext, taskEntityId: string) {
   );
 }
 
-// The caller can view `other`.
 export async function addTaskLink(
   ctx: RepositoryContext,
   task: Authorized<Task, "edit">,
@@ -179,9 +175,6 @@ export async function addTaskLink(
     }
   };
   await requireNewPair();
-  // These checks do not stop a concurrent writer. The unique indexes stop a duplicate and two
-  // tasks that block each other. A longer cycle from an exact race can exist, so every reader
-  // of `blocks` links must stop at a task it has seen.
   if (link.relationType === "blocks") {
     const cycle = await db.execute(sql`
       WITH RECURSIVE blocked(entity_id) AS (
@@ -205,7 +198,6 @@ export async function addTaskLink(
     .onConflictDoNothing()
     .returning();
   if (!created) {
-    // A concurrent writer linked this pair first. Give the error its link would have caused.
     await requireNewPair();
     throw new ValidationError("This link would make the tasks block each other.");
   }
@@ -214,13 +206,11 @@ export async function addTaskLink(
   return created;
 }
 
-// The link must touch the task.
 export async function removeTaskLink(
   ctx: RepositoryContext,
   task: Authorized<Task, "edit">,
   linkId: string,
 ) {
-  // Only task-to-task links: a `related_to` link to a CRM record is not a task relation.
   const [removed] = await ctx.db
     .delete(entityLinks)
     .where(
@@ -251,12 +241,10 @@ export async function removeTaskLink(
   return removed;
 }
 
-// Both tasks get a history row. The row names the relation only, never the other task.
 async function recordLinkActivity(
   ctx: RepositoryContext,
   verb: "Link added" | "Link removed",
   task: Task,
-  // A removed link names the other task only by ID.
   other: Task | { entityId: string },
   relation: TaskLinkRelation,
 ) {

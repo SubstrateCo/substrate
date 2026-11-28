@@ -186,7 +186,7 @@ test("sixteen Gmail unread messages: reconcile older cached labels, count uncach
     expect(bodyReads).toHaveLength(12);
     expect((await db.list({ ...q, mailboxId: box })).unreadCount).toBe(16);
     await syncMailbox(db, box, reader, signal);
-    expect(snapshots).toBe(2); // A verified and unchanged history watermark needs no recount.
+    expect(snapshots).toBe(2);
     ids.splice(ids.indexOf("from-spam"), 1);
     remote.set("from-spam", ["INBOX"]);
     watermark = "11";

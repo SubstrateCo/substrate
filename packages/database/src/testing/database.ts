@@ -88,7 +88,6 @@ export function setupDatabase() {
     context: (userId = "alice", organizationId = fixture.orgA) =>
       createContextService(testDatabase, { userId, organizationId }),
     verifyEmails: () => testDatabase.update(schema.user).set({ emailVerified: true }),
-    /** The actor's level on the entity, through the access check that repositories use. */
     accessLevel: async (actorEntityId: string, entityId: string) =>
       (
         await new RepositoryContext(testDatabase, {

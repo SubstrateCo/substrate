@@ -150,7 +150,6 @@ export function ContactDetail({ entityId }: { entityId: string }) {
   );
 }
 
-/** The open edit, archive, new interaction, or link account dialog of a contact. */
 function ContactDialogs({
   dialog,
   entityId,
@@ -184,7 +183,6 @@ function ContactDialogs({
       />
     );
   if (dialog === "affiliation") {
-    // Accounts are part of CRM; the dialog closes if CRM is turned off while it is open.
     if (!apps.enabled("crm")) return null;
     return <AffiliationEditor contactEntityId={entityId} onClose={onClose} />;
   }

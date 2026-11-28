@@ -19,9 +19,7 @@ export function useAgentConfigurationMutations(local: LocalAgentConfiguration | 
       if (!local) throw new Error("Select a workspace in the desktop app.");
       return action(local.controller, input);
     };
-  // Mutations succeed only with a local configuration.
   const onSuccess = () => local && client.invalidateQueries({ queryKey: local.queryKey });
-  /** Shows the server change at once, then reads the stored list again. */
   const updateServers = (change: (servers: HarnessMcpServer[]) => HarnessMcpServer[]) => {
     if (!local) return;
     client.setQueryData<ScannedConfiguration>(local.queryKey, (current) =>

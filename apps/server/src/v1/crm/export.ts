@@ -34,7 +34,6 @@ export function exportCrm(scope: WorkspaceScope, input: CrmExport) {
         archived: input.archived,
         search: input.search,
       };
-      // These lists enforce organization, entity visibility, and readable relationship IDs.
       if (input.kind === "accounts") {
         return (await crm.listAccounts(options)).map((row) => ({
           id: row.entityId,
@@ -71,7 +70,6 @@ export function exportCrm(scope: WorkspaceScope, input: CrmExport) {
       }));
     }
 
-    // Eagerly read the first page inside serviceResult so app/access failures map before streaming.
     const firstPage = await fetchPage();
     return { columns: headers[input.kind], records: records(firstPage) };
 

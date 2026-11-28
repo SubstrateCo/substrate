@@ -42,7 +42,6 @@ function fixture(
     connect(model: string | undefined = "large", resumeId?: string) {
       return createAcpAdapter(
         {
-          // Deliberately not Claude: the capability, not the harness name, controls selection.
           launch: { harness: "codex", command: "fake", args: [], version: "1" },
           prefixChannel: "instructions",
           prefix: "",

@@ -74,12 +74,10 @@ export function CreateConversationDialog({
   error,
 }: {
   kind: Conversation["kind"];
-  /** People to suggest, without the viewer. */
   people: readonly PickerPerson[];
   agents?: readonly PickerAgent[];
   onSubmit: (draft: ConversationDraft) => void;
   onClose: () => void;
-  /** Focus the control that opened the dialog, which the dialog cannot find by itself. */
   onRestoreFocus?: () => void;
   pending?: boolean;
   error?: Error | null;
@@ -92,7 +90,6 @@ export function CreateConversationDialog({
   const recipients: PickedRecipient[] = [];
   const form = useForm({
     defaultValues: { name: "", recipients, isPrivate: false },
-    // Moving between fields shows no errors; after a submit, errors clear as soon as fixed.
     validationLogic: revalidateLogic({ mode: "submit", modeAfterSubmission: "change" }),
     validators: { onDynamic: createConversationDraftSchema(kind) },
     onSubmit: ({ value }) => {

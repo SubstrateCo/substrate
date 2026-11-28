@@ -29,15 +29,10 @@ export function respond<T extends ServiceResult<unknown>>(c: Context, result: T)
   return c.json(result, result.success ? 200 : statuses[result.error.code]);
 }
 
-/**
- * Accepted for later, not failed: an agent tool call that waits for the owner's approval. The
- * body keeps the result envelope, so the agent reads its code and request ID.
- */
 export function respondAccepted<T extends { success: false }>(c: Context, body: T) {
   return c.json(body, 202);
 }
 
-/** Runs work with the request's abort signal and answers 499 when the client cancelled it. */
 export async function respondCancellable<T extends ServiceResult<unknown>>(
   c: Context,
   work: (signal: AbortSignal) => Promise<T>,

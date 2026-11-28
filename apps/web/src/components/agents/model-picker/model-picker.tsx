@@ -36,7 +36,6 @@ type Choice = HarnessModel & { harness: HarnessKind; saved?: boolean };
 
 const defaultModelLabel = "Default model";
 
-/** The choices with the saved model added when no catalog lists it, and that model. */
 function withSavedModel(choices: Choice[], harness: HarnessKind, model: string | undefined) {
   const saved = choices.find((choice) => choice.harness === harness && choice.id === model);
   if (saved || !model) return { choices, saved };
@@ -44,7 +43,6 @@ function withSavedModel(choices: Choice[], harness: HarnessKind, model: string |
   return { choices: [...choices, fallback], saved: fallback };
 }
 
-/** A short state in the picker footer, such as "Open the desktop app". */
 function PickerNote({
   icon,
   children,
@@ -146,7 +144,6 @@ function useModelCatalogs({
   const selected = catalogs[harnessOptions.findIndex((option) => option.value === browseHarness)];
   const groups = harnessOptions.filter(
     (option, index) =>
-      // Unavailable and signed-out harnesses have no models to list.
       (catalogs[index]?.data?.status ?? "ready") === "ready" && includesHarness(option.value),
   );
   return {
@@ -169,7 +166,6 @@ function useModelCatalogs({
   };
 }
 
-/** A search can name a model the catalog lacks. OpenCode models need a provider/model ID. */
 function customModelAllowed(harness: HarnessKind, query: string) {
   return query.length > 0 && (harness !== "opencode" || /^[^/\s]+\/\S+$/.test(query));
 }
@@ -178,7 +174,6 @@ function choiceKey(choice: Choice) {
   return `${choice.harness}/${choice.id}`;
 }
 
-/** One model row. A search names the runtime of each row. */
 function ModelItem({
   choice,
   groupLabel,
@@ -219,7 +214,6 @@ function ModelItem({
   );
 }
 
-/** The models of each listed runtime, then a custom model for the search text. */
 function ModelList({
   groups,
   choices,
@@ -297,7 +291,6 @@ function ModelList({
   );
 }
 
-/** A sign-in in place of the models, nothing for a runtime that is not installed, or the models. */
 function PickerBody({
   state,
   label,
@@ -332,7 +325,6 @@ export function ModelPicker({
   model?: string;
   disabled: boolean;
   onChange: (harness: HarnessKind, model: string | undefined) => void;
-  /** Starts a sign-in for a harness that needs one. Absent outside the desktop app. */
   onSignIn?: StartSignIn;
 }) {
   const { userId, organizationId } = useWorkspaceScope();

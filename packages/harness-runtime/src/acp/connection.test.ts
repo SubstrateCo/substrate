@@ -13,10 +13,6 @@ const handlers: AcpDriverHandlers = {
   request: async (request) => request.deny(),
 };
 
-/**
- * Stands in for a v2 driver: it asks for v2 on the wire and never accepts, so every agent in
- * these tests negotiates down to v1.
- */
 const v2Probe: ProtocolDriver = {
   version: 2,
   async initialize(transport: AcpTransport) {
@@ -72,7 +68,6 @@ test("a -32022 answer restarts the agent and initializes with a supported versio
   });
   await live.close();
 
-  // The negotiated version is remembered: the next start asks for v1 at once.
   const again = spawner({ protocolVersions: [1], rejectUnsupportedVersion: true });
   const next = await connectAcp(launch, "C:/agent", handlers, AbortSignal.timeout(5000), {
     spawn: again.spawn,

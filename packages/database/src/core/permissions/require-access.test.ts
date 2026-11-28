@@ -22,7 +22,6 @@ test("single-entity access reads its target once for both grants and admin acces
   expect(queries[0]?.match(/FROM "entities" e/g)).toHaveLength(1);
 });
 
-// A project container and one task inside it.
 async function hierarchy() {
   const owner = f.forActor(f.alice);
   const parent = await owner.projects.create({ name: "Parent" });
@@ -168,7 +167,6 @@ test("a structural claim on a child advances its container's version once", asyn
     [child.entityId, parent.entityId],
     "owner",
   );
-  // One read, and one claim for the container that both entities share.
   expect(queries).toHaveLength(2);
   expect(access.map(({ entity, level }) => [entity.entityId, level])).toEqual([
     [child.entityId, "owner"],
@@ -205,7 +203,6 @@ test("of two concurrent structural claims on one container, one wins and one con
   const before = await accessVersion(parent.entityId);
   const claimed = Promise.withResolvers<void>();
   const secondRead = Promise.withResolvers<void>();
-  // The second connection resolves once it sends its claim, so it read the old version first.
   const { db: second } = recordQueries((query) => {
     if (query.startsWith('update "entities"')) secondRead.resolve();
   });
@@ -232,7 +229,6 @@ test("structural claims on different containers do not conflict", async () => {
   const scope = { organizationId: f.orgA, actorEntityId: f.alice };
   await f.db.transaction(async (tx) => {
     await new RepositoryContext(tx, scope).requireStructuralAccess(parent.entityId, "owner");
-    // The first claim is still open. A claim on another container finishes at once.
     const access = await f.db.transaction((second) =>
       new RepositoryContext(second, scope).requireStructuralAccess(other.entityId, "owner"),
     );

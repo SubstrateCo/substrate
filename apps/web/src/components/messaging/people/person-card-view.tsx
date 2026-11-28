@@ -54,7 +54,6 @@ function Header({
   );
 }
 
-/** Identity already visible on the source record, without loading private profile details. */
 export function PersonIdentityCard({ actor }: { actor: ActorIdentity }) {
   return (
     <Header
@@ -71,7 +70,6 @@ export function PersonCard({
   action,
 }: {
   state: "loading" | "unavailable" | "ready";
-  /** The name the viewer already sees where the card opened. */
   name: string;
   profile?: PersonCardProfile;
   action?: ReactNode;

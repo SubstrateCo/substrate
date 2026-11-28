@@ -35,7 +35,6 @@ interface QueryPage {
   since?: Date;
   until?: Date;
   ascending?: boolean;
-  /** Newest-first pages: rows older than this whole-millisecond time and ID. */
   before?: { at: string; id: string };
 }
 
@@ -70,7 +69,6 @@ export async function queryTasks(
         ctx.readable(projects.entityId, "view", "project"),
       );
   const afterEntityId = entityCursor(input.afterEntityId);
-  // Each cursor matches one order: an ID cursor the ID order, a time cursor the newest order.
   if (afterEntityId && !input.ascending) throw new ValidationError("Invalid cursor.");
   if (input.before && input.ascending) throw new ValidationError("Invalid cursor.");
   let parentFilter;

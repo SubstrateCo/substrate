@@ -17,18 +17,15 @@ const commands: Record<UpdateNoticeAction, DesktopUpdateCommand> = {
   retry: "check",
 };
 
-// Only the desktop app has this bridge. Browsers show nothing.
 export function DesktopUpdateNotice() {
   const bridge = updatesBridge();
   if (!bridge) return null;
   return <UpdateNoticeToast bridge={bridge} />;
 }
 
-/** Shows the update that needs the person as one toast, updated in place as the status changes. */
 function UpdateNoticeToast({ bridge }: { bridge: DesktopUpdatesAPI }) {
   const status = useDesktopUpdates(bridge);
   const { pending, run } = useDesktopUpdateCommand(bridge);
-  // The notice the person closed stays hidden until the update means something new.
   const [dismissedKey, setDismissedKey] = useState<string>();
 
   useEffect(() => {

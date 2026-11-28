@@ -3,11 +3,6 @@ import { expect, type Page } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
-/**
- * Captures a full-page review screenshot only when `E2E_CAPTURE_SCREENSHOTS` or
- * `E2E_SCREENSHOTS_DIR` is set. Avoid committing screenshot calls in specs unless a workflow
- * explicitly requires visual capture.
- */
 export async function captureScreenshot(
   page: Page,
   name: string,

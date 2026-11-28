@@ -23,7 +23,6 @@ export const organizationResult = z
   })
   .nullable();
 
-// undefined means no preference change; null means an explicit successful unset.
 export function rememberedOrganization(
   // oxlint-disable-next-line deslop/prefer-literal-union -- Better Auth hooks pass every endpoint path, not just organization changes.
   path: string,

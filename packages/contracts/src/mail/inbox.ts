@@ -12,7 +12,6 @@ export const mailViews = [
 export type MailView = (typeof mailViews)[number];
 export const mailPageSize = 50;
 
-// Independent properties: a message sent to oneself can be both sent and in the inbox.
 export const mailFlag = {
   inbox: 1,
   unread: 2,
@@ -44,7 +43,6 @@ export const mailColors = [
   "Slate",
 ] as const;
 export type MailColor = (typeof mailColors)[number];
-// An absent color uses the automatic palette. Overrides are local, not Gmail label changes.
 export const labelFilterModes = ["show", "unread", "hide"] as const;
 export type LabelFilterMode = (typeof labelFilterModes)[number];
 export type MailLabel = {

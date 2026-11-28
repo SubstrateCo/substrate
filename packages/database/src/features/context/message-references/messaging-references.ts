@@ -9,8 +9,6 @@ import { alias } from "drizzle-orm/pg-core";
 
 type MessagingReference = Reference & { kind: "channel" | "thread" };
 
-// Channel and thread references are read from the message body, never stored. Each read resolves
-// them with the reader's current access.
 const visibleChannel = (db: DatabaseExecutor, scope: SessionIdentity) =>
   and(
     eq(messagingConversations.organizationId, scope.organizationId),
@@ -18,8 +16,6 @@ const visibleChannel = (db: DatabaseExecutor, scope: SessionIdentity) =>
     visibleConversations(db, scope),
   );
 
-// Messages reference channels and threads of their own organization that the author can see.
-// A thread is a root message with at least one reply. Any other target rejects the message.
 export async function checkMessagingReferences(
   db: DatabaseExecutor,
   scope: SessionIdentity,
@@ -76,7 +72,6 @@ export function bodyMessagingReferences(body: string): MessagingReference[] {
   );
 }
 
-// The caller has checked access to every source message. Targets the reader cannot see are left out.
 export async function messagingReferencePage(
   db: DatabaseExecutor,
   scope: SessionIdentity,

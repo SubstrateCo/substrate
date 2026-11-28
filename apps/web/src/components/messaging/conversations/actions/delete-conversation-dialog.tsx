@@ -17,9 +17,7 @@ export function DeleteConversationDialog({
   onClose,
   onRestoreFocus,
 }: {
-  /** The conversation as running text, from `conversationLabel`. */
   name: string;
-  /** "Delete channel" or "Delete group": the button names what it destroys. */
   deleteLabel?: string;
   linkedWork?: number;
   pending: boolean;

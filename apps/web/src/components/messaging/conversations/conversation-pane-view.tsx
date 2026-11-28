@@ -15,26 +15,19 @@ import { conversationName, type Conversation } from "@/lib/messaging/conversatio
 import type { ResourceStatus } from "@/lib/resource-state";
 
 type ConversationPaneProps = {
-  /** Replaces the pane's own header; `null` shows none. */
   header?: ReactNode;
   actions?: ReactNode;
   leftNotice?: ReactNode;
   renderMemberAction?: (member: HeaderMember) => ReactNode;
-  /** Set for a task discussion: the link that opens its task heads the pane. */
   taskLink?: ReactNode;
-  /** Under the header: the record the conversation was opened from. */
   source?: ReactNode;
-  /** The record sheet over the pane: a task discussion's task, or the record it was opened from. */
   sheet?: ReactNode;
   conversation: Conversation | null;
-  /** The signed-in user, so a DM header shows the other person. */
   viewerId?: string;
   state: ResourceStatus;
   error?: Error | null;
   onRetry: () => void;
-  /** The Add people control and its dialog. Shown only where the viewer can add people. */
   addMembers?: ReactNode;
-  /** The messages, or the empty conversation. */
   messages: ReactNode;
   composer: ReactNode;
   thread?: ReactNode;
@@ -48,7 +41,6 @@ export function ConversationPane(props: ConversationPaneProps) {
   return <OpenConversationPane {...props} conversation={conversation} />;
 }
 
-/** The messages failed to load or access is gone: no composer and no thread. */
 function BlockedConversationPane({
   conversation,
   viewerId,
@@ -83,7 +75,6 @@ function BlockedConversationPane({
   );
 }
 
-/** A task's discussion: its header links back to the task, without members or actions. */
 function TaskDiscussionPane({
   conversation,
   taskLink,
@@ -116,7 +107,6 @@ function OpenConversationPane({
   ...props
 }: ConversationPaneProps & { conversation: Conversation }) {
   const title = conversationName(conversation);
-  // Managers add people; members add their own agents.
   const canAddMembers = conversation.canManage || canManageOwnAgents(conversation);
   return (
     <ConversationPaneLayout

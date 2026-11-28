@@ -13,7 +13,6 @@ test("a combined search has no single kind or cursor", () => {
   expect(
     contextSearch.safeParse({ ...search, kinds: ["task"], after: crypto.randomUUID() }).success,
   ).toBe(false);
-  // Existing single-kind requests stay valid.
   expect(
     contextSearch.safeParse({ ...search, kind: "task", after: crypto.randomUUID() }).success,
   ).toBe(true);

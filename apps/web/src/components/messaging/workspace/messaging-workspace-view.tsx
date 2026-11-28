@@ -37,18 +37,10 @@ export function MessagingWorkspace({
   onSidebarOpenChange: (open: boolean) => void;
   onSelect: (id: string) => void;
   conversationLink: (id: string) => LinkProps;
-  /**
-   * The actions in a sidebar section header. `onCreate` opens the create dialog; call it with
-   * focus on the button that opened it, so closing the dialog can return there.
-   */
   renderSectionActions: (
     section: "channel" | "dm",
     onCreate: (kind: Conversation["kind"]) => void,
   ) => ReactNode;
-  /**
-   * The create dialog. It opens over the current conversation. Call `onRestoreFocus` when it
-   * closes, so focus goes back to the button that opened it, or to the sidebar when that is gone.
-   */
   renderCreate: (
     kind: Conversation["kind"],
     handlers: { onClose: () => void; onRestoreFocus: () => void },
@@ -57,13 +49,8 @@ export function MessagingWorkspace({
   state: ResourceStatus;
   error?: Error | null;
   onRetry: () => void;
-  /**
-   * The selected conversation, why it can't open, or the loading or empty pane. `onCreate` opens
-   * the create dialog from the empty pane.
-   */
   renderContent: (onCreate: (kind: Conversation["kind"]) => void) => ReactNode;
 }) {
-  // The empty state's buttons are gone once a conversation exists.
   const {
     value: creating,
     open: create,
@@ -151,7 +138,6 @@ function WorkspaceContent({
   );
 }
 
-/** The conversation pane while the conversations load. */
 export function WorkspaceLoading() {
   return (
     <section aria-label="Conversation" className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface">

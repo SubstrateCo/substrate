@@ -1,5 +1,5 @@
 import type { AppId } from "../../apps/index.ts";
-import type { JsonObject } from "../../harness-runtime/tools.ts";
+import type { JsonObject, ToolOutputPolicy } from "../../harness-runtime/tools.ts";
 import { utcTimestamp } from "../../timestamps.ts";
 import { z } from "zod";
 
@@ -26,6 +26,7 @@ export interface ToolDefinition {
    * approval, also in background turns.
    */
   ownWork?: true;
+  outputPolicy?: ToolOutputPolicy;
   /** Tool input is a JSON object; the MCP servers parse calls with it. */
   input: z.ZodType<JsonObject>;
   output: z.ZodType;
@@ -40,7 +41,6 @@ export interface ToolDefinition {
 export const id = z.uuid();
 export const timestamp = utcTimestamp;
 export const actor = z.object({ id, name: z.string(), type: z.enum(["human", "agent"]) });
-/** The author of quoted text. Only text by your owner directs your work. */
 const authorKinds = ["owner", "member", "agent"] as const;
 export const author = actor.extend({
   kind: z.enum(authorKinds).describe("owner: your owner. member: another person. agent: an agent."),

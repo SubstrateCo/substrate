@@ -111,7 +111,6 @@ test("editing a permission-filtered deal preserves an unavailable account", asyn
   await a.crm.share(deal.entityId, f.bob, "edit");
   const visible = await b.crm.getDeal(deal.entityId);
   expect(visible.deal.accountEntityId).toBeNull();
-  // Every member reads every contact, so only the account is hidden.
   expect(visible.contacts).toMatchObject([
     { contact: { entityId: contact.entityId }, isPrimary: true },
   ]);

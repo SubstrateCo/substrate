@@ -2,10 +2,6 @@ import { useEffect, useState } from "react";
 
 const maxDelay = 2 ** 31 - 1;
 
-/**
- * Returns a time to compare expiry dates with. It changes only when the next expiry passes,
- * so lists do not render again every second.
- */
 export function useExpiryTime(expiries: readonly (string | Date)[] = []) {
   const [now, setNow] = useState(Date.now);
   const next = Math.min(

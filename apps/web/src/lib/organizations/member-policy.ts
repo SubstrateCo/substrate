@@ -21,28 +21,19 @@ export const organizationRoles: readonly {
   description: roleDescriptions[value],
 }));
 
-/** The most powerful stored role, from the shared role parser. */
 export function primaryRole(role: string): OrganizationRole {
   return storedPrimaryRole(role);
 }
 
-/** A human label for a stored role, such as "Admin", from the shared role labels. */
 export function roleLabel(role: string) {
   return storedRoleLabel(role);
 }
 
-/** The role options the viewer may invite people with, from most to least common. */
 export function invitationRoles(viewerRole: string) {
   const invitable = invitableRoles(viewerRole);
   return organizationRoles.filter((option) => invitable.includes(option.value));
 }
 
-/**
- * What the viewer may do to one member, so the UI hides actions that would fail. The shared role
- * permissions decide who may change roles and remove members. Two rules are local: nobody changes
- * or removes themselves here, and admins cannot remove owners. The server still enforces every
- * rule, including the last owner.
- */
 export function memberActions({
   viewerRole,
   viewerUserId,

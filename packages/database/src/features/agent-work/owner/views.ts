@@ -30,32 +30,24 @@ import { agentTurns } from "../turns.schema";
 import { agentWorkItems } from "../work-items.schema";
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
-/** Turns per activity page. */
 export const activityPageSize = 30;
-/** The latest turns of a conversation's sessions. */
 const conversationTurnLimit = 50;
 
 const iso = (value: Date | null) => value?.toISOString() ?? null;
 const place = (conversationId: string | null, threadId: string | null) =>
   conversationId ? { conversationId, threadId } : null;
 
-/** Rows of the owner's own agents in the organization. */
 export const ownedBy = (
   table: typeof agentSessions | typeof agentTurns | typeof agentWorkItems | typeof agentHelpers,
   identity: SessionIdentity,
 ) => and(eq(table.ownerUserId, identity.userId), eq(table.organizationId, identity.organizationId));
 
-/** The conversation a session's work shows in: a routine's destination, else its origin. */
 function placeConversation(session: SessionRow) {
   return session.kind === "routine"
     ? session.destinationConversationId
     : (session.originConversationId ?? session.destinationConversationId);
 }
 
-/**
- * Whether the owner can open each session's place now. A helper session has the place of the
- * session that started it. A session with no place is visible.
- */
 async function sessionVisibility(
   db: DatabaseExecutor,
   identity: SessionIdentity,
@@ -133,17 +125,11 @@ function helperView(helper: HelperRow, visible: boolean): AgentWorkHelperView {
   };
 }
 
-/** Tools whose results are the task they created or changed. */
 const taskTools = Object.entries(mcpTools).flatMap(([name, tool]: [string, ToolDefinition]) =>
   tool.publishes?.some((output) => output.kind === "task") ? [name] : [],
 );
 const publishedTask = taskResult.pick({ id: true });
 
-/**
- * What the turns published, derived from the records that name them: replies by their origin
- * turn, requests by their turn, and tasks by the tool calls of the turn. Only records the owner
- * can see now are listed, oldest first.
- */
 async function turnOutputs(ctx: RepositoryContext, identity: SessionIdentity, turnIds: string[]) {
   const { db } = ctx;
   const outputs = new Map<string, TurnOutputView[]>(turnIds.map((id) => [id, []]));
@@ -216,7 +202,6 @@ async function turnOutputs(ctx: RepositoryContext, identity: SessionIdentity, tu
       });
   const taskIds = new Map<string, Set<string>>();
   for (const call of calls) {
-    // A pending receipt names a proposal, not a task.
     const task = publishedTask.safeParse(call.result);
     if (!task.success || !call.turnId) continue;
     const turns = taskIds.get(task.data.id) ?? new Set();
@@ -242,7 +227,6 @@ async function turnOutputs(ctx: RepositoryContext, identity: SessionIdentity, tu
   return outputs;
 }
 
-/** The turns as their owner sees them now, in the given order. */
 async function turnViews(
   ctx: RepositoryContext,
   identity: SessionIdentity,
@@ -302,7 +286,6 @@ async function sessionsOf(db: DatabaseExecutor, ids: string[], known: SessionRow
   return sessions;
 }
 
-/** One of the owner's agents that is not deleted. */
 export async function requireOwnedAgent(
   db: DatabaseExecutor,
   identity: SessionIdentity,
@@ -322,7 +305,6 @@ export async function requireOwnedAgent(
   return agent;
 }
 
-/** An activity cursor is `<createdAt ms>:<turnId>` of the last turn on the previous page. */
 function parseCursor(cursor: string) {
   const split = cursor.indexOf(":");
   const createdAt = Number(cursor.slice(0, split));
@@ -332,11 +314,6 @@ function parseCursor(cursor: string) {
   return { createdAt: new Date(createdAt), id };
 }
 
-/**
- * One page of the agent's turns, newest first. A claim gives several turns the same time, so the
- * cursor is the last turn's time and ID. The first page also carries the agent's sessions and
- * helpers.
- */
 export async function agentActivity(
   ctx: RepositoryContext,
   identity: SessionIdentity,
@@ -396,10 +373,6 @@ export async function agentActivity(
   };
 }
 
-/**
- * The owner's agent work in a conversation they can open: the sessions that come from or post
- * to it, their latest turns, and their open items.
- */
 export async function conversationWork(
   ctx: RepositoryContext,
   identity: SessionIdentity,
@@ -421,11 +394,8 @@ export async function conversationWork(
     )
     .orderBy(desc(agentSessions.updatedAt), desc(agentSessions.id));
   const ids = rows.map((session) => session.id);
-  // A request can post here from a session of another conversation.
   const requests = await queryConversationRequests(db, identity, conversationId);
   if (!ids.length) return { conversationId, sessions: [], turns: [], items: [], requests };
-  // Read the queue first. If the host consumes an item between these reads, its turn is
-  // already committed when we load turns. The reverse order can miss both item and turn.
   const items = await db
     .select()
     .from(agentWorkItems)
@@ -450,7 +420,6 @@ export async function conversationWork(
   };
 }
 
-/** One of the owner's turns, as the owner sees it now. */
 export async function ownerTurn(ctx: RepositoryContext, identity: SessionIdentity, turnId: string) {
   const [turn] = await ctx.db
     .select()
@@ -463,7 +432,6 @@ export async function ownerTurn(ctx: RepositoryContext, identity: SessionIdentit
   return view!;
 }
 
-/** One of the owner's items, as the owner sees it now. */
 export async function ownerItem(db: DatabaseExecutor, identity: SessionIdentity, item: ItemRow) {
   const sessions = await sessionsOf(db, [item.sessionId]);
   const visible = await sessionVisibility(db, identity, [...sessions.values()]);

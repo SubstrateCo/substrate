@@ -92,7 +92,6 @@ export async function describeSharedConversations(
         gt(messagingInvitations.expiresAt, new Date()),
       ),
     );
-  // Partner people who joined but must accept again before they read new messages.
   const unconsented = await db
     .select({
       conversationId: messagingParticipants.conversationId,
@@ -113,7 +112,6 @@ export async function describeSharedConversations(
     );
   return rows.map((row) => {
     const host = row.hostOrganizationId === scope.organizationId;
-    // A partner sees only rows about its own organization.
     const own = (organizationId: string | null) => host || organizationId === scope.organizationId;
     const partners = host
       ? connections.filter((connection) => connection.conversationId === row.id)
@@ -154,7 +152,6 @@ export async function describeSharedConversations(
   });
 }
 
-// The state that needs someone's action comes first.
 function sharedConversationStatus(state: {
   needsApproval: boolean;
   connected: boolean;

@@ -9,7 +9,6 @@ import type { QueryScope } from "@/queries/keys";
 
 const none = "none";
 
-/** A server-searched account or contact field. The current choice stays labelled while searching. */
 export function RecordPickerField({
   scope,
   kind,

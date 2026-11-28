@@ -14,11 +14,6 @@ class ToolError extends Error {
   }
 }
 
-/**
- * Dispatch the tools this host runs itself: the private inbox and the epoch handoff. The call
- * must come from the live server turn and attempt it names, in the session, organization and
- * agent of that turn.
- */
 export function createLocalTools(context: RuntimeContext, deps: { executor: TurnExecutor }) {
   function liveTurn(request: LocalToolRequest): LiveTurn {
     const live = deps.executor.live.get(request.turn.turnId);
@@ -54,7 +49,6 @@ export function createLocalTools(context: RuntimeContext, deps: { executor: Turn
     }
   }
 
-  /** The harness controller parses the call before it reaches this handler. */
   return async function handle(request: LocalToolRequest): Promise<WorkspaceApiResult> {
     try {
       // SAFETY: tool results are plain JSON objects built above.

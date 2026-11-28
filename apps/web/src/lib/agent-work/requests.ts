@@ -1,6 +1,5 @@
 import type { AgentRequestView } from "@substrate/contracts/agent-work";
 
-/** One line that says how a request ended, or that it still waits. */
 export function requestOutcome(request: AgentRequestView) {
   const outcome = request.proposal?.outcome;
   if (outcome?.status === "declined") return "Declined";
@@ -44,10 +43,6 @@ function requestAnswer(request: AgentRequestView) {
   return "Answered";
 }
 
-/**
- * When a blocking request stops waiting. Async questions and proposals wait until the owner
- * answers, so they have no deadline in the client.
- */
 export function requestDeadline(request: Pick<AgentRequestView, "mode" | "expiresAt">) {
   if (request.mode !== "blocking" || !request.expiresAt) return null;
   return Date.parse(request.expiresAt);

@@ -46,7 +46,6 @@ const timelineFields: FilterField<TimelineFilterId>[] = [
   },
 ];
 
-/** Every interaction the reader can see, newest first. */
 export function InteractionFeed({
   scope,
   onOpenRecord,

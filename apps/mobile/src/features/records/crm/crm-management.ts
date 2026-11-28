@@ -5,15 +5,9 @@ import type { RecordActor } from "@substrate/contracts/crm/people";
 
 import type { z } from "zod";
 
-/** A workspace member from the organization people list. */
 export type Member = { userId: string; name: string; email: string; image?: string | null };
-/** A person who can be chosen for a CRM record. `id` is their actor ID. */
 export type RecordPerson = { id: string; name: string; email: string };
 
-/**
- * People to share a CRM record with or make responsible for it. Actors join members by user ID
- * only: never by email or actor ID. Agents and departed members are left out.
- */
 export function recordPeople(
   actors: readonly RecordActor[],
   members: readonly Member[],
@@ -36,10 +30,6 @@ export type ResponsibleRecord =
   | { kind: "account"; entityId: string; ownerActorEntityId: string }
   | { kind: "deal"; entityId: string; ownerActorEntityId: string; version: number };
 
-/**
- * The reassignment write. It names the owner the reader saw, and a deal's version, so the server
- * rejects it if someone else changed the record first.
- */
 export function ownerAssignment(
   organizationId: string,
   record: ResponsibleRecord,
@@ -58,7 +48,6 @@ export function ownerAssignment(
   return input;
 }
 
-/** Linked messages that can be a publication source: readable, not deleted, each once. */
 export function publicationSources<T extends { messageId: string; deletedAt: string | null }>(
   rows: readonly T[],
 ): T[] {
@@ -75,11 +64,6 @@ export type MessageRecordDraft =
   | { kind: "contact"; fields: z.input<typeof contactFields> }
   | { kind: "deal"; fields: z.input<typeof dealFields> };
 
-/**
- * A CRM record created from a message. `consentToRecordAudience` must come from the reader's own
- * confirmation that the record's readers may see these fields. Only the kind's own fields are
- * sent, so form state cannot leak extra keys.
- */
 export function messageRecordInput(
   organizationId: string,
   messageId: string,

@@ -26,7 +26,6 @@ import { and, eq, sql } from "drizzle-orm";
 
 type Task = typeof tasks.$inferSelect;
 
-// Pure field checks run before the assignee query.
 async function validate(
   ctx: RepositoryContext,
   projectEntityId: string,
@@ -46,7 +45,6 @@ async function validate(
   if (input.status !== undefined && !taskStatusValues.includes(input.status))
     throw new ValidationError("Select a standard task status.");
   if (input.assigneeActorEntityId) {
-    // A new assignee races access removal. Claim it, then check the assignee's access.
     if (input.assigneeActorEntityId !== currentAssigneeActorEntityId)
       await claimProjectChange(ctx, projectEntityId);
     await requireAssignee(
@@ -58,7 +56,6 @@ async function validate(
   }
 }
 
-// Checking the project first keeps the assignee check from revealing projects.
 export async function createTaskInProject(
   ctx: RepositoryContext,
   project: AuthorizedAccess<"edit">,
@@ -69,8 +66,6 @@ export async function createTaskInProject(
   await requireUnarchived(ctx, [input.projectEntityId]);
   await validate(ctx, input.projectEntityId, input);
   if (input.parentTaskEntityId) {
-    // A new subtask races a move or deletion of its parent. Claim it, then read the parent.
-    // A new assignee has claimed the project already.
     if (!input.assigneeActorEntityId) await claimProjectChange(ctx, input.projectEntityId);
     const parent = await taskRepository(ctx).get(input.parentTaskEntityId);
     if (parent.projectEntityId !== input.projectEntityId)
@@ -116,7 +111,6 @@ export function taskRepository(context: RepositoryContext) {
   const taskWhere = (id: string) =>
     and(eq(tasks.organizationId, scope.organizationId), eq(tasks.entityId, id));
 
-  // A task's level is its project's level. Above "view", the project must not be archived.
   async function requireTask<Level extends PermissionLevel = "view">(
     entityId: string,
     // SAFETY: Level defaults to "view", so the omitted argument is "view".
@@ -171,7 +165,6 @@ export function taskRepository(context: RepositoryContext) {
             assigneeActorEntityId: input.assigneeActorEntityId,
             dueDate: input.dueDate,
           })
-          // The checks above used this project. A move that committed since fails the write.
           .where(and(taskWhere(entityId), eq(tasks.projectEntityId, task.projectEntityId)))
           .returning();
         if (!updated) throw new ConflictError("This record changed. Try again.");
@@ -198,7 +191,6 @@ export function taskRepository(context: RepositoryContext) {
         if (expectedProjectEntityId && task.projectEntityId !== expectedProjectEntityId)
           throw new AccessDeniedError();
         const other = await repository.get(otherEntityId);
-        // The link also changes the other task's links and history.
         await requireUnarchived(ctx, [otherEntityId]);
         return addTaskLink(ctx, task, other, relation);
       });

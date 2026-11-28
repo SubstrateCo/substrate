@@ -21,33 +21,22 @@ import { agentWrites } from "./writes";
 
 type Agent = Parameters<typeof agentActions>[2];
 
-// Handler results are serialized to JSON, then parsed with the tool's output schema.
 type ToolPayload = object;
 export type ToolHandlers = {
   [K in ServerToolName]: (input: McpInput<K>) => Promise<ToolPayload>;
 };
 
-/**
- * What a call runs in. turn: the live server turn the caller verified.
- * proposal: an approved proposal, with no live turn. It runs as the agent of the turn that
- * proposed it, and its ID keys the call's idempotent writes.
- */
 export type ToolRun =
   | { kind: "turn"; turn: ServerTurn }
   | { kind: "proposal"; id: string; turnId: string };
 
 export const needsLiveTurn = "This tool needs a live turn. It cannot run in a background turn.";
 
-/**
- * The server tools, run as the agent with its owner's access. Tool calls and approved proposals
- * both use this table, so an approval runs exactly the code the tool runs.
- */
 export function serverToolHandlers(
   ctx: RepositoryContext,
   identity: SessionIdentity,
   agent: Agent & { userName: string },
   run: ToolRun,
-  /** Reads stored bytes for read_file and download_file. Approved proposals never read files. */
   reader?: FileContentReader,
 ): ToolHandlers {
   const actor = { id: agent.entityId, name: agent.name, type: agent.type };
@@ -59,7 +48,6 @@ export function serverToolHandlers(
   const messaging = mcpMessagingQueries(ctx, identity);
   const search = mcpSearchQueries(ctx, identity);
   const crm = () => mcpCrmTools(ctx, identity);
-  // Routines and helpers belong to the live turn's agent and session. They never wait for approval.
   const own = () => {
     if (run.kind !== "turn") throw new ValidationError(needsLiveTurn);
     return mcpAgentWorkTools(ctx, identity, run.turn);
@@ -73,7 +61,6 @@ export function serverToolHandlers(
         run.turn,
       ).reply(input);
     }
-    // Only a reply to another place waits for approval; the proposal checked it has no ask.
     if (!input.to || input.ask) throw new ValidationError(needsLiveTurn);
     const message = await writes.postMessage({
       conversationId: input.to.conversationId,

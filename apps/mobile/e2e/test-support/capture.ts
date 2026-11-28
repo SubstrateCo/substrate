@@ -75,16 +75,11 @@ export async function captureScreenshot(page: Page, info: TestInfo, name: string
       }
     }
   }
-  // Real fonts and rendered content, with only decorative animation settled for still review.
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path, fullPage: false, animations: "disabled" });
   await info.attach(`Expo web preview · ${name}`, { path, contentType: "image/png" });
 }
 
-/**
- * Record real page frames around an action. Native iOS motion is explicitly out of scope.
- * A Chromium screencast starts after auth, so credentials and verification links are not recorded.
- */
 export async function captureMotion(
   page: Page,
   info: TestInfo,

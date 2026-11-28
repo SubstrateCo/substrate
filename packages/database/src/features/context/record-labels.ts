@@ -120,7 +120,6 @@ export async function recordLabels(
       );
   }
 
-  // Stages are the organization's pipeline: any member reads them while CRM is enabled.
   if (missing().length && (await enabledApps(ctx)).includes("crm")) {
     const stages = await ctx.db
       .select({ id: crmStages.id, name: crmStages.name })
@@ -129,7 +128,6 @@ export async function recordLabels(
     for (const stage of stages) found.set(stage.id, label(stage.id, "pipeline_stage", stage.name));
   }
 
-  // A task link shows only while the reader can open both tasks.
   if (missing().length) {
     const links = await ctx.db
       .select({
@@ -164,7 +162,6 @@ export async function recordLabels(
     }
   }
 
-  // A contact detail shows only while the reader can open its contact.
   if (missing().length) {
     const rest = missing();
     const details = [

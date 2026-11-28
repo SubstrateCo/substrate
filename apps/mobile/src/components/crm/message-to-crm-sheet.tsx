@@ -15,14 +15,9 @@ export type MessageToCrmSheetProps = {
   messageId: string;
   kind: "account" | "contact" | "deal";
   onClose: () => void;
-  /** The new record, saved with the message as its source. */
   onCreated: (target: RecordTarget) => void;
 };
 
-/**
- * Creates an account, contact or deal from a message. The reader fills the fields, then confirms
- * that the record's readers may see them; the message stays separately restricted.
- */
 export function MessageToCrmSheet({
   organizationId,
   messageId,
@@ -32,7 +27,6 @@ export function MessageToCrmSheet({
 }: MessageToCrmSheetProps) {
   const scope = useRecordScope(organizationId);
   const create = useCrmFromMessage(scope);
-  // One key for this form, so a retried save after a lost response doesn't create a second record.
   const [requestId] = useState(newRequestId);
   const [draft, setDraft] = useState<MessageRecordDraft | null>(null);
   let form;

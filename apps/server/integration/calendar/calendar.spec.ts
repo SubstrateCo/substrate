@@ -18,8 +18,6 @@ async function enableApps(owner: Actor, enabledApps: string[]) {
 const settings = (actor: Actor, organizationId = actor.organizationId) =>
   actor.request.get("/api/v1/calendar/settings", { params: { organizationId } });
 
-// No Google account can be linked here, so no event exists, whether or not a Google client is set.
-// These cases cover the HTTP boundary: session, membership, origin, app and record access.
 test("calendar routes are member-scoped, origin-checked, and gated by the calendar app", async ({
   actors: { owner: sharedOwner, member: sharedMember, outsider },
   workspace,
@@ -29,7 +27,6 @@ test("calendar routes are member-scoped, origin-checked, and gated by the calend
   const organizationId = owner.organizationId;
   await enableApps(owner, ["messages", "agents", "calendar"]);
 
-  // Providers depend on the server's configuration; a new member has no accounts either way.
   for (const actor of [owner, member]) {
     const view = await result<{ providers: string[] }>(await settings(actor));
     expect(view).toMatchObject({ accounts: [], detachedCalendars: [] });
@@ -64,7 +61,6 @@ test("calendar routes are member-scoped, origin-checked, and gated by the calend
     ).status(),
   ).toBe(404);
 
-  // A provider account the session user does not own is never used, whatever its ID.
   const foreignAccount = randomUUID();
   const listed = await owner.request.get(`/api/v1/calendar/accounts/${foreignAccount}/calendars`, {
     params: { organizationId },
@@ -118,7 +114,6 @@ test("calendar routes are member-scoped, origin-checked, and gated by the calend
     ),
   ).toEqual([]);
 
-  // Mutations require a trusted origin.
   expect(
     (
       await owner.request.post("/api/v1/calendar/interaction-sources", {

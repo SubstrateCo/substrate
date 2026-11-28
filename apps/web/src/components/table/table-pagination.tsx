@@ -19,7 +19,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export type PagerProps = {
-  /** Names the navigation, such as "Deals". */
   name: string;
   summary?: string;
   pageIndex: number;
@@ -28,10 +27,8 @@ export type PagerProps = {
   canPrevious: boolean;
   canNext: boolean;
   onPageChange: (pageIndex: number) => void;
-  /** Disables the controls while a page loads. */
   disabled?: boolean;
   pageSize?: number;
-  /** Shows "Rows per page" where the server supports page sizes. */
   pageSizeOptions?: number[];
   onPageSizeChange?: (pageSize: number) => void;
 };

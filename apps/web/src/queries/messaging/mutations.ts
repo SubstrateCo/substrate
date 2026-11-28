@@ -25,7 +25,6 @@ export function invalidateSentMessage(
 ) {
   const referencedIds = [...body.matchAll(referenceTokenPattern)].map((match) => match[2]!);
   const relatedIds = new Set<unknown>(referencedIds);
-  // Project discussion feeds include references to their tasks, even when the feed is empty.
   for (const [key, detail] of client.getQueriesData<Awaited<ReturnType<typeof getProject>>>({
     queryKey: queryKeys.projectDetails(organizationId),
   })) {
@@ -33,14 +32,9 @@ export function invalidateSentMessage(
       relatedIds.add(queryKeys.projectEntityId(key));
   }
   return Promise.all([
-    // The conversation list changes only when the send rejoins a channel. That send publishes an
-    // unscoped messaging hint, which refreshes the list. History pages get the new message from
-    // updateSentMessageHistory.
     client.invalidateQueries({
       queryKey: queryKeys.messageTargets(organizationId, conversationId),
     }),
-    // Context pages stay valid: a new message cannot change the context of loaded messages and
-    // gets its own page. Reference changes arrive as realtime context hints.
     client.invalidateQueries({
       queryKey: queryKeys.related(organizationId),
       predicate: ({ queryKey }) =>
@@ -56,12 +50,6 @@ export function invalidateSentMessage(
   ]);
 }
 
-/**
- * Adds a sent message to its loaded history without reading every page again: older windows end
- * before it. When the new messages cannot be read alone, the latest page is read again in full.
- * A reply's root count in the timeline comes from the send's realtime hint, which reads the
- * timeline after the reply committed; counting here as well could count the reply twice.
- */
 export async function updateSentMessageHistory(
   client: QueryClient,
   location: MessageLocation,
@@ -83,8 +71,6 @@ export async function updateSentMessageHistory(
   });
 }
 
-// Call before leaving the conversation's route. The workspace opens the first listed conversation
-// when none is selected, so a removed one must leave the list first or it opens again.
 export function forgetRemovedConversation(
   client: QueryClient,
   organizationId: string,
@@ -95,8 +81,6 @@ export function forgetRemovedConversation(
   );
 }
 
-// Call after leaving the conversation's route. Its history may now be unreadable or gone, so it is
-// dropped instead of refetched. Task history, discussions, alerts and search can all change.
 export function invalidateRemovedConversation(
   client: QueryClient,
   organizationId: string,

@@ -16,7 +16,6 @@ type Input = Omit<
 >;
 export async function assignOwner(context: RepositoryContext, id: string, input: Input) {
   return context.transaction(async (ctx) => {
-    // Responsibility is a structural change: concurrent reassignments of one record conflict.
     const access = await ctx.requireStructuralAccess(id, "edit", { type: ["account", "deal"] });
     const { entity } = access;
     const responsible = await ctx.requireActiveActor(input.ownerActorEntityId);
@@ -47,7 +46,6 @@ export async function assignOwner(context: RepositoryContext, id: string, input:
       return { entityId: id, ownerActorEntityId: responsible.entityId };
     const ownerActorEntityId = responsible.entityId;
     if (entity.entityType === "deal" && "version" in previous) {
-      // A deal edit does not claim the structural version, so the write checks the deal version.
       const [row] = await ctx.db
         .update(crmDeals)
         .set({ ownerActorEntityId, version: previous.version + 1 })

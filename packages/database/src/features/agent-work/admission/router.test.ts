@@ -53,7 +53,6 @@ test("DM messages admit work in one session per conversation, once per message",
     },
   ]);
 
-  // Routing the same message again creates nothing and asks for no refresh.
   const [row] = await f.db
     .select()
     .from(messagingMessages)

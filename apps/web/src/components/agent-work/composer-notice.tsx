@@ -18,21 +18,15 @@ import { MessageSquarePlus } from "lucide-react";
 export type ComposerNoticeLine = {
   key: string;
   agentName: string;
-  /** The agent's look, or null while it is not known. */
   avatar: AgentAvatarCode | null;
   tone: WorkTone;
-  /** The avatar's mood while the agent works or waits for the owner, else null. */
   mood?: WorkMood | null;
   label: ReactNode;
-  /** Local turns keep their transcript and stop controls when the source is offscreen. */
   status?: ReactNode;
-  /** The offscreen turn this line stands in for. Show scrolls back to it. */
   turnId?: string;
-  /** For example, a link to agent settings when no desktop runs the agent. */
   link?: { link: RecordLink; label: string };
 };
 
-/** Scrolls the timeline of this pane to the turn's inline status. */
 function showTurn(from: HTMLElement, turnId: string) {
   const selector = `[data-turn-status="${CSS.escape(turnId)}"]`;
   let pane: HTMLElement | null = from;
@@ -82,26 +76,18 @@ function NoticePill({ line }: { line: ComposerNoticeLine }) {
   );
 }
 
-/**
- * Above the composer: what the owner's agents here are doing. The lines float over the bottom
- * of the timeline, so they never move the messages or the composer when they come and go. The
- * composer stays editable; new messages join the current work or wait for it.
- */
 export function ComposerNotice({
   lines,
   onNewTopic,
   startingTopic,
 }: {
   lines: ComposerNoticeLine[];
-  /** Direct messages with an agent on this desktop can start a new topic. */
   onNewTopic?: () => void;
   startingTopic: boolean;
 }) {
-  // The stack stays mounted without lines, so the last pill can still leave with its exit.
   const stack = useListMotion<HTMLDivElement>("bottom", "drop");
   return (
     <div role="status" aria-label="Agent status" className="flex items-end gap-2 px-4">
-      {/* Anchored to the composer's top edge, beside the New topic row rather than above it. */}
       <div className="relative min-w-0 flex-1 self-stretch">
         <div
           ref={stack}

@@ -1,7 +1,6 @@
 import type { SharingAcceptance, SharingInvitation } from "@/api/messaging/sharing";
 import { ApiError } from "@/api/result";
 
-/** A 4xx other than a timeout or rate limit will not change on retry. */
 export function isPermanentFailure(error: Error | null) {
   return (
     error instanceof ApiError &&
@@ -19,21 +18,16 @@ type Invitation = Pick<
   "status" | "expiresAt" | "targetOrganizationId" | "conversationId"
 >;
 
-/** What the invitation screen shows below the load notice. */
 export type InvitationOutcome<T extends Invitation = Invitation> =
   | { kind: "loading" }
-  /** A temporary failure with nothing loaded: the load notice offers a retry. */
   | { kind: "failed" }
   | { kind: "declined" }
   | { kind: "accepted"; workspace: AcceptedWorkspace }
   | { kind: "approval" }
   | { kind: "respond"; invitation: T }
-  /** The invitation can't be read for good, such as one sent to another email. */
   | { kind: "missing" }
-  /** The invitation loaded but can no longer be answered, such as an expired one. */
   | { kind: "closed" };
 
-/** Answers win over the invitation's state, so a finished response stays on screen. */
 export function invitationOutcome<T extends Invitation>({
   invitation,
   result,

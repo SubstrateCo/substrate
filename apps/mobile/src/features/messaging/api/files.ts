@@ -10,7 +10,6 @@ export type MessageAttachmentTarget = {
   attachmentId: string;
 };
 
-/** A reason the server would reject this file, so the person sees it before uploading. */
 export function fileProblem(file: Pick<UploadFile, "size">): string | undefined {
   if (!file.size) return "This file is empty or its size is unknown.";
   if (file.size > MAX_FILE_BYTES) return "Files must be 5 MB or smaller.";
@@ -27,11 +26,6 @@ function base64(bytes: Uint8Array) {
   return btoa(binary);
 }
 
-/**
- * Reads an image attachment's preview as a data URI. The preview route answers with the bytes,
- * not a storage redirect. The API transport sends the session only to this server and refuses
- * redirects, so the cookie never reaches another origin.
- */
 export async function attachmentPreview(query: MessageAttachmentTarget, signal?: AbortSignal) {
   const url = api.files.attachments.messages.preview.$url({ query });
   const response = await authenticatedFetch(url.toString(), { signal });

@@ -64,7 +64,6 @@ export const removeAgentInput = conversationTargetInput.extend({ actorId: id });
 export const removeMemberInput = conversationTargetInput.extend({ actorId: id });
 export const messageTargetInput = workspaceInput.extend({ messageId: id });
 export const editMessageInput = messageTargetInput.extend({
-  // Empty text is valid for a message with attachments. The service checks that invariant.
   body: z.string().trim().max(messagingLimits.body),
 });
 export const leaveInput = conversationTargetInput.extend({

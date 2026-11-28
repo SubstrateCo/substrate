@@ -28,7 +28,6 @@ const recordedAt = async (eventEntityId: string) =>
       .where(eq(calendarEvents.entityId, eventEntityId))
   )[0]!.at;
 
-/** A contact in the organization with a primary email, created through the session API. */
 async function contactWithEmail(
   name: string,
   email: string,
@@ -214,7 +213,6 @@ test("the owner, rooms, decliners, and verified members are not recorded", async
       { email: "room-4@resource.calendar.google.com", isResource: true },
       { email: "declined@client.com", responseStatus: "declined" },
       { email: "BOB@example.com" },
-      // A member of another organization is outside this one.
       { email: "outside@example.com" },
     ],
   });

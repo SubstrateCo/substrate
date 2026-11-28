@@ -178,7 +178,6 @@ describe("contact details", () => {
         isPrimary: true,
       }),
     ]);
-    // A change that overlaps the other one loses with a conflict and writes nothing.
     const lost = added.flatMap((result) => (result.status === "rejected" ? [result.reason] : []));
     expect(lost.length).toBeLessThan(2);
     for (const reason of lost) expect(reason).toBeInstanceOf(ConflictError);
@@ -274,7 +273,6 @@ describe("contact details", () => {
     const urlWrites = updates("contact_urls");
     expect(urlWrites[0]!.query).toContain(`"id" <> `);
     expect(clears(urlWrites, otherUrl.id)).toHaveLength(1);
-    // Moving the email primary to the phone type replaces the phone primary.
     await repo.updateIdentifier(contact.entityId, home.id, {
       type: "phone",
       value: "+1 415 555 0199",

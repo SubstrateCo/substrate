@@ -12,7 +12,6 @@ const resolves = (promise: Promise<unknown>) =>
     () => false,
   );
 
-// Every kind, created by an admin and by a member, with host and partner viewers of both roles.
 async function conversations() {
   await f.db.update(user).set({ emailVerified: true });
   await f.db
@@ -68,6 +67,5 @@ test("conversation list flags match the sharing and management checks", async ()
       checked++;
     }
   }
-  // Each viewer sees 6 of the 7 conversations, except partners, who see 5.
   expect(checked).toBe(22);
 });

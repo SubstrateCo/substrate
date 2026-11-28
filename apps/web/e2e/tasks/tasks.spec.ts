@@ -36,7 +36,6 @@ test("task drafts ask before navigation and project drafts stay with their proje
   await expect(sender.page.getByLabel("Task title")).toHaveValue("Unsaved task title");
   await sender.page.getByRole("tab", { name: "Settings" }).click();
   await sender.page.getByRole("button", { name: "Discard changes" }).click();
-  // The task inspector keeps its draft guard until its exit animation ends.
   await expect(sender.page.getByRole("dialog", { name: "Task", exact: true })).toHaveCount(0);
   await sender.page.getByLabel("Project name", { exact: true }).fill("Unsaved project name");
   await sender.page.getByRole("link", { name: second.name, exact: true }).click();
@@ -65,16 +64,13 @@ test("a click outside the task inspector closes it, but controls, drafts and bac
   const inspector = user.page.getByRole("dialog", { name: "Task", exact: true });
   const outside = user.page.getByRole("heading", { name: created.name, exact: true });
   await expect(inspector.getByRole("heading", { name: "Open task", exact: true })).toBeVisible();
-  // Another task's row switches the inspector instead of closing it.
   await user.page
     .getByRole("button", { name: /^Not started: Other task/ })
     .getByText("Other task", { exact: true })
     .click();
   await expect(inspector.getByRole("heading", { name: "Other task", exact: true })).toBeVisible();
-  // A click inside the inspector keeps it open.
   await inspector.getByRole("heading", { name: "Other task", exact: true }).click();
   await expect(inspector).toBeVisible();
-  // A draft asks before the click outside closes the inspector.
   await inspector.getByRole("button", { name: "Edit task", exact: true }).click();
   const title = inspector.getByLabel("Task title", { exact: true });
   await title.fill("Unsaved other task");
@@ -84,14 +80,12 @@ test("a click outside the task inspector closes it, but controls, drafts and bac
     user.page.getByRole("dialog", { name: "Discard unsaved changes?", exact: true }),
   ).toHaveCount(0);
   await expect(title).toHaveValue("Unsaved other task");
-  // The click outside moved focus off the draft, so keeping it returns focus there.
   await expect(title).toBeFocused();
   await title.fill("Other task");
   await outside.click();
   await expect(inspector).toHaveCount(0);
   await expect.poll(() => new URL(user.page.url()).searchParams.has("taskId")).toBe(false);
 
-  // A task created elsewhere refreshes the project without discarding an open edit draft.
   await user.page
     .getByRole("button", { name: /^Not started: Open task/ })
     .getByText("Open task", { exact: true })
@@ -141,7 +135,6 @@ test("create a project, task and subtask, then edit and reload the task", async 
   await expect(sender.page.getByRole("dialog", { name: "New task", exact: true })).toHaveCount(0);
   const task = sender.page.getByRole("region", { name: "Task details", exact: true });
   await expect(task.getByRole("heading", { name: "Ship release", exact: true })).toBeVisible();
-  // Reload the parent to check the saved fields and its subtask in the renderer.
   const taskURL = sender.page.url();
   await task.getByRole("button", { name: "Edit task", exact: true }).click();
   await sender.page.getByLabel("Task title", { exact: true }).fill("Ship reviewed release");
@@ -203,7 +196,6 @@ test("assignment notifies a project member, whose discussion message reaches the
   const ownerSince = sender.events.length;
   const message = `Ready for review ${created.entityId}`;
   await send(member.page, message);
-  // The owner's separate window reads the message from the server, so it persisted.
   await expect(sender.page.getByText(message, { exact: true })).toBeVisible();
   await expectChange(sender, ownerSince, "messaging", conversationId);
 });
@@ -342,7 +334,6 @@ test("a blocking link marks a task blocked", async ({ actors, client }) => {
       .getByRole("group", { name: "Is blocked by", exact: true })
       .getByRole("button", { name: `Not started: ${blocker}`, exact: true }),
   ).toBeVisible();
-  // The filter keeps only the open task that waits on an open task.
   await sender.page.getByRole("button", { name: "Filter", exact: true }).click();
   await sender.page.getByRole("option", { name: "Scope", exact: true }).click();
   await sender.page.getByRole("option", { name: "Blocked", exact: true }).click();

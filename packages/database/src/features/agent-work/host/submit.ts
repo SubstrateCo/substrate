@@ -6,11 +6,6 @@ import { admit } from "../admission/admission";
 import { agentSessions } from "../sessions.schema";
 import { and, eq } from "drizzle-orm";
 
-/**
- * Work the host creates itself: an epoch handoff for one of its sessions. Admission admits it
- * only from the agent's home device. Returns whether a new item was created; a repeated handoff
- * for the same epoch creates nothing.
- */
 export async function submitEpoch(
   db: DatabaseExecutor,
   identity: ResolvedDeviceIdentity,

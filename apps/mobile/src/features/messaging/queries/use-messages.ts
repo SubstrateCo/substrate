@@ -20,10 +20,6 @@ import { useMessagingScope } from "../scope";
 import type { MessageContext } from "../types";
 import { latestHistoryKey } from "./new-messages";
 
-/**
- * A conversation's timeline or a thread's replies, oldest first, loading older pages on demand.
- * With `aroundMessageId`, the newest page ends at that message instead of the latest one.
- */
 export function useMessageHistory(
   organizationId: string,
   conversationId: string,
@@ -32,7 +28,6 @@ export function useMessageHistory(
 ) {
   const scope = useMessagingScope(organizationId);
   const query = useInfiniteQuery({
-    // Only the history without `aroundMessageId` ends at the newest message; new ones append to it.
     queryKey: aroundMessageId
       ? [...messagingKeys.messages(scope, conversationId, threadId), aroundMessageId]
       : latestHistoryKey(scope, { conversationId, threadId }),
@@ -48,7 +43,6 @@ export function useMessageHistory(
       else if (aroundMessageId) page.aroundMessageId = aroundMessageId;
       return listMessages(page, signal);
     },
-    // Pages are oldest first. A full page may have older messages before its first one.
     getNextPageParam: (page) => (page.length === messagePageSize ? page[0]?.id : undefined),
     retry: false,
   });
@@ -60,7 +54,6 @@ export function useMessageHistory(
   };
 }
 
-/** Where a linked message lives: the main timeline, or a thread under `root`. */
 export function useMessageTarget(
   organizationId: string,
   conversationId: string | undefined,
@@ -81,7 +74,6 @@ export function useMessageTarget(
   });
 }
 
-/** A thread's root, read from the window of the main timeline that ends at it. */
 export function useThreadRoot(organizationId: string, conversationId: string, threadId: string) {
   const scope = useMessagingScope(organizationId);
   return useQuery({
@@ -99,7 +91,6 @@ export function useThreadRoot(organizationId: string, conversationId: string, th
   });
 }
 
-/** References and linked work for loaded messages, one request per page. */
 export function useMessageContexts(
   organizationId: string,
   conversationId: string,
@@ -131,7 +122,6 @@ export function useMessageContexts(
   };
 }
 
-/** Marks the newest loaded message read while the app is in the foreground. */
 export function useMarkRead(
   organizationId: string,
   conversationId: string,
@@ -146,7 +136,6 @@ export function useMarkRead(
   });
   useEffect(() => {
     if (!latestMessageId) return;
-    // A failed save goes back to idle, so the next return to the foreground tries again.
     let state: "idle" | "pending" | "saved" = "idle";
     const read = () => {
       if (state !== "idle" || AppState.currentState !== "active") return;

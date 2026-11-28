@@ -11,8 +11,6 @@ import { api } from "../client";
 import { readResult } from "../result";
 import type { z } from "zod";
 
-// The owner's routes. The server scopes every read to the caller's own agents and to what the
-// caller can see now; hidden places carry no names.
 const routes = api["agent-work"];
 
 /**

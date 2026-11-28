@@ -24,7 +24,6 @@ test("record lists can scroll to the last row of a long page", async ({ account,
   await table.getByRole("link").first().hover();
   await page.mouse.wheel(0, 5000);
   await expect(lastContact).toBeInViewport();
-  // One page of results has no pager.
   await expect(page.getByRole("button", { name: "Next page", exact: true })).toHaveCount(0);
   await lastContact.click();
   await expect(page.getByRole("heading", { name: lastName, exact: true })).toBeVisible();

@@ -22,8 +22,6 @@ function DismissToast({ id }: { id: string }) {
 }
 
 function show(kind: "success" | "error", title: string, options?: ToastOptions) {
-  // Do not reuse IDs after private-state reset: an old close handler must never
-  // dismiss a new account's toast.
   const id = `mobile-toast-${++nextId}`;
   return toast[kind](title, {
     ...options,

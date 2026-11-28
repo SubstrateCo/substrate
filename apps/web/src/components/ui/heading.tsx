@@ -9,7 +9,6 @@ const headingVariants = cva("", {
       section: "text-base font-medium",
       title: "text-sm font-medium",
       label: "text-xs font-medium text-muted-foreground",
-      // Takes its type from the container, such as CardTitle, EmptyTitle, or a disclosure trigger.
       inherit: "",
     },
   },

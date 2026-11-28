@@ -15,7 +15,6 @@ export interface AsyncRequestInput {
   agentActorEntityId: string;
   sessionKey: string;
   turnId: string;
-  /** A place the caller already checked with requirePlace. */
   place: Place;
   request:
     | { kind: "question"; payload: AgentRequestPayload }
@@ -28,10 +27,6 @@ export interface AsyncRequestInput {
       };
 }
 
-/**
- * Opens a request that does not hold the turn: reply.ask or propose. The turn ends, and the
- * owner's answer or decision wakes the agent in the same session.
- */
 export async function createAsyncRequest(db: DatabaseExecutor, input: AsyncRequestInput) {
   const { request, place, ...scope } = input;
   const [created] = await db

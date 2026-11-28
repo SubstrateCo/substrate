@@ -19,10 +19,6 @@ import { hiddenTask } from "@/lib/tasks/task-status";
 import { cn } from "cn";
 import { ChevronRight, Pencil } from "lucide-react";
 
-/**
- * The task inspector: a fixed header with the task's place and tools, then one scrolling column
- * with the title, properties, description, subtasks, links, and the connected context in `children`.
- */
 export function TaskDetail({
   detail,
   capabilities,
@@ -39,12 +35,10 @@ export function TaskDetail({
   capabilities: ProjectCapabilities;
   task: Task;
   onSelectTask: (id: string) => void;
-  /** Omitted where no subtask form can open. */
   onSubtask?: () => void;
   onUpdate: (patch: Partial<TaskDraft>) => void;
   renderEditor: (onDone: () => void) => ReactNode;
   actions?: ReactNode;
-  /** The linked tasks section. */
   links?: ReactNode;
   children: ReactNode;
 }) {
@@ -140,7 +134,6 @@ export function TaskDetail({
   );
 }
 
-/** The title and description, or the editor in their place while editing. */
 function TaskTitleBlock({
   task,
   editor,
@@ -148,7 +141,6 @@ function TaskTitleBlock({
 }: {
   task: Task;
   editor?: ReactNode;
-  /** Set for editors. */
   onEdit?: () => void;
 }) {
   if (editor) return editor;

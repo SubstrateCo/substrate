@@ -15,7 +15,6 @@ export function BrowserLoginForm({ redirect, email }: { redirect: string; email:
   const authHref = useAuthHref();
   const authLink = useAuthLink();
   const router = useRouter();
-  // Only the desktop handoff returns early for an existing browser session.
   const session = useQuery({ ...sessionQueryOptions(), enabled: !!query });
   const login = useEmailLogin();
   if (query && (login.isSuccess || session.data?.user.emailVerified))

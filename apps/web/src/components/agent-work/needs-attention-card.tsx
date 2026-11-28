@@ -10,7 +10,6 @@ import { CircleAlert, TriangleAlert } from "lucide-react";
 
 export type NeedsAttentionAction = "retry" | "dismiss" | "startFresh" | "resend" | "discard";
 
-/** One action on stopped work. While any action is sent, every action is disabled. */
 function StopAction({
   action,
   pending,
@@ -38,16 +37,10 @@ function StopAction({
   );
 }
 
-/**
- * What the owner can do. Retry resumes the same session; Start fresh begins a new session with a
- * handoff; Dismiss leaves it stopped. When the desktop couldn't confirm that the agent received
- * a message, Resend submits it again and Discard drops it, because a retry could deliver it twice.
- */
 export type NeedsAttentionActions =
   | { kind: "stopped"; onRetry: () => void; onStartFresh: () => void; onDismiss: () => void }
   | { kind: "uncertain"; onResend: () => void; onDiscard: () => void };
 
-/** Work that stopped and will not continue on its own: why, and what the owner can do. */
 export function NeedsAttentionContent({
   text,
   error,
@@ -56,11 +49,8 @@ export function NeedsAttentionContent({
   actions,
 }: {
   text: string;
-  /** What the runtime reported when the work stopped. Shown under Technical details only. */
   error: string | null;
-  /** The action being sent, if any. */
   pending?: NeedsAttentionAction;
-  /** Reviewed copy for the last failed action. */
   failure?: string;
   actions: NeedsAttentionActions;
 }) {
@@ -114,7 +104,6 @@ function AttentionActions({
   );
 }
 
-/** Stopped work as its own card, with a header that names the state. */
 export function NeedsAttentionCard({ children }: { children: ReactNode }) {
   return (
     <MessageCard icon={TriangleAlert} tone="attention" title={stoppedNeedsYouLabel}>
@@ -123,7 +112,6 @@ export function NeedsAttentionCard({ children }: { children: ReactNode }) {
   );
 }
 
-/** Stopped work inside an activity row that already names the state: no card, no header. */
 export function NeedsAttentionInline({ children }: { children: ReactNode }) {
   return (
     <section

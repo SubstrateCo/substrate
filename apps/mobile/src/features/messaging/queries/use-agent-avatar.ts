@@ -15,11 +15,6 @@ const withAvatar = (catalog: AgentCatalog | undefined, { id, avatar }: SetAgentA
     agents: catalog.agents.map((agent) => (agent.id === id ? { ...agent, avatar } : agent)),
   };
 
-/**
- * Saves an agent's look as soon as the owner picks it. The agent list shows the choice at once
- * and rolls back if the save fails. Messaging reloads because its members and messages show
- * the agent.
- */
 export function useSetAgentAvatar(organizationId: string) {
   const scope = useMessagingScope(organizationId);
   const client = useQueryClient();

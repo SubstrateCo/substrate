@@ -20,19 +20,13 @@ export function resourceState<T>(query: {
   return { status: "ready", data: query.data, error };
 }
 
-/** What a list shows: one notice in place of the rows, or the rows. */
 export type ListPhase<T> =
   | { status: "loading" }
   | { status: "error"; error: Error }
   | { status: "empty" }
   | { status: "ready"; items: T[] }
-  /** A refresh failed: the cached rows stay, with a `StaleNotice` above them. */
   | { status: "stale"; items: T[]; error: Error };
 
-/**
- * Rows win over every notice, so a failed refresh never hides cached rows. Lost access hides
- * them like `resourceState` does.
- */
 export function listPhase<T>({
   items,
   loading = false,

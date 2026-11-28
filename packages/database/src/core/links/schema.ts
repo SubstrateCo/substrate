@@ -15,9 +15,6 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-// `related_to` has no direction: it is stored once, with the lower entity ID as the source.
-// `blocks` and `duplicates` point from source to target and link tasks only; the task domain
-// writes them.
 export const relationTypes = ["related_to", "blocks", "duplicates"] as const;
 export const relationType = pgEnum("relation_type", relationTypes);
 
@@ -52,8 +49,6 @@ export const entityLinks = pgTable(
       foreignColumns: [actors.organizationId, actors.entityId],
     }),
     index("entity_links_target_idx").on(table.organizationId, table.targetEntityId),
-    // One directed link per pair of tasks and relation, whichever way it points. Two concurrent
-    // writers cannot make two tasks block or duplicate each other.
     uniqueIndex("entity_links_directed_pair_unique")
       .on(
         table.organizationId,

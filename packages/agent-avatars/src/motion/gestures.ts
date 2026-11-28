@@ -12,11 +12,6 @@ const easeInOutCubic = (x: number) => (x < 0.5 ? 4 * x ** 3 : 1 - (-2 * x + 2) *
 const easeInOutSine = (x: number) => -(Math.cos(Math.PI * x) - 1) / 2;
 const bump = (p: number, center: number, width: number) => Math.exp(-(((p - center) / width) ** 2));
 
-/**
- * Internal motions use the same one-shot mechanism as public gestures: reactions (`poke`,
- * `wake`), mood transitions (`settle`, `slump`, `spinBounce`, `spinDizzy`) and ambient
- * behaviour (`lookAround`).
- */
 export type Motion =
   | Gesture
   | "poke"
@@ -29,19 +24,15 @@ export type Motion =
   | "turnAround";
 
 export interface MotionParams {
-  /** Where a poke landed, from -1 to 1 across the avatar. */
   x: number;
   y: number;
 }
 
 interface MotionSpec {
-  /** Seconds. */
   duration: number;
-  /** Maps progress from 0 to 1 to offsets on top of the mood pose. */
   delta(p: number, params: MotionParams): PoseDelta;
 }
 
-/** Bounces that lose height each time, like a dropped ball. Heights in view units. */
 const BOUNCES = [
   { height: 16, seconds: 0.5 },
   { height: 9, seconds: 0.38 },
@@ -68,7 +59,6 @@ function bounceAt(seconds: number, scale = 1): PoseDelta {
   return {};
 }
 
-/** A full turn about `axis` with a small wind-up the other way first. */
 function turn(p: number, axis: "yaw" | "pitch"): PoseDelta {
   const windUp = 0.35;
   const angle =
@@ -143,10 +133,8 @@ export const MOTIONS: Record<Motion, MotionSpec> = {
     },
   },
   spin: { duration: 1.1, delta: (p) => turn(p, "yaw") },
-  /** A forward somersault: the face tips down and under, then comes back over the top. */
   flip: { duration: 1.1, delta: (p) => ({ ...turn(p, "pitch"), hop: Math.sin(p * Math.PI) * 9 }) },
   bounce: { duration: BOUNCE_SECONDS, delta: (p) => bounceAt(p * BOUNCE_SECONDS) },
-  /** Flies up close to the camera, pulls back into the distance, then settles. */
   swoop: {
     duration: 2.4,
     delta: (p) => {
@@ -163,10 +151,6 @@ export const MOTIONS: Record<Motion, MotionSpec> = {
       };
     },
   },
-  /**
-   * Flies one lap around a horizontal circle: across, behind (small, showing its back) and
-   * round to the front again, always facing the way it travels.
-   */
   orbit: {
     duration: 3.2,
     delta: (p) => {
@@ -206,7 +190,6 @@ export const MOTIONS: Record<Motion, MotionSpec> = {
       };
     },
   },
-  /** The beat between moods: a small dip, a blink, and a pop back up. */
   settle: {
     duration: 0.5,
     delta: (p) => {
@@ -229,7 +212,6 @@ export const MOTIONS: Record<Motion, MotionSpec> = {
       return { squashY: -0.12 * sag * (1 - p), squashX: 0.08 * sag * (1 - p), roll: 0.08 * sag };
     },
   },
-  /** Turns its back, holds while the body changes, then turns to face front again. */
   turnAround: {
     duration: 1.3,
     delta: (p) => {

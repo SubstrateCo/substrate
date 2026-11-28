@@ -32,7 +32,6 @@ export function mailConnectionRepository(run: RunTransaction, org: string) {
       await tx.update(mailConnections).set({ labels }).where(connection(id));
     });
   return {
-    // Refresh stale mail in the background when the verified workspace reopens.
     pendingSync: () =>
       run((tx) =>
         tx
@@ -51,8 +50,6 @@ export function mailConnectionRepository(run: RunTransaction, org: string) {
           )
           .all(),
       ),
-    // Main can reuse a previously selected OAuth client for another mailbox of the same provider.
-    // Read only a sealed grant from this workspace in the current account's database.
     providerGrant: (provider: string) =>
       run(
         async (tx) =>
@@ -79,7 +76,6 @@ export function mailConnectionRepository(run: RunTransaction, org: string) {
           .set({ canModify: false })
           .where(and(connection(id), eq(mailConnections.protectedGrant, grant)));
       }),
-    // A late refresh must neither replace a newly reconnected grant nor recreate a removed one.
     rotateGrant: (id: string, previous: string, protectedGrant: string) =>
       run(async (tx) => {
         const changed = await tx
@@ -111,7 +107,6 @@ export function mailConnectionRepository(run: RunTransaction, org: string) {
           .returning({ id: mailConnections.id });
         return row!.id;
       }),
-    // A reconnect is never an upsert. Disconnecting while Google is open cannot recreate the row.
     reconnect: (id: string, grant: Grant) =>
       run(async (tx) => {
         const renewed = await tx

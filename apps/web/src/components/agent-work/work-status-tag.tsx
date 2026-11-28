@@ -11,10 +11,6 @@ const tones: Record<WorkStatus["tone"], { tone: TagTone; icon?: LucideIcon }> = 
   muted: { tone: "default", icon: Minus },
 };
 
-/**
- * A turn's state as words and an icon, so color is never the only signal. The label comes from
- * `turnLabel`, such as "Worked for 2m 00s" or "Stopped · needs you".
- */
 export function WorkStatusTag({ status }: { status: WorkStatus }) {
   const { tone, icon: Icon } = tones[status.tone];
   return (

@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/combobox";
 import { formatTimeZone } from "@/lib/format/date";
 
-/** A searchable list of IANA time zones. */
 export function TimeZonePicker({
   id,
   value,
@@ -41,7 +40,6 @@ export function TimeZonePicker({
         if (next) onChange(next.value);
       }}
       isItemEqualToValue={(item, chosen) => item.value === chosen.value}
-      // Match the zone name too, so "Toronto" and "America/Toronto" both find it.
       filter={(zone, query) => {
         const text = query.trim().toLowerCase();
         return zone.label.toLowerCase().includes(text) || zone.value.toLowerCase().includes(text);

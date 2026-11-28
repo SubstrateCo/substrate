@@ -19,11 +19,6 @@ export function browserInstallerPlatform(
   return undefined;
 }
 
-/**
- * Which installer the page offers first. The browser's own OS wins when it has an installer.
- * An unrecognised OS gets the first published installer. A recognised OS without one gets none,
- * so we never push a Mac user to the Windows installer.
- */
 export function chooseInstallers(
   available: Record<InstallerPlatform, boolean>,
   detected: InstallerPlatform | undefined,
@@ -34,20 +29,13 @@ export function chooseInstallers(
   return { primary, others: published.filter((platform) => platform !== primary) };
 }
 
-/** The desktop app step's main action: the viewer's installer, the browser, or neither yet. */
 export type InstallMode =
   | { kind: "loading" }
   | { kind: "error" }
   | { kind: "download"; platform: InstallerPlatform }
   | { kind: "browser" };
 
-/**
- * Only the viewer's installer, or its absence, makes an action primary. A failed first check
- * offers neither; a failed refresh keeps what the last check found.
- */
 export function installMode(
-  /** The release check's load state, as 
-esourceState reports it. */
   release: "loading" | "unavailable" | "error" | "stale" | "ready",
   primary: InstallerPlatform | undefined,
 ): InstallMode {

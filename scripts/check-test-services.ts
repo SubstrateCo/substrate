@@ -1,4 +1,3 @@
-// Cached test results do not prove that the test services are up, so check them before Turbo runs.
 import { RedisClient, SQL } from "bun";
 
 async function postgres(url: string) {

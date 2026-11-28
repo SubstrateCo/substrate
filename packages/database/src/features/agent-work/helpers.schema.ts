@@ -15,7 +15,6 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-// A child session that one of the agent's turns started, in its own folder and slot.
 export const agentHelpers = pgTable(
   "agent_helpers",
   {
@@ -23,7 +22,6 @@ export const agentHelpers = pgTable(
     ...agentWorkColumns(),
     parentSessionId: uuid("parent_session_id").notNull(),
     sessionId: uuid("session_id").notNull(),
-    // start_helper's requestId, so a repeated call returns the same helper.
     requestId: uuid("request_id").notNull(),
     task: text("task").notNull(),
     status: text("status").$type<HelperStatus>().notNull().default("running"),
@@ -45,7 +43,6 @@ export const agentHelpers = pgTable(
     }).onDelete("cascade"),
     unique("agent_helpers_session_unique").on(table.sessionId),
     unique("agent_helpers_request_unique").on(table.parentSessionId, table.requestId),
-    // Live helpers per agent: the start limit.
     index("agent_helpers_running_idx")
       .on(table.userAgentId)
       .where(sql`${table.status} = 'running'`),

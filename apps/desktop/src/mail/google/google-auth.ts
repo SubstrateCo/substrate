@@ -55,7 +55,6 @@ async function tokens(
   return result;
 }
 
-/** A native loopback PKCE grant; neither token nor authorization code crosses renderer IPC. */
 export async function connectGoogle(
   client: GoogleClient,
   open: (url: string) => Promise<void>,
@@ -73,8 +72,6 @@ export async function connectGoogle(
     );
     const addr = z.object({ port: z.int().positive() }).parse(server.address());
     const redirect = `http://127.0.0.1:${addr.port}/callback`;
-    // Share Better Auth's request/PKCE builder with Calendar, but keep this callback
-    // and the token exchange in Electron. No client config goes into a server link ticket.
     const auth = await createAuthorizationURL({
       id: "google",
       options: { clientId: client.client_id },

@@ -2,7 +2,6 @@ import { bundledRenderer } from "./bundled-renderer.ts";
 import { storageRequest } from "./storage.ts";
 import { net, type Session } from "electron";
 
-/** Renderer responses (including CSP) and storage use distinct transports. */
 export function configureProtocols(options: {
   desktopSession: Session;
   bundled: boolean;

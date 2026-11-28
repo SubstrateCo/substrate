@@ -19,7 +19,6 @@ export function contextInteractionActions(context: RepositoryContext) {
       return context.transaction(async (ctx) => {
         const checked = await requireInteraction(ctx, entityId);
         const { interaction: previous } = checked;
-        // An archived contact is read-only, like its other CRM records, until it is restored.
         const [profile] = await ctx.db
           .select({ archivedAt: crmContactProfiles.archivedAt })
           .from(crmContactProfiles)

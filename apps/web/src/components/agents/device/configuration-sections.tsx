@@ -3,7 +3,6 @@ import type { AgentSection } from "../editors/agent-form";
 import { ConfigurationList } from "./configuration-page";
 import { configurationSections } from "./configuration-section-copy";
 
-/** Placeholder rows for the owner's skills or servers while they load. */
 export function ConfigurationListLoading({ section }: { section: AgentSection }) {
   const copy = configurationSections[section];
   return (

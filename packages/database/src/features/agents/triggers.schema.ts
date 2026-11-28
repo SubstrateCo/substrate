@@ -3,7 +3,6 @@ import type { AgentTriggerKind } from "@substrate/contracts/agents";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { boolean, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
-// Owner overrides for the code-defined triggers. A missing row means enabled.
 export const userAgentTriggers = pgTable(
   "user_agent_triggers",
   {

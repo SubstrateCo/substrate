@@ -1,6 +1,3 @@
-// The one place that turns dates into display text. Views use these helpers, or the
-// components in `components/time`, instead of calling toLocaleString or Intl directly.
-
 export type DateInput = Date | string | number;
 
 const locale = "en-US";
@@ -24,13 +21,11 @@ const fullDate = new Intl.DateTimeFormat(locale, { dateStyle: "full" });
 // ICU puts a narrow no-break space before AM and PM. Plain spaces match the rest of the copy.
 const plain = (text: string) => text.replace(/ /g, " ");
 
-/** A Date for a timestamp, or undefined when the value is not a date. */
 export function toDate(value: DateInput): Date | undefined {
   const date = value instanceof Date ? value : new Date(value);
   return Number.isFinite(date.getTime()) ? date : undefined;
 }
 
-/** "Nov 8", or "Nov 8, 2025" outside the current year. */
 export function formatShortDate(value: DateInput, now: DateInput = Date.now()) {
   const date = toDate(value);
   if (!date) return "";
@@ -38,7 +33,6 @@ export function formatShortDate(value: DateInput, now: DateInput = Date.now()) {
   return (sameYear ? shortDate : shortDateWithYear).format(date);
 }
 
-/** Compact time since an event: "now", "5m", "3h", "6d", then a short date. */
 export function formatRelativeTime(value: DateInput, now: DateInput = Date.now()) {
   const date = toDate(value);
   if (!date) return "";
@@ -51,19 +45,16 @@ export function formatRelativeTime(value: DateInput, now: DateInput = Date.now()
   return formatShortDate(date, now);
 }
 
-/** Time of day: "3:40 PM". */
 export function formatTime(value: DateInput) {
   const date = toDate(value);
   return date ? plain(time.format(date)) : "";
 }
 
-/** "Nov 8, 3:40 PM", with the year outside the current year. */
 export function formatDateTime(value: DateInput, now: DateInput = Date.now()) {
   const date = toDate(value);
   return date ? `${formatShortDate(date, now)}, ${plain(time.format(date))}` : "";
 }
 
-/** "Nov 8, 3:40 PM" read in a named IANA time zone instead of the viewer's. */
 export function formatDateTimeInZone(value: DateInput, zone: string, now: DateInput = Date.now()) {
   const date = toDate(value);
   if (!date) return "";
@@ -87,7 +78,6 @@ export function formatDateTimeInZone(value: DateInput, zone: string, now: DateIn
   }
 }
 
-/** "Tue, Nov 10, 9:00 AM EST": a moment read in a named IANA time zone, with the zone's short name. */
 export function formatZonedDateTime(value: DateInput, zone: string) {
   const date = toDate(value);
   if (!date) return "";
@@ -108,7 +98,6 @@ export function formatZonedDateTime(value: DateInput, zone: string) {
   }
 }
 
-/** "America / New York · UTC−5": a zone's name for reading, with its offset at the given time. */
 export function formatTimeZone(zone: string, at: DateInput = Date.now()) {
   const name = zone.replaceAll("_", " ").replaceAll("/", " / ");
   const date = toDate(at);
@@ -126,7 +115,6 @@ export function formatTimeZone(zone: string, at: DateInput = Date.now()) {
   }
 }
 
-/** The unambiguous form for tooltips: "Sunday, November 8, 2026 at 3:40 PM". */
 export function formatFullTimestamp(value: DateInput) {
   const date = toDate(value);
   return date ? plain(fullTimestamp.format(date)) : "";
@@ -144,18 +132,15 @@ const weekdayDateWithYear = new Intl.DateTimeFormat(locale, {
   year: "numeric",
 });
 
-/** Whether two moments fall on the same local calendar day. */
 export function isSameDay(a: DateInput, b: DateInput) {
   const first = toDate(a);
   const second = toDate(b);
   return !!first && !!second && first.toDateString() === second.toDateString();
 }
-/** Inbox list: a clock for the current local calendar day, otherwise a date. */
 export function formatMailListDate(value: DateInput, today: DateInput = Date.now()) {
   return isSameDay(value, today) ? formatTime(value) : formatShortDate(value, today);
 }
 
-/** A day divider: "Today", "Yesterday", "Monday, November 2", with the year outside this year. */
 export function formatDayLabel(value: DateInput, now: DateInput = Date.now()) {
   const date = toDate(value);
   const today = toDate(now);
@@ -172,25 +157,21 @@ const weekdayShort = new Intl.DateTimeFormat(locale, { weekday: "short" });
 const hour = new Intl.DateTimeFormat(locale, { hour: "numeric" });
 const monthYear = new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" });
 
-/** A weekday's short name: "Mon". */
 export function formatWeekdayShort(value: DateInput) {
   const date = toDate(value);
   return date ? weekdayShort.format(date) : "";
 }
 
-/** An hour mark on a time grid: "9 AM". */
 export function formatHour(value: DateInput) {
   const date = toDate(value);
   return date ? plain(hour.format(date)) : "";
 }
 
-/** A month heading: "November 2026". */
 export function formatMonthYear(value: DateInput) {
   const date = toDate(value);
   return date ? monthYear.format(date) : "";
 }
 
-/** A span of days: "Nov 22 – 28", "Nov 29 – Dec 5", with the year outside this year. */
 export function formatDateRange(start: DateInput, end: DateInput, now: DateInput = Date.now()) {
   const first = toDate(start);
   const last = toDate(end);
@@ -202,7 +183,6 @@ export function formatDateRange(start: DateInput, end: DateInput, now: DateInput
   return `${formatShortDate(first, now)} – ${tail}`;
 }
 
-/** A time span on one day: "9:00 AM – 10:30 AM". */
 export function formatTimeRange(start: DateInput, end: DateInput) {
   const from = formatTime(start);
   const until = formatTime(end);
@@ -211,12 +191,10 @@ export function formatTimeRange(start: DateInput, end: DateInput) {
 
 const localZone = new Intl.DateTimeFormat();
 
-/** The viewer's IANA time zone, such as "America/New_York". */
 export function localTimeZone() {
   return localZone.resolvedOptions().timeZone;
 }
 
-/** A calendar date stored as YYYY-MM-DD, read in local time so it never shifts a day. */
 export function parseDateOnly(value: string): Date | undefined {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (!match) return undefined;
@@ -224,14 +202,12 @@ export function parseDateOnly(value: string): Date | undefined {
   return Number.isFinite(date.getTime()) ? date : undefined;
 }
 
-/** A local calendar date for date-only query inputs. */
 export function formatDateOnly(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 type DueDateState = "overdue" | "today" | "tomorrow" | "upcoming";
 
-/** A due date relative to today: "Today", "Tomorrow", or a short date, and whether it is late. */
 export function formatDueDate(value: string, now: DateInput = Date.now()) {
   const date = parseDateOnly(value);
   const today = toDate(now);

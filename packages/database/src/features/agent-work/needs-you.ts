@@ -17,7 +17,6 @@ import { and, desc, eq } from "drizzle-orm";
 
 const iso = (value: Date | null) => value?.toISOString() ?? null;
 
-/** Turns of the owner's agents that wait for the owner, newest first. */
 async function attentionTurns(db: DatabaseExecutor, identity: SessionIdentity) {
   return db
     .select({
@@ -40,7 +39,6 @@ async function attentionTurns(db: DatabaseExecutor, identity: SessionIdentity) {
     .limit(100);
 }
 
-/** Items of the owner's agents that the harness may or may not have read, newest first. */
 async function uncertainItems(db: DatabaseExecutor, identity: SessionIdentity) {
   return db
     .select({
@@ -63,10 +61,6 @@ async function uncertainItems(db: DatabaseExecutor, identity: SessionIdentity) {
     .limit(100);
 }
 
-/**
- * Everything that waits for the owner: open requests, agents whose status is needs_you, turns
- * that need attention, and uncertain items. A place is shown only while the owner can open it.
- */
 export async function queryNeedsYou(
   db: DatabaseExecutor,
   identity: SessionIdentity,

@@ -10,7 +10,6 @@ import { and, eq, inArray } from "drizzle-orm";
 export type TurnRow = typeof agentTurns.$inferSelect;
 export const liveStatuses = [...liveTurnStatuses];
 
-/** A turn of one of the owner's agents that this device runs, in any status. */
 export async function requireDeviceTurn(
   db: DatabaseExecutor,
   identity: ResolvedDeviceIdentity,
@@ -31,7 +30,6 @@ export async function requireDeviceTurn(
   return turn;
 }
 
-/** The turn is live, in this attempt, and this device holds its lease. */
 export function holds(turn: TurnRow, deviceId: string, attempt: number) {
   return (
     liveStatuses.includes(turn.status) &&
@@ -40,10 +38,6 @@ export function holds(turn: TurnRow, deviceId: string, attempt: number) {
   );
 }
 
-/**
- * A live turn that this device holds in this attempt. A turn that ended, moved to another device
- * or continued as a newer attempt is a conflict: the host stops running it.
- */
 export async function requireHeldTurn(
   db: DatabaseExecutor,
   identity: ResolvedDeviceIdentity,

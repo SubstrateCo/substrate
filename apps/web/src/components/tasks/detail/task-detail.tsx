@@ -41,7 +41,6 @@ export function TaskDetail({
   useRegisterDraft(taskId, dirty);
   const detail = resource.data;
   const task = detail?.tasks.find((candidate) => candidate.entityId === taskId);
-  // The parent renders this only for a task in a project it loaded.
   if (!detail || !task) return null;
   return (
     <>

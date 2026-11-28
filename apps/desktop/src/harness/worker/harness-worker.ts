@@ -14,13 +14,11 @@ import {
   type WorkspaceApiResponse,
 } from "./workspace-proxy.ts";
 
-/** Forwards only fixed error codes, never native output or local paths. */
 function errorCode(cause: unknown) {
   const code = cause instanceof Error && "code" in cause ? cause.code : undefined;
   return isHarnessErrorCode(code) ? code : "harness-error";
 }
 
-/** Methods that run at once instead of waiting behind configuration work. */
 const immediateMethods = [
   "execute",
   "listModels",
@@ -37,7 +35,6 @@ function isImmediate(
   return immediateMethods.some((method) => method === request.method);
 }
 
-// This dedicated process receives messages only from the trusted main-process controller.
 const port = process.parentPort;
 let host: RuntimeHarnessHost | undefined;
 let queue = Promise.resolve();
@@ -69,16 +66,11 @@ port.on(
       void reply(data.id, async () => host?.dispose());
       return;
     }
-    // An organization's sessions close at once, also while the next organization configures.
-    // Without a host, nothing is open.
     if (data.method === "closeOrganization") {
       const current = host;
       void reply(data.id, async () => current?.closeOrganization(data.value));
       return;
     }
-    // Session commands and model discovery do not wait behind configuration
-    // work. The host orders commands per session; interrupt and respond reach a live turn at once.
-    // Sign-in reads and input also do not wait: a terminal login streams while other work runs.
     if (isImmediate(data)) {
       const current = host;
       if (!current) {

@@ -7,7 +7,6 @@ import { utcTimestamp } from "@substrate/contracts/timestamps";
 
 import { z } from "zod";
 
-// The subset of CalendarEventSummary that meeting reminders use.
 const calendarEvent = z.object({
   entityId: z.uuid(),
   calendarName: z.string(),
@@ -25,11 +24,6 @@ export type CalendarFeedEvent = z.infer<typeof calendarEvent>;
 
 const feed = z.object({ success: z.literal(true), data: z.array(calendarEvent) });
 
-/**
- * The viewer's events in the range, or null when the calendar is unavailable to them: signed out,
- * no access, or the app is off in this organization. Other failures throw, so callers keep what
- * they have and retry later.
- */
 export async function readCalendarFeed(
   options: {
     backend: string;

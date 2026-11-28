@@ -27,7 +27,6 @@ test("project icon uploads and downloads enforce live project permissions, works
         file: { name: "icon.png", mimeType: "image/png", buffer: png },
       },
     });
-  // Another organization cannot upload to or read the project.
   expect((await upload(outsider.request, outsider.organizationId)).status()).toBe(404);
   const { url } = await result<{ url: string }>(await upload(request));
   await result(
@@ -39,7 +38,6 @@ test("project icon uploads and downloads enforce live project permissions, works
   );
   expect((await anonymous.get(url, { maxRedirects: 0 })).status()).toBeGreaterThanOrEqual(400);
   expect((await outsider.request.get(url, { maxRedirects: 0 })).status()).toBe(404);
-  // A workspace member without a project grant can neither read nor replace the icon.
   expect((await member.get(url, { maxRedirects: 0 })).status()).toBe(404);
   expect((await upload(member)).status()).toBe(404);
   const detail = await result<{ actors: { entityId: string; name: string }[] }>(

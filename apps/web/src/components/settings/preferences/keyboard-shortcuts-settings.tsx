@@ -17,12 +17,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { desktopSettingsBridge } from "@/lib/desktop/bridges";
 import { RotateCcw } from "lucide-react";
 
-// Keys that other parts of the app keep: switching the search type.
 const reserved = ["Control+Tab", "Control+Shift+Tab"] as const;
 const usesReservedKey = (hotkey: Hotkey) =>
   hotkeySteps(hotkey).some((step) => reserved.some((key) => areHotkeysEqual(step, key)));
 
-// Only the desktop app saves shortcuts. Browsers use the defaults and show nothing.
 export function KeyboardShortcutsSettings() {
   const items = useAppHotkeyList();
   const { resetCustomHotkeys } = useCustomHotkeys();
@@ -113,7 +111,6 @@ function ShortcutRow({ item: { appHotkey, isCustom } }: { item: RegisteredAppHot
   );
 }
 
-/** While recording, the keys pressed so far and Cancel; otherwise the shortcut and its tools. */
 function ShortcutControl({
   name,
   recording,

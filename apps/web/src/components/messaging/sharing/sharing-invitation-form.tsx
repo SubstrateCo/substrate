@@ -42,7 +42,6 @@ export function SharingInvitationForm({
       if (!available || pending) return;
       const invitation = sharingInvitationSchema.parse(value);
       onInvite(invitation.email, () => {
-        // Keep the acknowledgement for subsequent invitations in this dialog.
         form.reset({ email: "", confirmed: true });
         focusAfterRender(() => inputRef.current);
       });

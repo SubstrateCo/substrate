@@ -10,7 +10,6 @@ import { Text } from "@/components/ui/text";
 import { useMessagingProfile } from "@/features/messaging/queries/use-conversations";
 import { ErrorState, LoadingRows } from "@/features/records/ui/states";
 
-/** A person or agent as this conversation lets the viewer see them. */
 export function ProfileSheet({
   organizationId,
   conversationId,

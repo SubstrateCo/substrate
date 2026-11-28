@@ -210,8 +210,6 @@ test("organization invitations refresh user lists without an active workspace", 
 });
 
 test("organization hints retain role refresh because organization deletion has no access hint", () => {
-  // The detail target also refreshes the summary that holds the role (see "workspace detail
-  // changes refresh organization details").
   expect(realtimeQueryTargets(change("organization"), "user")).toEqual([
     { queryKey: queryKeys.organizations },
     { queryKey: queryKeys.userInvitations },
@@ -344,7 +342,6 @@ test("a reaction hint refreshes that message's thread and reactions only", () =>
     queryKeys.search("org"),
   ];
   expect(matchedKeys(event, [...refreshed, ...untouched])).toEqual(refreshed);
-  // A reaction on a main-timeline message refreshes the timeline, not its threads.
   expect(
     matchedKeys({ ...event, messageId: "root", threadId: null }, [
       queryKeys.messages("org", "conversation"),
@@ -360,7 +357,6 @@ test("new messages refresh history, not conversation lists or loaded message con
   );
   expect(targets).not.toContainEqual({ queryKey: queryKeys.conversations("org") });
   expect(targets).not.toContainEqual({ queryKey: queryKeys.messagePages("org", "conversation") });
-  // New posts only make open searches stale.
   for (const queryKey of queryKeys.searches("org"))
     expect(targets).toContainEqual({ queryKey, refetchType: "none", searchesMessages: true });
 });
@@ -414,7 +410,6 @@ test("a new reply refreshes its thread and the timeline's reply count, nothing e
     queryKeys.messagePage("org", "other", ["message"]),
   ];
   expect(matchedKeys(event, [...refreshed, ...untouched])).toEqual(refreshed);
-  // A new main-timeline message leaves every thread alone.
   expect(
     matchedKeys({ ...event, messageId: "new", threadId: null }, [
       queryKeys.messages("org", "conversation"),
@@ -448,7 +443,6 @@ test("message changes refresh only related lists that show their conversation", 
   expect(
     matched({ ...change("messaging"), conversationId: "conversation", messageId: "m" }),
   ).toEqual([shows, loading]);
-  // Membership changes can reveal messages that a list does not show yet.
   expect(matched({ ...change("messaging"), conversationId: "conversation" })).toEqual([
     shows,
     other,
@@ -516,7 +510,6 @@ test("a new-message hint reads history once and loaded message context not at al
       scope: "messages",
     });
     await advanceTimersAsync(25);
-    // A new message has no reactions yet.
     expect(reads).toEqual({ messages: 2, pages: 1, reactions: 1 });
     await cache.receive({ ...change("messaging"), conversationId: "conversation" });
     await advanceTimersAsync(25);
@@ -597,7 +590,6 @@ test("a project hint refreshes the project's records and lists, not other projec
     queryKeys.agentWorkStatus("user", "org"),
   ];
   expect(matchedKeys(event, [...refreshed, ...untouched])).toEqual(refreshed);
-  // Without a project, as after a grant change, every task record can change.
   expect(matchedKeys(change("tasks"), untouched.slice(0, 3))).toEqual(untouched.slice(0, 3));
 });
 
@@ -616,7 +608,6 @@ test("task metadata hints refresh discussion titles and backlinks, not ordinary 
     client.setQueryData(key, [{ task: { taskEntityId: "task", projectEntityId: "project" } }]);
     expect(matches("project", ["task"])).toBe(true);
     expect(matches("project", ["other"])).toBe(false);
-    // A move hint may name the new project while the cache still has the previous backlink.
     expect(matches("destination", ["task"])).toBe(true);
     expect(matches("project")).toBe(true);
     expect(matches("other-project")).toBe(false);
@@ -691,7 +682,6 @@ test("a referenced-work hint refreshes the related lists of that project and its
     queryKeys.notificationUnread("org"),
   ];
   expect(matchedKeys(event, [...refreshed, ...untouched])).toEqual(refreshed);
-  // Conversation deletion sends no IDs, so every reference view refreshes.
   expect(matchedKeys(change("context"), untouched.slice(0, 3))).toEqual(untouched.slice(0, 3));
 });
 
@@ -708,7 +698,6 @@ test("workspace detail changes refresh organization details and invitations, not
   const kept = [
     queryKeys.conversations("org"),
     queryKeys.projects("org"),
-    // Moving a task between projects sends only an access hint.
     queryKeys.taskLocation("org", "task"),
     [...queryKeys.context("org"), "related", "task"],
   ];
@@ -723,7 +712,6 @@ test("workspace detail changes refresh organization details and invitations, not
       ),
     ).size;
   expect(matched("organization")).toBe(refreshed.length);
-  // Access changes can hide or reveal any workspace record.
   expect(matched("access")).toBe(refreshed.length + kept.length);
   client.clear();
 });
@@ -762,7 +750,6 @@ test("agent-work hints refresh only the owner's agent work in that workspace", (
     queryKeys.agentWorkConversation("user", "org", "conversation"),
     queryKeys.agentWorkConversation("user", "other", "conversation"),
     queryKeys.agentWorkNeedsYou("other", "org"),
-    // Bridge change hints keep local transcripts fresh; server hints leave them alone.
     queryKeys.agentWorkTurnEvents("user", "org", "turn"),
   ];
   for (const key of keys) client.setQueryData(key, []);
@@ -928,7 +915,6 @@ test("task activity and related context refresh; message changes refresh active 
     expect(client.getQueryState(keys.related)?.isInvalidated).toBe(true);
     expect(client.getQueryState(keys.search)?.isInvalidated).toBe(domain !== "messaging");
     expect(client.getQueryState(keys.pages)?.isInvalidated).toBe(true);
-    // Only task titles appear in existing notifications; new ones send their own hint.
     expect(client.getQueryState(keys.notifications)?.isInvalidated).toBe(domain === "tasks");
     expect(searchFetches).toBe(domain === "messaging" ? 1 : 0);
     cache.dispose();
@@ -1039,7 +1025,6 @@ test("task edits refresh titles shown by message links and existing notification
   expect(client.getQueryState(linked)?.isInvalidated).toBe(true);
   expect(client.getQueryState(notifications)?.isInvalidated).toBe(true);
   expect(client.getQueryState(plain)?.isInvalidated).toBe(false);
-  // Reference changes can add links, so they still refresh every page.
   await cache.receive(change("context"));
   await advanceTimersAsync(25);
   expect(client.getQueryState(plain)?.isInvalidated).toBe(true);
@@ -1088,7 +1073,6 @@ test("a task hint refreshes one mounted fifty-message context page, and a denied
     const blocked = Promise.withResolvers<{ links: { entityId: string; title: string }[] }[]>();
     observer.setOptions({ ...observer.options, queryFn: () => blocked.promise });
     const reset = cache.receive(change("access"));
-    // The page stays on screen while access is checked again.
     expect(observer.getCurrentResult().data).toHaveLength(50);
     blocked.reject(Object.assign(new Error("Forbidden"), { status: 403 }));
     await reset;
@@ -1116,7 +1100,6 @@ test("duplicate changes coalesce and ready resyncs cached state", async () => {
   await cache.receive(event);
   await advanceTimersAsync(25);
   expect(client.getQueryState(key)?.isInvalidated).toBe(true);
-  // Read before the load that opened the socket, so ready marks it stale.
   client.setQueryData(key, ["new"], { updatedAt: Date.now() - 60_000 });
   await cache.receive(event);
   await advanceTimersAsync(25);
@@ -1214,7 +1197,6 @@ for (const scenario of ["after", "settled", "before", "none"] as const) {
       revalidate: async () => {},
       batchMs: 5,
     });
-    // The local mutation invalidation starts a read before or after its realtime echo arrives.
     const localRead = () => void client.invalidateQueries({ queryKey: key });
     try {
       if (scenario === "before") localRead();
@@ -1252,11 +1234,9 @@ test("a later ready resyncs: it drops private values first, and health follows t
   try {
     client.setQueryData(key, ["private"]);
     await cache.receive({ version: 1, type: "ready" });
-    // The first ready keeps loaded values and marks them stale.
     expect(client.getQueryData(key)).toEqual(["private"]);
     expect(health).toEqual(["syncing", "fresh"]);
     await cache.receive({ version: 1, type: "ready" });
-    // A reconnect may follow a missed revocation, so it drops private values.
     expect(client.getQueryData(key)).toBeUndefined();
     expect(health).toEqual(["syncing", "fresh", "syncing", "fresh"]);
     fail = true;

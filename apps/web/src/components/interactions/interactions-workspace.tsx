@@ -50,12 +50,10 @@ const titles: Record<InteractionSection, string> = {
   account: "Organization activity",
 };
 
-/** The dashboard has no all-time view, so it shows the last 30 days instead. */
 function sectionDays(section: InteractionSection, days: InteractionDays) {
   return section === "dashboard" && days === "all" ? "30" : days;
 }
 
-/** The directory section that a profile belongs to. */
 function directorySectionOf(section: InteractionSection): InteractionSection {
   if (section === "person") return "people";
   if (section === "account") return "accounts";
@@ -83,7 +81,6 @@ export function InteractionsWorkspace({
   const [creating, setCreating] = useState(false);
   const activeDays = sectionDays(section, days);
   const crmUnavailable = (section === "accounts" || section === "account") && !apps.enabled("crm");
-  // A profile renders its own header, with the record's name as the title.
   const showsProfile =
     !crmUnavailable && !!profileId && (section === "person" || section === "account");
   const createButton = (
@@ -165,7 +162,6 @@ export function InteractionsWorkspace({
   );
 }
 
-/** The view for the current section, once CRM access is settled. */
 function InteractionsContent({
   section,
   activeDays,
@@ -277,7 +273,6 @@ function InteractionRecordSheet({ recordId }: { recordId?: string }) {
           renderContact={(contact) => (
             <ContactProfileLink
               contactEntityId={contact.entityId}
-              // The record can be older than the current period.
               allTime
               className="min-w-0 truncate underline-offset-4 hover:underline"
             >

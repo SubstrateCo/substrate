@@ -16,14 +16,12 @@ import { Button } from "@/components/ui/button";
 import { mcpServerLimitReached } from "@/lib/agents/mcp-server-draft";
 import { Globe, Info, Plus, SquareTerminal } from "lucide-react";
 
-/** How the agent reaches a server: the command it runs or the address it calls. */
 function serverDetail(server: HarnessMcpServer) {
   if (server.transport === "stdio") return [server.command, ...(server.args ?? [])].join(" ");
   const url = new URL(server.url);
   return `${url.host}${url.pathname === "/" ? "" : url.pathname}`;
 }
 
-/** A server the agent runs on this desktop, or one it calls over the network. */
 function ServerDetail({ server }: { server: HarnessMcpServer }) {
   return (
     <>
@@ -37,30 +35,6 @@ function ServerIcon({ server }: { server: HarnessMcpServer }) {
   const Icon = server.transport === "stdio" ? SquareTerminal : Globe;
   return <Icon aria-hidden="true" className="text-muted-foreground" />;
 }
-
-/*
- * Future: connection health, once the agent host checks each server and reports it.
- * Servers that can't connect would be pinned above the list with the reason and a Fix action, and
- * each row would show a status dot and its tool count:
- *
- * const broken = servers.filter((server) => health[server.id]?.state === "failed");
- * {broken.length > 0 && (
- *   <ConfigurationList title={`Can't connect · ${broken.length}`}>
- *     {broken.map((server) => (
- *       <CatalogRow
- *         key={server.id}
- *         name={server.name}
- *         detail={health[server.id].reason}
- *         picture={<WorkIndicator tone="failed" label="Can't connect" compact />}
- *         disabled={busy}
- *         onEdit={() => onEdit(server)}
- *         onDelete={() => onDelete(server)}
- *       />
- *     ))}
- *   </ConfigurationList>
- * )}
- * detail={`${serverDetail(server)} · ${health[server.id]?.toolCount ?? "?"} tools`}
- */
 
 export function McpServersSection({
   servers,
@@ -78,7 +52,6 @@ export function McpServersSection({
   available: boolean;
   refresh: ReactNode;
   status: ReactNode;
-  /** A save or delete is running. */
   busy: boolean;
   onCreate: () => void;
   onEdit: (server: HarnessMcpServer) => void;

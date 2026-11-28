@@ -1,7 +1,6 @@
 import type { PrivateFile } from "@/api/files/resources";
 import { onPrivateStateReset } from "@/auth/private-state";
 
-/** A workspace exit between downloading and opening the share sheet must not publish the file. */
 export async function shareRecordExport(
   load: (signal: AbortSignal) => Promise<PrivateFile>,
   share: (file: PrivateFile) => Promise<void>,

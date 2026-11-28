@@ -16,7 +16,6 @@ import { ChevronRight } from "lucide-react";
 const sectionLabels = { channel: "Channels", partner: "Partner channels", dm: "Direct messages" };
 const emptyLabels = { channel: "No channels yet", dm: "No conversations yet" };
 
-/** The actions in a section header. Partner channels are created from Channels, so they have none. */
 export type ConversationSectionActions = (section: "channel" | "dm") => ReactNode;
 
 export function ConversationSection({
@@ -36,19 +35,16 @@ export function ConversationSection({
   conversationLink: (id: string) => LinkProps;
   renderSectionActions: ConversationSectionActions;
 }) {
-  // Partner channels include people from another organization, wherever they are hosted.
   const items = conversations.filter((conversation) =>
     section === "dm"
       ? conversation.kind !== "channel"
       : conversation.kind === "channel" && !!conversation.partner === (section === "partner"),
   );
   const [collapsed, setCollapsed] = useState(false);
-  // A collapsed section keeps the open conversation under its header, so the place never vanishes.
   const pinned = collapsed
     ? items.find((conversation) => conversation.id === selectedId)
     : undefined;
   const listed = pinned ? items.filter((conversation) => conversation !== pinned) : items;
-  // Partner channels are created from Channels, so an empty partner section has nothing to show.
   if (section === "partner" && !items.length) return null;
   return (
     <Collapsible open={!collapsed} onOpenChange={(open) => setCollapsed(!open)} asChild>
@@ -69,7 +65,6 @@ export function ConversationSection({
             />
           </div>
         )}
-        {/* The padding keeps focus rings of the first and last rows from being clipped. */}
         <CollapsibleContent className="-mx-1 -my-0.5">
           <div className="px-1 py-0.5">
             <div className="mt-0.5 flex flex-col gap-0.5">
@@ -92,7 +87,6 @@ export function ConversationSection({
                 />
               ))}
             </div>
-            {/* The section header's create button offers the action. */}
             {!loading && items.length === 0 && section !== "partner" && (
               <div className="px-2 py-1">
                 <ContentNotice variant="inline" title={emptyLabels[section]} />

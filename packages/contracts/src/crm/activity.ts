@@ -21,7 +21,6 @@ export const crmActivityActions = [
   "restored",
 ] as const;
 
-// An allowlist prevents a caller from storing values or private endpoint IDs as field names.
 export const crmActivityFields = [
   "name",
   "website",

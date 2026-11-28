@@ -60,7 +60,6 @@ export function ProjectDetailView({
   const query = useQuery(recordQueries.project(scope, projectId));
   const write = useTasksWrite(scope);
   const [filters, setFilters] = useState<FilterValue<"status">>({ status: ["open"] });
-  // No status filter shows every task.
   const filter: Filter = oneOf(filters.status, statusFilters) ?? "all";
   const [editing, setEditing] = useState(false);
   const [creating, setCreating] = useState(false);

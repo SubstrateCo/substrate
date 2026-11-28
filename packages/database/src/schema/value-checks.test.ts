@@ -10,7 +10,6 @@ const valueList = new RegExp(
   "i",
 );
 
-// Closed value sets are typed in the app layer, so adding a value never needs a migration.
 test("check constraints never limit a column to a list of values", () => {
   const listChecks = Object.values(schema)
     .filter((value) => is(value, PgTable))

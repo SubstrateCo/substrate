@@ -45,7 +45,6 @@ import { Archive, Plus } from "lucide-react";
 
 const pageSize = 100;
 
-/** Active records are the unfiltered default; Archived shows archived records only. */
 const recordFilterFields: FilterField<RecordFilterFieldId>[] = [
   {
     id: "records",
@@ -75,7 +74,6 @@ function useCollectionQueries({
   search: ReturnType<typeof useSearchDebounce>;
   archived: boolean;
   afterEntityId: string | undefined;
-  /** The pipeline board reads all open deals instead of one page of deals. */
   board: boolean;
 }) {
   const apps = useOrganizationApps();
@@ -83,7 +81,6 @@ function useCollectionQueries({
     kind === section
       ? ([search, archived, afterEntityId] as const)
       : (["", false, undefined] as const);
-  // A page turn keeps the current page on screen until the next one arrives.
   const paged = <T extends { queryKey: QueryKey }>(options: T) => ({
     ...options,
     placeholderData: keepPageWhileTurning(options.queryKey),
@@ -96,7 +93,6 @@ function useCollectionQueries({
     ...paged(contactsOptions(organizationId, ...scopedFilters("contacts"))),
     enabled: !pending && kind === "contacts",
   });
-  // The list loads when it is shown, so the board does not read a page that may never open.
   const deals = useQuery({
     ...paged(dealsOptions(organizationId, search, archived, afterEntityId)),
     enabled: kind === "deals" && !pending && !board,
@@ -213,11 +209,9 @@ export function RecordCollection({ kind }: { kind: CrmKind }) {
           />
         ),
       };
-  // One error per failed load: deals also need the pipeline and settings.
   const needed = kind === "deals" ? [queries.pipeline, queries.settings] : [];
   const neededError = needed.find((query) => query.error)?.error ?? null;
   return (
-    // The pipeline's columns scroll on their own, so the page does not.
     <div
       className={cn(
         "flex min-h-0 min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6",
@@ -354,13 +348,9 @@ function RecordCollectionResults({
   children,
 }: {
   kind: CrmKind;
-  /** The shown records, failed by their own load or by one they need. */
   state: ResourceState<unknown>;
-  /** Retries every failed load. */
   onRetry: () => void;
-  /** The skeleton of the list or pipeline board. */
   loading: ReactNode;
-  /** The loaded list or pipeline board. */
   children: ReactNode;
 }) {
   return (
@@ -370,7 +360,6 @@ function RecordCollectionResults({
   );
 }
 
-/** The API returns up to `pageSize` records after a cursor and no total. */
 function collectionPagination(
   rows: CrmListRow[],
   pages: ReturnType<typeof useCursorPages<string>>,

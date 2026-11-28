@@ -44,13 +44,8 @@ export const dealsOptions = (
       }),
     retry: false,
   });
-/** The most open deals the pipeline board loads. Each request reads one page of 100. */
 export const pipelineDealLimit = 1000;
 
-/**
- * Every open deal for the pipeline board, up to the limit. A board shows all open deals by
- * stage, so it reads pages of open deals until the last one instead of one page of all deals.
- */
 export const pipelineDealsOptions = (organizationId: string, search = "") =>
   queryOptions({
     queryKey: [...queryKeys.crmList(organizationId, "deals", search, false), "pipeline"],

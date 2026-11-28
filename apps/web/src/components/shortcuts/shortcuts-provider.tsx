@@ -12,10 +12,6 @@ import { useShortcutsUpdate } from "@/queries/desktop/mutations";
 import { desktopShortcutsQueryOptions } from "@/queries/desktop/settings";
 import { toast } from "sonner";
 
-/**
- * Applies the person's shortcuts. The desktop app keeps them in a file that main owns; browsers
- * use the defaults.
- */
 export function ShortcutsProvider({ children }: { children: ReactNode }) {
   const bridge = desktopSettingsBridge();
   if (!bridge) return <HotkeysProvider appHotkeys={appHotkeys}>{children}</HotkeysProvider>;
@@ -31,7 +27,6 @@ function SavedShortcutsProvider({
 }) {
   const saved = useQuery(desktopShortcutsQueryOptions(bridge));
   const save = useShortcutsUpdate(bridge);
-  // Undefined while loading keeps the defaults until the saved keys arrive.
   const custom = useMemo(() => saved.data && customFromSaved(saved.data), [saved.data]);
   return (
     <HotkeysProvider

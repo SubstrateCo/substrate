@@ -47,11 +47,6 @@ async function requireOwnedRequest(
   return request;
 }
 
-/**
- * Records the owner's answer to a permission or question. The first answer wins: the update
- * applies only while the request is still pending. A blocking answer waits for the home desktop
- * to deliver it; an async answer wakes the agent in the request's session.
- */
 export async function respondToRequestInTransaction(
   tx: DatabaseExecutor,
   identity: SessionIdentity,
@@ -78,7 +73,6 @@ export async function respondToRequestInTransaction(
   return { status: resolved.status };
 }
 
-/** Declines a proposal. Nothing runs; the agent learns the decision in its session. */
 export async function declineProposalInTransaction(
   tx: DatabaseExecutor,
   identity: SessionIdentity,
@@ -102,14 +96,6 @@ export async function declineProposalInTransaction(
   return { status: resolved.status, outcome };
 }
 
-/**
- * Approves a proposal and runs exactly the proposed action as the agent, once. The claim moves
- * the request from pending to executing in the action's transaction, so a second approval finds
- * it closed and runs nothing. Access is checked again when the action runs, and the action runs
- * only while the targets are as they were proposed. A failed action is recorded and reported; it
- * is not retried.
- */
-// Only expected failures are recorded, with messages the owner can act on. Others are rethrown.
 export function proposalFailure(error: Error): ProposalOutcome | null {
   if (error instanceof AccessDeniedError)
     return { status: "failed", error: "The target no longer exists or is no longer available." };
@@ -149,8 +135,6 @@ export async function approveProposalInTransaction(
       actorEntityId: claimed.agentActorEntityId,
     };
     try {
-      // A savepoint, so a failed action leaves no partial writes but the decision is kept. Its
-      // hints join the transaction only if the savepoint succeeds.
       const result = await tx.transaction(async (sp) => {
         const { context, actor, userName } = await workspaceContext(sp, agent);
         return runProposalAction(

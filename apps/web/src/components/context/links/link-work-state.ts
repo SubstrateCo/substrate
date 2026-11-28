@@ -1,4 +1,3 @@
-/** A result already linked to the message can't be chosen again. */
 export type LinkWorkState = "linked" | "selected" | "available";
 
 export function linkWorkState({

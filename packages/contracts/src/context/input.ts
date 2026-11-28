@@ -9,8 +9,11 @@ export const contextMessagePage = contextWorkspace.extend({
   messageIds: z.array(z.uuid()).max(50),
 });
 export const contextTarget = contextMessage.extend({ conversationId: z.uuid() });
+export const contextTargetsLimit = 50;
 export const contextTargets = contextWorkspace.extend({
-  targets: z.array(z.object({ conversationId: z.uuid(), messageId: z.uuid() })).max(50),
+  targets: z
+    .array(z.object({ conversationId: z.uuid(), messageId: z.uuid() }))
+    .max(contextTargetsLimit),
 });
 export const contextLink = contextMessage.extend({ entityId: z.uuid() });
 export const contextEntityTypes = [
@@ -44,7 +47,6 @@ export const contextSearchKinds = [
   "thread",
 ] as const;
 export type ContextSearchKind = (typeof contextSearchKinds)[number];
-// Kinds that one search can combine. Channels and threads have their own order and stay separate.
 const contextSearchBatchKind = z.enum(contextSearchKinds).exclude(["all", "channel", "thread"]);
 export type ContextSearchBatchKind = z.infer<typeof contextSearchBatchKind>;
 export const contextSearch = contextWorkspace
@@ -56,8 +58,6 @@ export const contextSearch = contextWorkspace
     conversationId: z.uuid().optional(),
     editable: z.boolean().optional(),
     relatedToEntityId: z.uuid().optional(),
-    // The first page of each kind, grouped in this order. `limit` applies to each kind. With a
-    // query, each kind holds its best matches, and a kind with a stronger best match comes first.
     kinds: z
       .array(contextSearchBatchKind)
       .min(1)

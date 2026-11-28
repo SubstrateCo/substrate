@@ -25,7 +25,6 @@ const loadingRowVariants = cva("flex gap-3", {
   },
 });
 
-// Table rows have no avatar.
 const loadingAvatarVariants = cva("shrink-0", {
   variants: {
     variant: {

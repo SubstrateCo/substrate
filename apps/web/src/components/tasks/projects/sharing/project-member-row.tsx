@@ -12,10 +12,6 @@ import {
 } from "@/components/ui/select";
 import { actorIdentity, actorKindLabel } from "@/lib/actors/identity";
 
-/**
- * One person with project access. Owners change the level from the menu and remove access with
- * the row's remove button. The last owner stays fixed so the project always has one.
- */
 export function ProjectMemberRow(
   props: {
     member: ProjectDetail["members"][number];
@@ -24,7 +20,6 @@ export function ProjectMemberRow(
     | { editable: true; onChange: (level: PermissionLevel) => void; onRemove: () => void }
     | {
         editable: false;
-        /** Why the access is fixed, after the actor kind. */
         note?: string;
       }
   ),

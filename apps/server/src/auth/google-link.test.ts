@@ -11,7 +11,6 @@ const handoff = `${apiURL}/desktop/open?path=%2Fsettings%2Fuser%2Fcalendars`;
 
 afterEach(() => setSystemTime());
 
-/** A real Better Auth with in-memory storage and a Google client that is never called. */
 async function fixture() {
   const db = { user: [], session: [], account: [], verification: [] };
   const auth = betterAuth({
@@ -50,7 +49,6 @@ test("a ticket starts one Google link as its session and sends the browser only 
   expect(names).toEqual([context.createAuthCookie("state").name]);
   expect(started.cookies.join("\n")).not.toContain(session.token);
 
-  // The flow links to the ticket's user and returns through the fixed desktop handoff.
   const state = consent.searchParams.get("state") ?? "";
   const stored = await context.internalAdapter.findVerificationValue(
     getAuthStateVerificationIdentifier(state),
@@ -91,6 +89,5 @@ test("unknown and malformed tickets cannot start a link", async () => {
   const unknown = `${ticket.slice(0, -1)}${ticket.endsWith("A") ? "B" : "A"}`;
   for (const value of [unknown, "", "short", `${ticket}x`, "https://accounts.google.com/"])
     expect(await tickets.start(value)).toBeNull();
-  // Failed attempts do not use up the real ticket.
   expect(await tickets.start(ticket)).not.toBeNull();
 });

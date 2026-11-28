@@ -1,6 +1,5 @@
 type Identity = { userId: string; verified: boolean };
 
-/** Bind renderer updates to the native session, including across late authentication reads. */
 export function createAttentionSession({
   apply,
   token,

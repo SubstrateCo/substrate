@@ -1,9 +1,6 @@
 import type { Usage } from "../harness-runtime/runtime.ts";
 import type { AgentRequestKind } from "./requests.ts";
 
-// Agent-work states, item sources and turn events. The server owns sessions, items and turns;
-// the home desktop keeps each turn's transcript events.
-
 export const agentSessionStatuses = ["idle", "working", "closed"] as const;
 export type AgentSessionStatus = (typeof agentSessionStatuses)[number];
 

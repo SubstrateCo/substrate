@@ -4,15 +4,9 @@ import { CalendarAccessRequired, CalendarCursorExpired, CalendarProviderError } 
 
 export interface SyncFailure {
   outcome: "retry" | "reauth_required" | "reset";
-  /** Stored on the calendar. Never contains provider details. */
   errorCode: string;
 }
 
-/**
- * How a failed sync is recorded. An expired cursor resets the calendar to a full sync, a grant
- * the owner must renew stops it, and everything else is retried. Unknown errors keep their
- * details out of the stored code.
- */
 export function syncFailure(error: CalendarProviderError | undefined): SyncFailure {
   if (error instanceof CalendarCursorExpired)
     return { outcome: "reset", errorCode: error.errorCode };
@@ -22,9 +16,7 @@ export function syncFailure(error: CalendarProviderError | undefined): SyncFailu
 }
 
 export interface CalendarSyncDependencies<Claim, Meeting> {
-  /** Leases the next due calendar, or returns null. */
   claim(): Promise<Claim | null>;
-  /** Fetches the calendar's changes from its provider, outside any transaction. */
   fetch(claim: Claim): Promise<ProviderSyncResult>;
   commit(claim: Claim, result: ProviderSyncResult): Promise<void>;
   fail(claim: Claim, failure: SyncFailure): Promise<void>;
@@ -33,7 +25,6 @@ export interface CalendarSyncDependencies<Claim, Meeting> {
   reportFailure(message: string): void;
 }
 
-/** Calendars synced per run. Each one holds a lease, so a small batch keeps leases short. */
 const calendarSyncBatch = 10;
 
 export class CalendarSyncWorker<Claim, Meeting> {
@@ -42,7 +33,6 @@ export class CalendarSyncWorker<Claim, Meeting> {
 
   constructor(private readonly dependencies: CalendarSyncDependencies<Claim, Meeting>) {}
 
-  /** Starts a run. A trigger during a run starts one more run after it, so new work is seen. */
   trigger() {
     if (this.running) {
       this.again = true;
@@ -91,7 +81,6 @@ export class CalendarSyncWorker<Claim, Meeting> {
       try {
         await this.dependencies.commit(claim, result);
       } catch {
-        // The lease expires and a later run fetches the changes again.
         this.dependencies.reportFailure("Calendar sync could not be saved; it will be retried.");
       }
     }

@@ -57,7 +57,6 @@ test("after the owner leaves the live conversation, status and needs-you show no
     liveThreadId: root.id,
     activity: "Reading the secret launch notes",
   });
-  // A steered item that may not have been read waits for the owner too.
   await f.db.insert(agentWorkItems).values({
     organizationId: f.orgA,
     userAgentId: agent.agentId,

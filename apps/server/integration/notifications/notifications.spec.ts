@@ -16,7 +16,6 @@ test("grouped notifications enforce recipient, workspace, current access, authen
   workspace,
   request,
 }) => {
-  // A fresh recipient workspace, so its notification feed and unread state hold only this thread.
   const [recipient] = await workspace(sharedRecipient);
   const post = async (actor: Actor, path: string, data: SetupInput) => {
     const response = await actor.request.post(`/api/v1/${path}`, {

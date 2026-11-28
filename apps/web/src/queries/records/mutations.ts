@@ -12,7 +12,6 @@ import { mutateCrm } from "@/api/crm/requests";
 
 export type RecordWrite = ContactWrite | CrmWrite | InteractionWrite;
 
-// Shared record editors also expose CRM relationships and context actions.
 export function useRecordMutation(organizationId: string, kind: CrmExport["kind"]) {
   const client = useQueryClient();
   return useMutation({

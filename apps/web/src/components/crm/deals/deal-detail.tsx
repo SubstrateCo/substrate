@@ -96,7 +96,6 @@ export function DealDetail({ entityId }: { entityId: string }) {
   );
 }
 
-/** The open edit, archive, or move dialog of a deal. */
 function DealDialogs({
   dialog,
   data: { deal, account, contacts: participants },
@@ -149,7 +148,6 @@ function DealDialogs({
       archived={!!deal.archivedAt}
       record={{
         ...deal,
-        // The deal shows an account only when the viewer can read it.
         accountName: deal.accountEntityId ? account.name : undefined,
         contactEntityIds: participants.map(({ contact }) => contact.entityId),
         primaryContactEntityId: primaryContact?.entityId ?? null,

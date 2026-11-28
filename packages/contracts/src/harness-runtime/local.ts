@@ -25,15 +25,15 @@ const environment = z
     nonSecret,
   )
   .optional();
-// Substrate's own MCP server is added at execution time.
-const serverId = harnessIdSchema.refine((id) => id !== "substrate");
+export const substrateMcpServerId = "substrate";
+const userMcpServerId = harnessIdSchema.refine((id) => id !== substrateMcpServerId);
 /**
  * A user-added MCP server. Substrate stores it per agent and passes it to the harness on each
  * session setup. Configuration only: credentials remain in each native harness's credential store.
  */
 export const harnessMcpServerSchema = z.discriminatedUnion("transport", [
   z.strictObject({
-    id: serverId,
+    id: userMcpServerId,
     name,
     transport: z.literal("stdio"),
     command: nonSecret.pipe(z.string().min(1).max(2000)),
@@ -41,7 +41,7 @@ export const harnessMcpServerSchema = z.discriminatedUnion("transport", [
     environment,
   }),
   z.strictObject({
-    id: serverId,
+    id: userMcpServerId,
     name,
     transport: z.literal("http"),
     url: z

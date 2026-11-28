@@ -5,7 +5,6 @@ import { RecordEditor, type RecordDraft } from "./record-editor";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useRecordMutation } from "@/queries/records/mutations";
 
-/** Renders the edit or archive dialog of a CRM record detail and closes it after a successful change. */
 export function RecordChangeDialogs({
   dialog,
   kind,

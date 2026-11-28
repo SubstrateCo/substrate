@@ -16,7 +16,6 @@ export function ThreadPane({
   state: ResourceStatus;
   error?: Error | null;
   onRetry: () => void;
-  /** The replies, or their loading or empty view. */
   replies: ReactNode;
   composer: ReactNode;
 }) {

@@ -13,19 +13,16 @@ test("the reference picker filters with Tab, searches full names, and steps asid
   const tab = (name: string) => page.getByRole("tab", { name, exact: true });
   await editor.pressSequentially("Ping @");
   await expect(tab("All")).toHaveAttribute("aria-selected", "true");
-  // Tab switches the filter while typing continues in the editor.
   await editor.press("Tab");
   await expect(tab("People")).toHaveAttribute("aria-selected", "true");
   await editor.press("Shift+Tab");
   await expect(tab("All")).toHaveAttribute("aria-selected", "true");
   await expect(editor).toBeFocused();
-  // A full name with a space keeps the picker open and inserts on Enter.
   await editor.pressSequentially(actors.member.name);
   const member = page.getByRole("option", { name: actors.member.name, exact: true });
   await expect(member).toHaveAttribute("aria-selected", "true");
   await editor.press("Enter");
   await expect(member).toHaveCount(0);
-  // Text after "@" that matches nothing is prose, so Enter sends it.
   await editor.pressSequentially("about @no such person");
   await expect(page.getByRole("listbox", { name: "References" })).toHaveCount(0);
   await editor.press("Enter");

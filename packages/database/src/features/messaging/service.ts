@@ -13,7 +13,6 @@ import { messageOperations } from "./messages/messages";
 import { reactionOperations } from "./messages/reactions";
 import { readOperations } from "./read-state/read-state";
 
-// Trusted server facade: identity and active organization must come from the session.
 function messagingOperations(
   db: DatabaseExecutor,
   authenticatedScope: SessionIdentity,
@@ -34,7 +33,6 @@ function messagingOperations(
   };
 }
 
-// The resolved workspace runs no statement, so reads need no transaction.
 export function createMessagingRepository(
   db: DatabaseExecutor,
   scope: SessionIdentity,
@@ -48,8 +46,6 @@ export function createMessagingRepository(
   );
 }
 
-// Trusted non-HTTP entry point. Resolve once at the start of each operation. A read keeps its
-// transaction: resolving may provision an actor, which a later failure rolls back.
 export function createMessagingService(db: DatabaseExecutor, scope: SessionIdentity) {
   return messagingOperations(
     db,

@@ -6,8 +6,6 @@ import {
 
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 
-// Pure messaging rules. Callers load the facts; set-based visibility stays in SQL (access.ts).
-
 export interface Viewer {
   userId: string;
   organizationId: string;
@@ -19,7 +17,6 @@ export interface Viewer {
 interface ConversationFacts {
   taskEntityId?: string | null;
   kind: ConversationKind;
-  /** The host organization. */
   organizationId: string;
   createdBy: string;
 }
@@ -39,7 +36,6 @@ export function viewerOf(
 export const hosts = (conversation: ConversationFacts, viewer: Viewer) =>
   conversation.organizationId === viewer.organizationId;
 
-/** A legacy external creator does not own the host organization's conversation. */
 const owns = (conversation: ConversationFacts, viewer: Viewer) =>
   !viewer.agent && hosts(conversation, viewer) && conversation.createdBy === viewer.userId;
 
@@ -131,7 +127,6 @@ export function leavePlan(
   viewer: Viewer,
   newOwnerUserId?: string,
 ): "leave" | "transfer" | "blocked" {
-  // Agents only read and post.
   if (viewer.agent || isDirectConversation(conversation.kind) || conversation.taskEntityId)
     throw new AccessDeniedError();
   if (!owns(conversation, viewer)) return "leave";

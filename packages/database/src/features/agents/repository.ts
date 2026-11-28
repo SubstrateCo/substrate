@@ -98,7 +98,6 @@ export function createAgentRepository(
         })),
       };
     },
-    // The route parses input. The repository writes only these fields.
     async saveAgent(input: SaveAgentValues): Promise<AgentConfiguration> {
       const { id } = input;
       const values = {
@@ -110,7 +109,6 @@ export function createAgentRepository(
         disabledApps: input.disabledApps,
         substrateGuide: input.substrateGuide,
       };
-      // A new local agent lives on the desktop that created it. Its look is generated from its ID.
       const created = newId();
       const [row] = id
         ? await db.update(userAgents).set(values).where(ownAgent(id)).returning()
@@ -125,7 +123,6 @@ export function createAgentRepository(
             })
             .returning();
       if (!row) throw new AccessDeniedError();
-      // A disabled agent stops its live turns. Its queue and routines wait until it runs again.
       if (!row.enabled) await endAgentTurns(db, row.id);
       await changed();
       return configuration(row);
@@ -148,7 +145,6 @@ export function createAgentRepository(
           .from(userAgents)
           .where(ownAgent(input.agentId));
         if (!agent) throw new AccessDeniedError();
-        // One row per kind: the last setting of a repeated kind wins.
         const triggers = [...new Map(input.triggers.map((trigger) => [trigger.kind, trigger]))];
         if (triggers.length)
           await tx
@@ -162,7 +158,6 @@ export function createAgentRepository(
         return null;
       });
     },
-    // The route validates the code.
     async setAvatar(id: string, avatar: AgentAvatarCode): Promise<AgentConfiguration> {
       const [row] = await db
         .update(userAgents)

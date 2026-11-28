@@ -4,9 +4,6 @@ import type {
   ScreenNotificationsBridge,
 } from "@substrate/contracts/desktop/screen-notifications-ipc";
 
-// Development only: sample cards for `overlay.html?demo=1` in a plain browser. Only the
-// `import.meta.env.DEV` branch in `overlay/main.tsx` calls this, so production builds drop it.
-
 const minute = 60_000;
 
 function meeting(

@@ -111,7 +111,6 @@ export function markNotificationGroupsRead(
         })),
       },
   );
-  // A loaded page cannot prove that no other unread groups exist.
   if (target === null)
     client.setQueryData(notificationUnreadOptions(organizationId).queryKey, { unread: false });
 }

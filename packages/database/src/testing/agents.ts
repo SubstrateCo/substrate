@@ -5,7 +5,6 @@ import type { setupDatabase } from "./database";
 
 type Fixture = ReturnType<typeof setupDatabase>;
 
-/** A verified owner, an enabled local agent with an actor in orgA, and the owner's desktop. */
 export async function ownedAgent(f: Fixture, userId = "alice", name = "Research") {
   await f.db.update(user).set({ emailVerified: true });
   const installationId = crypto.randomUUID();

@@ -44,7 +44,6 @@ test("the relay claims a batch only after the server's own publish had time, and
   await makeDue();
   const claims = await Promise.all([claimOutbox(f.db), claimOutbox(f.db)]);
   expect(claims.flat()).toEqual([{ id: outbox!.id, changes: outbox!.changes }]);
-  // A claim moves the next attempt back, so an unfinished publish is retried later, not at once.
   expect(await claimOutbox(f.db)).toEqual([]);
   await finishOutbox(f.db, outbox!.id);
   expect(await rows()).toEqual([]);

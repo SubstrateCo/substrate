@@ -13,7 +13,6 @@ export interface InboxHeaderQuery {
   remoteIds?: string[];
 }
 
-// Pure parsing in the mail read worker. No DOM, remote images or attachment requests.
 const plain = compile({
   wordwrap: false,
   selectors: [
@@ -25,7 +24,6 @@ const plain = compile({
   limits: { maxInputLength: Infinity },
 });
 
-/** Agent IDs refer to individual Inbox members, never the latest sibling in a conversation. */
 export function agentMailReads(run: RunTransaction, org: string) {
   const scope = eq(mailMessages.organizationId, org);
   return {
@@ -62,8 +60,6 @@ export function agentMailReads(run: RunTransaction, org: string) {
           .get(),
       );
       if (!row) return undefined;
-      // Release the SQLite transaction before extracting HTML. Only the requested chunk
-      // crosses the worker boundary, even for a very large newsletter.
       const { body, ...header } = row;
       const text = body.plainText ?? (body.format === "plain" ? body.text : plain(body.text));
       return {

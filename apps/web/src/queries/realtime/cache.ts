@@ -30,28 +30,21 @@ import { loadMessageTarget } from "@/api/context/message-targets";
 import { listMessages } from "@/api/messaging/requests";
 
 interface RealtimeQueryTarget extends QueryTarget {
-  // Skips harness reads that have not failed. See keepsHarnessRead.
   exceptHarness?: true;
 }
 
-// Harness reads go through the desktop bridge, which verifies the session with the server first.
-// They do not depend on missed hints, so a full refresh keeps loaded and loading ones. Failed ones
-// still retry.
 function keepsHarnessRead(query: Query, userId: string) {
   return isHarnessKey(query.queryKey, userId) && query.state.status !== "error";
 }
 
 const everything: RealtimeQueryTarget = { queryKey: [], exceptHarness: true };
 
-// The first ready keeps reads this recent: they belong to the load that opened the socket.
 const loadWindowMs = 5_000;
 
-/** A read still in flight, or one that finished within the load window before `at`. */
 function loadedSince(query: Query, at: number) {
   return query.state.fetchStatus !== "idle" || query.state.dataUpdatedAt >= at - loadWindowMs;
 }
 
-/** How the cache matches the live state: refreshing after a ready, current, or stale after a failure. */
 export type RealtimeHealth = "syncing" | "fresh" | "stale";
 
 export function realtimeQueryTargets(
@@ -81,12 +74,9 @@ export function realtimeQueryTargets(
       targets.push({ queryKey: queryKeys.agents(userId) });
       break;
     case "notification-preferences":
-      // Covers the account, workspace, and conversation settings of this user.
       targets.push({ queryKey: queryKeys.notificationPreferences(userId) });
       break;
     case "agent-work":
-      // Dataless hints refresh the owner's work, a private, user- and workspace-scoped key.
-      // An activity hint changes only what shows a live turn's activity text.
       if (event.scope === "activity" && organizationId)
         targets.push(
           ...queryKeys
@@ -96,9 +86,7 @@ export function realtimeQueryTargets(
       else targets.push({ queryKey: queryKeys.agentWork(userId, organizationId ?? undefined) });
       break;
     case "organization":
-      // Organization details and invitations changed. Membership and role changes send "access".
       targets.push({ queryKey: queryKeys.organizations }, { queryKey: queryKeys.userInvitations });
-      // The detail key also covers the frame's summary, which holds the viewer's role.
       if (organizationId)
         targets.push(
           { queryKey: queryKeys.organizationDetail(organizationId) },
@@ -129,7 +117,6 @@ export function realtimeQueryTargets(
   return targets;
 }
 
-/** The timeline or thread that a new message joins, when its hint names one. */
 function newMessageLocation(
   event: Extract<RealtimeEvent, { type: "change" }>,
 ): MessageLocation | undefined {
@@ -155,15 +142,10 @@ export function createRealtimeCache({
   organizationId: string | null;
   userId: string;
   revalidate: (refreshSession?: boolean) => Promise<void>;
-  /** Reports each ready refresh, and every failed refresh. */
   onHealth?: (health: RealtimeHealth) => void;
-  /** How long change hints collect before one refresh. */
   batchMs?: number;
-  /** How long after a full read `reconcile` skips the next one. */
   reconcileEveryMs?: number;
-  /** Reads the messages that a new-message hint adds to a loaded page. */
   loadMessages?: typeof listMessages;
-  /** Reads a thread's root alone, for its reply count. */
   loadTarget?: typeof loadMessageTarget;
 }) {
   const targetFilter = (target: RealtimeQueryTarget, predicate: (query: Query) => boolean) => {
@@ -174,8 +156,6 @@ export function createRealtimeCache({
     );
   };
   const seen = new Set<string>();
-  // The first ready loads the cache. A later one follows a reconnect, which may hide a missed
-  // revocation, so it resyncs. Only the latest ready reports that the cache is fresh.
   let readyCount = 0;
   const pending = new Map<string, RealtimeQueryTarget>();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -188,15 +168,11 @@ export function createRealtimeCache({
   let accessWork = Promise.resolve();
   let resyncWork: Promise<void> | undefined;
   let reconcileWork: Promise<void> | undefined;
-  // When the last full read that left the cache fresh started. A failed refresh clears it, so the
-  // next reconcile reads again.
   let syncedAt: number | undefined;
   const report = (health: RealtimeHealth) => {
     if (health === "stale") syncedAt = undefined;
     onHealth?.(health);
   };
-  // One counter orders fetch starts and event receipt. A fetch that starts after an event
-  // arrived reads the committed change, so that event needs no second read for it.
   let clock = 0;
   let pendingSince: number | undefined;
   const fetchStarts = new WeakMap<Query, number>();
@@ -209,15 +185,11 @@ export function createRealtimeCache({
   const unsubscribeCache = queryClient.getQueryCache().subscribe((event) => {
     if (event.type !== "updated") return;
     if (event.action.type === "fetch") fetchStarts.set(event.query, ++clock);
-    // A read that the server denies hides what the query showed before. Views keep their data
-    // while access is checked again, so this is what removes revoked content from the screen.
     const { query, action } = event;
     const denied = action.type === "error" && isAccessFailure(action.error);
     if (denied && query.state.data !== undefined && privateFilter.predicate(query))
       query.setState({ ...query.state, data: undefined, dataUpdatedAt: 0 });
   });
-  // Checks access again without clearing the screen. Unmounted values go; mounted ones are read
-  // again, and a denied read clears its value. Placeholders keep the previous page until then.
   function recheckPrivate(filter: QueryFilters) {
     for (const query of queryClient.getQueryCache().findAll(filter)) {
       if (query.getObserversCount() === 0)
@@ -233,8 +205,6 @@ export function createRealtimeCache({
     const placeholders = organizationId
       ? [queryKeys.conversationMessages(organizationId), queryKeys.messagePages(organizationId)]
       : [];
-    // History and message context placeholders can hold a previous page outside the cache.
-    // Replace their visible value before resetting, so access checks never display that old page.
     for (const query of queries) {
       if (placeholders.some((prefix) => partialMatchKey(query.queryKey, prefix)))
         queryClient.setQueryData(query.queryKey, []);
@@ -268,7 +238,6 @@ export function createRealtimeCache({
   }
   function resetAccess() {
     const epoch = ++generation;
-    // Every access event rechecks and cancels immediately, including events during an older reset.
     const reset = recheckPrivate(privateFilter);
     async function finish() {
       await reset;
@@ -281,7 +250,6 @@ export function createRealtimeCache({
       ]);
       if (isCurrent(epoch)) await revalidate(true);
     }
-    // Superseded resets skip metadata work. The latest reset still completes after a slow route load.
     accessWork = accessWork.then(finish, finish);
     return accessWork;
   }
@@ -319,7 +287,6 @@ export function createRealtimeCache({
       ),
       promise: query.promise,
     }));
-    // Observers can share a request with imperative route loaders. Never cancel ordinary refreshes.
     const invalidations = targets.map((target) =>
       queryClient.invalidateQueries(
         targetFilter(target, (query) => !fetchedSince(query)),
@@ -336,7 +303,6 @@ export function createRealtimeCache({
           () => isCurrent(epoch) && !fetchedSince(query),
         );
       } catch (error) {
-        // A resized or replaced page can abandon its request during a healthy resync.
         if (error instanceof CancelledError && isCurrent(epoch) && query.getObserversCount() === 0)
           return;
         throw error;
@@ -390,13 +356,8 @@ export function createRealtimeCache({
   }
   async function initialRefresh() {
     const epoch = generation;
-    // The app loads its data while the socket connects. Reading all of it again would double
-    // every load, so only values from before this load are read again. A change committed between
-    // one of these reads and the subscription shows with its next hint or full refresh.
     const readyAt = Date.now();
     const refreshing = refresh([everything], undefined, (query) => loadedSince(query, readyAt));
-    // refresh invalidates synchronously. Start the idle route session alongside mounted reads,
-    // but still wait for refresh's follow-up reads when a request predates this load.
     const session = queryClient.getQueryCache().find({ queryKey: queryKeys.session, exact: true });
     const sessionRead = session
       ? queryClient.query({ ...session.options, queryKey: session.queryKey, staleTime: Infinity })
@@ -404,8 +365,6 @@ export function createRealtimeCache({
     await Promise.all([refreshing, sessionRead, loaded(epoch)]);
     if (isCurrent(epoch)) await revalidate();
   }
-  // Waits for the mounted reads of this load, and for the reads they start, such as a page that
-  // needs its list first. The cache reports fresh only when what is on screen has loaded.
   async function loaded(epoch: number) {
     for (let round = 0; round < 5 && isCurrent(epoch); round++) {
       const reading = queryClient.getQueryCache().findAll({
@@ -418,7 +377,6 @@ export function createRealtimeCache({
       await Promise.all(
         reading.map((query) =>
           Promise.resolve(query.promise).catch((error: Error) => {
-            // A resized or replaced page abandons its request.
             if (!(error instanceof CancelledError)) throw error;
           }),
         ),
@@ -427,8 +385,6 @@ export function createRealtimeCache({
   }
   function resync() {
     if (disposed) return Promise.resolve();
-    // Reconnect may follow a missed revocation. Drop old private values first. Queries that the
-    // reset already read after the reconnect are current, so the final refresh skips them.
     const since = ++clock;
     resyncWork ??= resetAccess()
       .then(() => (isDisposed() ? undefined : refresh([everything], since)))
@@ -446,11 +402,6 @@ export function createRealtimeCache({
           !keepsHarnessRead(query, userId) &&
           query.state.status === "error",
       });
-    // Pub/sub hints are best-effort. Re-read mounted data without clearing healthy views, even
-    // when the socket stayed connected while the publisher missed a committed write. Unmounted
-    // data stays cached but becomes stale: a view that mounts it shows it and reads it again, and
-    // a denied read clears it. Hints, and the server's retries of them, keep the cache current
-    // between full reads, so a full read soon after the last one is skipped.
     const startedAt = Date.now();
     if (!reconcileWork && syncedAt !== undefined && startedAt - syncedAt < reconcileEveryMs)
       return Promise.resolve();
@@ -466,7 +417,6 @@ export function createRealtimeCache({
       })
       .catch(async (error: Error) => {
         if (!isDisposed()) {
-          // A pre-existing request can reject out of refresh() before its normal result scan.
           if (failedReads().some((query) => isAccessFailure(query.state.error)))
             await resetAccess();
           if (!isDisposed()) report("stale");
@@ -491,7 +441,6 @@ export function createRealtimeCache({
       seen.add(event.id);
       if (seen.size > 1000) seen.delete(seen.values().next().value!);
       if (event.domain === "access" && organizationId) {
-        // The account summary is outside the workspace cache cleared by this reset.
         void queryClient.invalidateQueries({ queryKey: queryKeys.attention(userId) });
         return resetAccess().catch((error: Error) => {
           if (!disposed) report("stale");
@@ -500,14 +449,10 @@ export function createRealtimeCache({
       }
       if (isDisposed()) return;
       let targets = realtimeQueryTargets(event, userId);
-      // Include access, app availability, and deletions; batch bursts with the other reads.
-      // A turn's activity text is not part of the count.
       if (event.scope !== "activity") targets.push({ queryKey: queryKeys.attention(userId) });
       const at = ++clock;
       const epoch = generation;
       const location = newMessageLocation(event);
-      // Takes one history's target out of the batch. A narrower read may replace it; when that
-      // read cannot bring the pages up to date, the target goes back to the batch.
       const narrow = (
         threadId: string | undefined,
         read?: (shouldApply: () => boolean) => Promise<boolean>,
@@ -523,8 +468,6 @@ export function createRealtimeCache({
           schedule();
         });
       };
-      // A new message changes only the latest page of its timeline or thread: older windows end
-      // before it. Read just the messages after the loaded ones instead of the whole page.
       if (location && canAppendNewMessages(queryClient, location))
         narrow(location.threadId, (shouldApply) =>
           appendNewMessages(queryClient, location, {
@@ -533,8 +476,6 @@ export function createRealtimeCache({
             shouldApply,
           }),
         );
-      // A reply changes the timeline only in its root's reply count: read the root alone, or
-      // nothing when no loaded page shows it.
       const replyUpdate = location?.threadId && replyCountUpdate(queryClient, location);
       if (replyUpdate === "none") narrow(undefined);
       if (replyUpdate === "root")
@@ -542,7 +483,6 @@ export function createRealtimeCache({
           refreshReplyCount(queryClient, location!, { load: loadTarget, shouldApply }),
         );
       for (const target of targets) pending.set(JSON.stringify(target), target);
-      // The latest event bounds the batch: only fetches started after every event may skip it.
       pendingSince = at;
       routePending ||=
         event.domain === "session" ||

@@ -12,10 +12,6 @@ import { Button } from "@/components/ui/button";
 import { messageLink } from "@/lib/navigation/record-links";
 import { taskSourceAttachmentsOptions } from "@/queries/files/attachments";
 
-/**
- * The files of the message the task was created from. They keep the message's access, so the
- * section stays hidden from viewers who cannot open the message.
- */
 export function TaskSourceAttachments({
   target,
   visible,

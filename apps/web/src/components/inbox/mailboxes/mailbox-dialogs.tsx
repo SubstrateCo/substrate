@@ -10,7 +10,6 @@ import { localMailQueries } from "@/queries/mail/options";
 
 export type MailboxDialog = ReturnType<typeof useStateDialog<"connect" | "manage">>;
 
-/** The Connect Gmail and Manage mailboxes dialogs. */
 export function MailboxDialogs({
   api,
   scope,
@@ -61,7 +60,6 @@ export function MailboxDialogs({
         onDisconnect={async (mailboxId) => {
           await api.disconnect({ ...scope, mailboxId });
           onDisconnected(mailboxId);
-          // Evict old bodies plus unified lists that can still contain this mailbox's rows.
           await client.cancelQueries({ queryKey: local.root });
           await client.resetQueries({ queryKey: local.root });
         }}

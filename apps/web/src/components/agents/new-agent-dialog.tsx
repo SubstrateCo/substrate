@@ -6,7 +6,6 @@ import { useWorkspaceScope } from "@/components/workspace/workspace-scope-contex
 import { useAgentMutations } from "@/queries/agents/mutations";
 import { toast } from "sonner";
 
-/** The New agent dialog. A new agent opens in its own page. */
 export function NewAgentDialog({
   onClose,
   onCreated,

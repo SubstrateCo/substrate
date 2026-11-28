@@ -9,7 +9,6 @@ export function OrganizationInvitations({
   viewerRole,
 }: {
   organizationId: string;
-  /** The viewer's stored role in the organization. */
   viewerRole: string;
 }) {
   return (

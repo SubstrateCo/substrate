@@ -21,7 +21,6 @@ import {
   withMentionsSchema,
 } from "@apollohg/react-native-rich-text-editor";
 
-/** Native void inline nodes. Never round-trip a keystroke through setContent. */
 export function ReferenceTextInput({
   parts,
   label,
@@ -106,7 +105,6 @@ export function ReferenceTextInput({
             onCaret(-1);
             return;
           }
-          // A selection is not an active picker query.
           onCaret(
             selection.anchorScalar === selection.headScalar
               ? scalarToDisplay(

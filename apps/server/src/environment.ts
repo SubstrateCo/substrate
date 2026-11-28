@@ -4,7 +4,6 @@ import { desktopOrigin } from "@substrate/contracts/desktop/links";
 import { BlockList, isIP } from "node:net";
 import { z } from "zod";
 
-/** A bare HTTP or HTTPS origin: no wildcard, credentials, path, query or fragment. */
 function explicitOrigin(value: string) {
   const url = URL.parse(value);
   if (!url || !["http:", "https:"].includes(url.protocol) || value.includes("*")) return undefined;
@@ -54,7 +53,6 @@ const storageKeys = [
   "S3_ACCESS_KEY_ID",
   "S3_SECRET_ACCESS_KEY",
 ] as const;
-// Local S3 (compose.yaml) outside production. Production must name its storage.
 const developmentStorage: Record<(typeof storageKeys)[number], string> = {
   S3_ENDPOINT: "http://localhost:4566",
   S3_REGION: "us-east-1",
@@ -66,13 +64,9 @@ const developmentStorage: Record<(typeof storageKeys)[number], string> = {
 const variables = z
   .object({
     NODE_ENV: z.string().optional(),
-    // The public API origin: Better Auth links, the Vite proxy target and the desktop backend.
     SUBSTRATE_API_URL: origin.default("http://localhost:3001"),
-    // Bind port. Defaults to the API origin's port; set it when a proxy serves that origin.
     SERVER_PORT: port.optional(),
-    // The public web app origin: email links and the first trusted frontend origin.
     SUBSTRATE_WEB_URL: origin.default("http://localhost:3000"),
-    // Extra trusted frontend origins, comma separated.
     FRONTEND_ORIGINS: z
       .string()
       .optional()
@@ -101,14 +95,11 @@ const variables = z
     S3_ACCESS_KEY_ID: z.string().optional(),
     S3_SECRET_ACCESS_KEY: z.string().optional(),
     VALKEY_URL: z.string().default("redis://localhost:6379"),
-    // Separates servers that share one Valkey, such as the e2e and development servers.
     REALTIME_CHANNEL: z.string().default("substrate:realtime:v1"),
     SUBSTRATE_WINDOWS_DOWNLOAD_URL: httpsURL.optional(),
     SUBSTRATE_MAC_DOWNLOAD_URL: httpsURL.optional(),
-    // Google OAuth client for calendar sync. Unset disables Google calendars.
     GOOGLE_CLIENT_ID: z.string().optional(),
     GOOGLE_CLIENT_SECRET: z.string().optional(),
-    // Microsoft calendar sync is not implemented yet. These are validated but unused.
     MICROSOFT_CLIENT_ID: z.string().optional(),
     MICROSOFT_CLIENT_SECRET: z.string().optional(),
     MICROSOFT_TENANT_ID: z
@@ -156,7 +147,6 @@ const variables = z
       apiURL: env.SUBSTRATE_API_URL,
       port: env.SERVER_PORT ?? (Number(api.port) || (api.protocol === "https:" ? 443 : 80)),
       webURL: env.SUBSTRATE_WEB_URL,
-      // The desktop scheme serves Better Auth's Electron flow; the desktop origin is the bundled renderer.
       trustedOrigins: [
         "substrate-mobile://",
         `${desktopScheme}:/`,
@@ -191,7 +181,6 @@ const variables = z
           env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
             ? { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }
             : undefined,
-        // Not implemented yet: nothing reads this until a Microsoft adapter exists.
         microsoft:
           env.MICROSOFT_CLIENT_ID && env.MICROSOFT_CLIENT_SECRET
             ? {
@@ -206,7 +195,6 @@ const variables = z
 
 export type ServerEnvironment = z.output<typeof variables>;
 
-/** Empty values count as unset. Throws one error that lists every invalid variable. */
 export function parseServerEnvironment(env: Record<string, string | undefined>) {
   const result = variables.safeParse(
     Object.fromEntries(Object.entries(env).filter(([, value]) => value !== "")),
@@ -220,5 +208,4 @@ export function parseServerEnvironment(env: Record<string, string | undefined>) 
   return result.data;
 }
 
-/** Parsed once, when the server first imports this module. */
 export const environment = parseServerEnvironment(process.env);

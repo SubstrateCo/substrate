@@ -5,7 +5,6 @@ import { useDeclineInvitation } from "@/queries/organizations/user-invitation-mu
 
 type DeclineTarget = { id: string; organizationName?: string };
 
-/** Asks before the user declines an invitation. Render `dialog` once beside the list. */
 export function useDeclineInvitationConfirm({ onDeclined }: { onDeclined?: () => void } = {}) {
   const decline = useDeclineInvitation();
   const [target, setTarget] = useState<DeclineTarget | null>(null);

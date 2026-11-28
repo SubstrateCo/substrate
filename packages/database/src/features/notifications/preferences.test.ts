@@ -39,7 +39,6 @@ test("account settings start at the defaults, keep unchanged fields and reach ev
     preview: "sender",
   });
   expect((await settings.update({ schedule: null })).result.schedule).toBeNull();
-  // Other accounts keep their own settings.
   expect((await (await account("alice")).get()).sound).toBe(true);
   // SAFETY: The value is deliberately outside the typed input, as an untrusted caller could send.
   expect(await rejection(settings.update({ preview: "everything" } as never))).toBeInstanceOf(
@@ -78,7 +77,6 @@ test("conversation settings require the actor's own live membership", async () =
   expect(
     (await bob.notificationPreferences.updateConversation(dm.id, { level: "mentions" })).result,
   ).toEqual({ level: "mentions", mutedUntil: null });
-  // A visible public channel the actor has not joined holds no settings.
   expect(
     await rejection(bob.notificationPreferences.updateConversation(channel.id, { level: "all" })),
   ).toBeInstanceOf(AccessDeniedError);
@@ -129,13 +127,11 @@ test("channel members get every top-level post only when they choose all", async
   const followed = await alice.sendMessage(channel.id, "workspace level");
   expect(await noticesFor(followed.id)).toEqual([`${f.bob}:message`]);
   expect((await feed("bob").list())[0]).toMatchObject({ messageId: followed.id, alert: true });
-  // The channel's own level overrides the workspace level.
   await bob.notificationPreferences.updateConversation(channel.id, { level: "mentions" });
   expect(await noticesFor((await alice.sendMessage(channel.id, "override")).id)).toEqual([]);
   await bob.notificationPreferences.updateConversation(channel.id, { level: "all" });
   const root = await alice.sendMessage(channel.id, "root");
   expect(await noticesFor(root.id)).toEqual([`${f.bob}:message`]);
-  // Thread replies reach only the thread's people.
   const reply = await alice.sendMessage(channel.id, "reply", root.id);
   expect(await noticesFor(reply.id)).toEqual([]);
 });

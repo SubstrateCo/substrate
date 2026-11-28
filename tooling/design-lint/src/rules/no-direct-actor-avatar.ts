@@ -1,10 +1,5 @@
 import { elementImport, type Rule } from "../ast.ts";
 
-/**
- * Every "agent ? <AgentAvatarView> : <PersonAvatar>" choice needs AgentAvatarView, so reporting
- * it outside the agent-only files (turned off in config.ts) keeps that choice in ActorAvatar.
- * PersonAvatar stays open to views that only ever show people.
- */
 export const noDirectActorAvatar: Rule = {
   meta: {
     type: "problem",

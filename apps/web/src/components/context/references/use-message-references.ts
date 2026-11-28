@@ -4,7 +4,6 @@ import { useOrganizationApps } from "@/components/workspace/organization-apps-co
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { linkedWorkLink, messageLink } from "@/lib/navigation/record-links";
 
-/** The workspace references a message's tokens resolve to, as far as the viewer can open them. */
 export function useMessageReferences(context: MessageContextState): WorkspaceReference[] {
   const { organizationId } = useWorkspaceScope();
   const apps = useOrganizationApps();

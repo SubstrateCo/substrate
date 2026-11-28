@@ -8,7 +8,6 @@ import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
 import { Mail, Search } from "lucide-react";
 
-/** The message list, or the loading, connect, no-match or empty notice in its place. */
 export function InboxList({
   accountsPending,
   pagePending,
@@ -24,14 +23,12 @@ export function InboxList({
   accountsPending: boolean;
   pagePending: boolean;
   loadingMore: boolean;
-  /** Whether any mailbox is connected. */
   connected: boolean;
   rows: MailConversation[] | undefined;
   search: string;
   current: FolderView;
   onConnect: () => void;
   onClearSearch: () => void;
-  /** The message list for rows that are on screen. */
   renderList: (rows: MailConversation[]) => ReactNode;
 }) {
   if (accountsPending || (connected && pagePending))

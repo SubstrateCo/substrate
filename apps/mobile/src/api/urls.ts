@@ -1,6 +1,5 @@
 import { serverOrigin } from "./origin";
 
-/** Only rewrite product links on our server. Never rewrite or authenticate signed storage URLs. */
 export function mobileApiURL(
   value: string,
   baseURL = serverOrigin(process.env.EXPO_PUBLIC_API_URL),

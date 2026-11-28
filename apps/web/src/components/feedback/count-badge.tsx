@@ -2,10 +2,6 @@ import type { ReactNode } from "react";
 
 import { cn } from "cn";
 
-/**
- * A filled, rounded count that asks for attention, such as unread messages or new replies. Give it
- * an `aria-label` when the number alone does not say what it counts.
- */
 export function CountBadge({
   className,
   children,

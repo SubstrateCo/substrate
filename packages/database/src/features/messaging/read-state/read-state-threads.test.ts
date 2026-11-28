@@ -40,7 +40,6 @@ test("the timeline and each thread are read separately, with their notices", asy
   const firstReply = await alice.sendMessage(dm.id, "on the first", first.id);
   const secondReply = await alice.sendMessage(dm.id, "on the second", second.id);
   const latest = await alice.sendMessage(dm.id, "latest");
-  // Reading the timeline leaves both threads unread.
   await mark(dm.id, latest.id);
   expect(await reads().unreadCounts()).toEqual([
     {
@@ -52,13 +51,11 @@ test("the timeline and each thread are read separately, with their notices", asy
     },
   ]);
   expect(await unreadNotices()).toEqual(new Set([firstReply.id, secondReply.id]));
-  // Reading one thread leaves the other unread.
   await mark(dm.id, firstReply.id);
   expect(await reads().unreadCounts()).toMatchObject([
     { unreadCount: 1, unreadReplyThreadIds: [second.id] },
   ]);
   expect(await unreadNotices()).toEqual(new Set([secondReply.id]));
-  // A thread read through its root reads none of its replies.
   await mark(dm.id, second.id, { threadId: second.id });
   expect(await reads().unreadCounts()).toMatchObject([{ unreadReplyThreadIds: [second.id] }]);
   expect(await rejection(mark(dm.id, firstReply.id, { threadId: second.id }))).toBeInstanceOf(
@@ -77,9 +74,7 @@ test("outside direct messages, replies count only in threads the reader follows"
   const root = await alice.sendMessage(channel.id, "plan");
   await mark(channel.id, root.id);
   await alice.sendMessage(channel.id, "a detail", root.id);
-  // Bob has not written in or been mentioned in the thread.
   expect(await reads().unreadCounts()).toEqual([]);
-  // A mention makes Bob follow the thread, so its earlier unread reply counts too.
   const mention = await alice.sendMessage(channel.id, `@[person:${f.bob}] thoughts?`, root.id);
   expect(await reads().unreadCounts()).toEqual([
     {
@@ -91,7 +86,6 @@ test("outside direct messages, replies count only in threads the reader follows"
     },
   ]);
   await mark(channel.id, mention.id);
-  // Bob's own root makes him follow its thread.
   const own = await f.messaging("bob").sendMessage(channel.id, "my question");
   await alice.sendMessage(channel.id, "an answer", own.id);
   expect(await reads().unreadCounts()).toMatchObject([

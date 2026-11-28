@@ -6,7 +6,6 @@ import { CrmResourceFallback } from "./crm-resource-state";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { resourceState } from "@/lib/resource-state";
 
-/** Returns readable data, or the loading, error, or unavailable view when there is none. */
 export function crmResource<T>(query: UseQueryResult<T>, loading?: ReactNode) {
   const state = resourceState(query);
   if (!state.data)

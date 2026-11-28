@@ -36,7 +36,6 @@ function event(overrides: Partial<CalendarFeedEvent> = {}): CalendarFeedEvent {
   };
 }
 
-/** The signed-in account's calendar feed: null when the calendar is unavailable. */
 interface FakeAccount {
   rows: CalendarFeedEvent[] | null;
   cookie: string;

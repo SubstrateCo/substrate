@@ -1,6 +1,6 @@
 import { agentAsk } from "../../agent-work/requests.ts";
 import { conversationKind } from "../../messaging/input.ts";
-import { fileRefs } from "./files.ts";
+import { fileRefsOmittedByOlderServers } from "./files.ts";
 import { messageRecord } from "./links.ts";
 import { author, excerpt, id, page, pageInput, requestId, timed, timestamp } from "./shared.ts";
 import { z } from "zod";
@@ -14,8 +14,7 @@ const message = z.object({
   body: z.string(),
   createdAt: timestamp,
   records,
-  // The default keeps results from servers without file tools parseable on newer desktops.
-  attachments: fileRefs.default([]),
+  attachments: fileRefsOmittedByOlderServers,
 });
 
 /** What reply returns. The place is always the posted message's own conversation and thread. */
@@ -67,7 +66,7 @@ export const messagingTools = {
         lastReplyAt: timestamp.nullable(),
         includedBecause: z.enum(["posted", "thread_activity"]),
         records,
-        attachments: fileRefs.default([]),
+        attachments: fileRefsOmittedByOlderServers,
       }),
     ),
   },

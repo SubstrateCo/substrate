@@ -11,11 +11,8 @@ type HistoryPosition = {
   target?: string;
   aroundMessageId?: string;
   beforeMessageId?: string;
-  /** The person's last move through history, and when they made it. */
   request?: { kind: "older" | "latest"; at: number };
-  /** The window an Older move left, to return to when nothing is older. */
   previous?: Pick<HistoryPosition, "aroundMessageId" | "beforeMessageId">;
-  /** The oldest message: an Older move from it found nothing. */
   oldestId?: string;
 };
 
@@ -33,7 +30,6 @@ export function useMessageHistory({
   aroundMessageId?: string;
 }) {
   const invalidateLatest = useInvalidateLatestMessages(organizationId, conversationId, threadId);
-  // Callers key the pane by conversation and thread, so a new destination starts a new history.
   const [current, setPosition] = useState<HistoryPosition>({
     target: aroundMessageId,
     aroundMessageId,
@@ -74,12 +70,10 @@ export function useMessageHistory({
       request: { kind: "latest", at: Date.now() },
     });
   };
-  // Sending shows the newest messages, also from an older page, as in other chat apps.
   const sending = useSendingMessage(organizationId, conversationId, threadId);
   const followSend = useEffectEvent(() => {
     if (onOlderPage) onLatest();
   });
-  // Move only when a send starts.
   useEffect(() => {
     // oxlint-disable-next-line react/set-state-in-effect -- A send starts in the mutation cache. The latest page must be invalidated before the move so it refetches on mount.
     if (sending) followSend();
@@ -112,7 +106,6 @@ function isOlderPage(position: HistoryPosition) {
   return !!position.beforeMessageId || !!position.aroundMessageId;
 }
 
-/** The position after the loaded pages and the selected message, or `current` when unchanged. */
 function settledPosition(
   current: HistoryPosition,
   {
@@ -123,24 +116,17 @@ function settledPosition(
   }: { aroundMessageId: string | undefined; rows: Rows; latestRows: Rows; olderPageEmpty: boolean },
 ) {
   let next = selectionPosition(current, aroundMessageId, rows) ?? current;
-  // The newest page already holds a linked message, so the window around it would only cut off
-  // newer messages and offer to jump back to them. Show the newest page instead.
   if (latestHoldsTarget(next, latestRows)) next = { ...next, aroundMessageId: undefined };
-  // A full page can be the last one. When the next older page is empty, return to the window
-  // the move left and remember its oldest message, instead of showing an empty conversation.
   if (olderPageEmpty) next = returnPosition(next) ?? next;
   return next;
 }
 
-/** The position after the selected message changes, or nothing when it has not changed. */
 function selectionPosition(
   current: HistoryPosition,
   aroundMessageId: string | undefined,
   rows: Rows,
 ) {
   if (current.target === aroundMessageId) return undefined;
-  // A thread selection is not a history cursor when its root is already loaded.
-  // Consume it once so Back to latest can clear the cursor while the thread stays open.
   const missingTarget = aroundMessageId && !rows?.some((row) => row.id === aroundMessageId);
   const next = { ...current, target: aroundMessageId };
   if (missingTarget) {
@@ -158,7 +144,6 @@ function latestHoldsTarget(current: HistoryPosition, latestRows: Rows) {
   );
 }
 
-/** The window an Older move left, or nothing when the position did not come from one. */
 function returnPosition(current: HistoryPosition): HistoryPosition | undefined {
   if (!current.beforeMessageId || !current.previous) return undefined;
   return {
@@ -169,7 +154,6 @@ function returnPosition(current: HistoryPosition): HistoryPosition | undefined {
   };
 }
 
-/** A move is pending until its page arrives. Later background refreshes are not the person's. */
 function pendingMove(
   { request }: HistoryPosition,
   messages: { isFetching: boolean; dataUpdatedAt: number },

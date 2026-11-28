@@ -178,7 +178,6 @@ test.describe("a full but discontinuous cache", () => {
     await expect(rows.nth(1)).toContainText("History message 50");
     await expect(nav).toContainText("Page 1");
     await expect(nav.getByRole("button", { name: "Next page" })).toBeDisabled();
-    // A full local search can still have newer matches missing from its first 50.
     await page.getByRole("searchbox", { name: "Search messages" }).fill("History message");
     await expect(rows.last()).toContainText("History message 53");
     await nav.getByRole("button", { name: "Next page" }).click();
@@ -344,7 +343,6 @@ test("unified unread expands by address; labels filter whole conversations, and 
     reader.getByText("The first round is ready for review.", { exact: true }).last(),
   ).toBeVisible();
   await reader.getByRole("button", { name: "Close message" }).click();
-  // Removing the label pill returns to the inbox, as the sidebar's Inbox does.
   await pill.getByRole("button", { name: "Remove Label filter", exact: true }).click();
   await expect(pill).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Inbox", exact: true })).toBeVisible();
@@ -507,7 +505,6 @@ test("labels do not shift the mailbox picker; the toolbar stays on one row and d
   inbox: page,
 }) => {
   await page.setViewportSize({ width: 1400, height: 570 });
-  // Mount the resizable layout at the tested size before taking its baseline.
   await page.reload();
   const sidebar = page.getByRole("complementary", { name: "Mailbox navigation" }),
     picker = page.getByRole("button", { name: /^Switch mailbox:/ });
@@ -569,7 +566,6 @@ test("wide Inbox rows fit labels beside the subject and disclose exactly how man
     await expect(row).toBeVisible();
     if (width === 2200) await expect(chips).toHaveCount(5);
     else await expect(chips.last()).toHaveText(/^\+\d+$/);
-    // The labels refit after a resize observer runs, so check one settled layout at a time.
     await expect(async () => {
       const shown = await chips.evaluateAll((items) =>
         items.map((item) => {

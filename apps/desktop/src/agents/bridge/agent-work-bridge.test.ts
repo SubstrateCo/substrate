@@ -15,7 +15,6 @@ test("the bridge rejects unknown methods and malformed IDs before the runtime se
     turnEvents: unexpected,
     homedAgents: unexpected,
   };
-  // Commands moved to the server: the bridge no longer has them.
   await rejects(dispatchAgentWork(runtime, "stop", crypto.randomUUID()), Error);
   await rejects(dispatchAgentWork(runtime, "turnRuns", "../../etc"), Error);
   const id = crypto.randomUUID();

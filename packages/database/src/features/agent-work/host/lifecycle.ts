@@ -29,7 +29,6 @@ async function statusOf(db: DatabaseExecutor, turnId: string) {
   return row!.status;
 }
 
-/** Fires a turn event for the attempt the caller holds. */
 async function fire(
   db: DatabaseExecutor,
   turn: TurnRow,
@@ -50,11 +49,6 @@ async function fire(
   return updated.length > 0;
 }
 
-/**
- * The host starts the turn. Batch items whose source the owner cannot see any more are dropped
- * first; a first attempt left with nothing to run is cancelled. A turn the owner stopped before
- * it started reports stopping, so the host ends it without running it.
- */
 export async function startTurn(
   db: DatabaseExecutor,
   identity: ResolvedDeviceIdentity,
@@ -99,7 +93,6 @@ export async function startTurn(
   return { status: await statusOf(db, turn.id) };
 }
 
-/** Items the harness reported as read. Evidence that arrives after the turn ended still counts. */
 async function consumeEvidence(db: DatabaseExecutor, turn: TurnRow, ids: string[], now: Date) {
   if (!ids.length) return;
   await db
@@ -115,11 +108,6 @@ async function consumeEvidence(db: DatabaseExecutor, turn: TurnRow, ids: string[
   await settleUncertainTurn(db, turn.id, now);
 }
 
-/**
- * Proposals whose decision a held tool call of the turn returned to the agent. Their waiting
- * approval_result items in the turn's session are consumed by the turn, so that the decision
- * never starts another turn.
- */
 async function receiveInline(db: DatabaseExecutor, turn: TurnRow, requestIds: string[] = []) {
   if (!requestIds.length) return;
   const waiting = await db
@@ -141,12 +129,6 @@ async function receiveInline(db: DatabaseExecutor, turn: TurnRow, requestIds: st
   await setItemStatus(db, ids, "receiveInline", { turnId: turn.id, held: false, reason: null });
 }
 
-/**
- * The host reports what the live turn does: whether it runs or waits for the owner, its latest
- * activity and usage, its visible source messages, items it read, decisions it received inline,
- * and that it was told to wrap up. Returns the turn's status, so the host learns of a stop.
- * Consumption evidence for a turn this device no longer holds still applies.
- */
 export async function progressTurn(
   db: DatabaseExecutor,
   identity: ResolvedDeviceIdentity,
@@ -179,8 +161,6 @@ export async function progressTurn(
       ),
     );
   await consumeEvidence(db, turn, input.consumedItemIds, now);
-  // A state change can move the turn into or out of what needs the owner. New activity text
-  // changes only what the turn shows, and the same text again changes nothing.
   if (input.state) changed(db, turn);
   else if (input.activity !== undefined && input.activity !== turn.activity)
     effectsFor(db).hint({
@@ -191,10 +171,6 @@ export async function progressTurn(
   return { status: await statusOf(db, turn.id) };
 }
 
-/**
- * The host ends the live turn it holds. Decisions the turn received inline are consumed first,
- * so that a helper turn does not stay open for them.
- */
 export async function finishHeldTurn(
   db: DatabaseExecutor,
   identity: ResolvedDeviceIdentity,
@@ -211,11 +187,6 @@ export async function finishHeldTurn(
   return result;
 }
 
-/**
- * The turn could not start for a passing reason, such as an outage. A turn that never ran puts
- * its items back, available again after the delay, and is cancelled. A turn that already ran
- * stays assigned, and the host retries it later.
- */
 export async function retryTurnLater(
   db: DatabaseExecutor,
   identity: ResolvedDeviceIdentity,
@@ -232,7 +203,6 @@ export async function retryTurnLater(
   return { result: "kept" as const };
 }
 
-/** The host lost the turn's harness process and reports its own evidence. */
 export async function recoverHeldTurn(
   db: DatabaseExecutor,
   identity: ResolvedDeviceIdentity,

@@ -19,11 +19,9 @@ import { crmAccounts, crmAffiliations, crmContactProfiles } from "../crm/schema"
 import { mutateContactDetail } from "./contact-detail-actions";
 import { and, asc, eq, gt, ilike, isNotNull, isNull, sql } from "drizzle-orm";
 
-// Application integration composes the shared contact primitive with its CRM relationships.
 export function contactApplicationRepository(context: RepositoryContext) {
   const { db, scope } = context;
   const org = scope.organizationId;
-  // CRM profile columns are visible only while the CRM app is enabled.
   const crmProfileJoin = and(
     eq(crmContactProfiles.organizationId, contacts.organizationId),
     eq(crmContactProfiles.contactEntityId, contacts.entityId),
@@ -59,7 +57,6 @@ export function contactApplicationRepository(context: RepositoryContext) {
           changed(ctx, previous.entityId);
           return previous;
         }
-        // A concurrent identical edit may have written the fields since the read above.
         const row = await repo.updateChanged(id, value);
         changed(ctx, id);
         if (!row) return repo.get(id);
@@ -101,7 +98,6 @@ export function contactApplicationRepository(context: RepositoryContext) {
         .limit(pageSize(options.limit));
     },
     async getContact(id: string) {
-      // readContactProfile with the actor's level and the CRM archive state.
       const [row] = await db
         .select({
           profile: contacts,
@@ -163,8 +159,6 @@ export function contactApplicationRepository(context: RepositoryContext) {
             ),
           );
         const archivedAt = archived ? new Date() : null;
-        // Only a write that changes the state returns a row, so two concurrent requests for the
-        // same state record one activity event.
         const written = await ctx.db
           .insert(crmContactProfiles)
           .values({ organizationId: org, contactEntityId: id, archivedAt })

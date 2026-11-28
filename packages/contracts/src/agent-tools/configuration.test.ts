@@ -32,7 +32,6 @@ test("the guide prepends Substrate's instructions, and enabled apps install thei
   const installed = agent.managedSkills.filter((skill) => skill.installed).map((skill) => skill.id);
   expect(installed).toContain("substrate-tasks");
   expect(installed).not.toContain("substrate-inbox");
-  // Every managed skill is listed, so the runtime removes the ones it no longer installs.
   expect(agent.managedSkills.map((skill) => skill.id)).toEqual(
     startupSkills.map((skill) => skill.id),
   );

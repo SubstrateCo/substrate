@@ -9,10 +9,6 @@ type Tone = "default" | "attention";
 
 const ToneContext = createContext<Tone>("default");
 
-/**
- * The shared shell for cards attached under a message, such as agent requests. Every card has the
- * same width and header.
- */
 export function MessageCard({
   icon: Icon,
   title,
@@ -25,7 +21,6 @@ export function MessageCard({
   title: ReactNode;
   meta?: ReactNode;
   tone?: Tone;
-  /** The card arrived while the person watched, so it fades in. */
   arriving?: boolean;
   children?: ReactNode;
 }) {

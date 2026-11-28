@@ -22,8 +22,6 @@ const ownerCopy: Record<
   }),
 };
 
-// "leave" is shown to the owner, who must hand over the conversation before leaving it.
-// Handing it over alone is a plain primary action; leaving is destructive like any other leave.
 export function OwnerDialog({
   mode,
   name,
@@ -38,9 +36,7 @@ export function OwnerDialog({
 }: {
   mode: "transfer" | "leave";
   name: string;
-  /** "Leave channel" or "Leave group". Only used when leaving. */
   leaveLabel?: string;
-  /** Whether people can still open the conversation after the owner leaves. */
   publicChannel?: boolean;
   candidates: { userId: string; name: string }[];
   pending: boolean;

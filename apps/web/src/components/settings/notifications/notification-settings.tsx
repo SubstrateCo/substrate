@@ -21,7 +21,6 @@ import { toast } from "sonner";
 
 const settingError = () => toast.error("We couldn’t change this setting. Try again.");
 
-// Weekdays from 9:00 AM to 6:00 PM.
 const defaultSchedule = { days: [1, 2, 3, 4, 5], start: 9 * 60, end: 18 * 60 };
 
 export function NotificationSettings({
@@ -29,7 +28,6 @@ export function NotificationSettings({
   organizationId,
 }: {
   userId: string;
-  /** The active workspace. Without one, only account settings show. */
   organizationId: string | null;
 }) {
   const account = useQuery(accountNotificationPreferencesOptions(userId));
@@ -37,7 +35,6 @@ export function NotificationSettings({
   const state = resourceState(account);
   const save = (change: Partial<AccountNotificationPreferences>) =>
     update.mutate(change, { onError: settingError });
-  // Every schedule change saves this device's time zone, so the hours mean what the user sees.
   const saveSchedule = (
     current: NotificationSchedule | null,
     change: Partial<Omit<NotificationSchedule, "timeZone">>,

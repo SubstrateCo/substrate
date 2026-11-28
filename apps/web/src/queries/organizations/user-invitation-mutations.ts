@@ -4,7 +4,6 @@ import { queryKeys } from "../keys";
 import { authClient } from "@/api/auth/client";
 import { authError } from "@/api/auth/error";
 
-/** The signed-in user declines an invitation sent to their email address. */
 export function useDeclineInvitation() {
   const client = useQueryClient();
   return useMutation({

@@ -5,13 +5,8 @@ import { Heading } from "@/components/ui/heading";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "cn";
 
-/** Align the content of `Item size="xs"` with the record section's heading. */
 export const recordRows = "-mx-2.5 grid gap-px";
 
-/**
- * A section of a record sheet or aside: a 28px title row (muted title, count, cues, actions on the
- * right), an optional helper line, then the content. A disclosure trigger can be the `title`.
- */
 export function RecordSection({
   title,
   count,
@@ -52,7 +47,6 @@ export function RecordSection({
   );
 }
 
-/** The ghost icon action on a section's title row, with a tooltip that matches its label. */
 export function RecordSectionAction({
   label,
   children,
@@ -70,7 +64,6 @@ export function RecordSectionAction({
   );
 }
 
-/** Side-by-side record properties: a muted label column and the values. */
 export function PropertyList({ className, ...props }: ComponentProps<"dl">) {
   return <dl className={cn("grid", className)} {...props} />;
 }
@@ -86,7 +79,6 @@ export function Property({ label, children }: { label: string; children: ReactNo
   );
 }
 
-/** An unset property value. */
 export function NotSet() {
   return <span className="text-muted-foreground">Not set</span>;
 }

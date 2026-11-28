@@ -42,12 +42,8 @@ async function seedMessages(
   return ids;
 }
 
-// Trusted, development-only provisioning. One transaction makes reruns safe without resetting edits.
-// Seeding publishes nothing: no client is connected to a new development database.
 export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash: string) {
   const { result } = await commit(db, async (tx) => {
-    // The reserved organizations claim the seed. A concurrent seed waits on their keys until
-    // this transaction ends, then inserts nothing and returns.
     const claimed = await tx
       .insert(organization)
       .values(developmentTeams.map((team) => ({ id: team.id, name: team.name, slug: team.slug })))

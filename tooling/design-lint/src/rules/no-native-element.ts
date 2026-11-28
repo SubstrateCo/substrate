@@ -4,7 +4,6 @@ const ui = (component: string, file: string) => `<${component}> from "@/componen
 const HEADING = `${ui("Heading", "heading")} with a level and a variant (page, record, section, title, label, or inherit inside CardTitle and EmptyTitle)`;
 const TABLE = '<AppTable> from "@/components/table/app-table"';
 
-/** What to use instead of each raw element. */
 const REPLACEMENTS: Record<string, string> = {
   button: `${ui("Button", "button")}. For a click target without button chrome (a row or card target, a name that opens a card, a text-like action) use ${ui("Pressable", "pressable")}`,
   input: `${ui("Input", "input")}, ${ui("Checkbox", "checkbox")}, ${ui("RadioGroupItem", "radio-group")}, ${ui("Switch", "switch")}, or <DateField>. A raw input is only for type="hidden" and type="file"`,
@@ -34,12 +33,9 @@ const REPLACEMENTS: Record<string, string> = {
   h6: HEADING,
 };
 
-// No primitive draws these: a hidden input carries form data, and a file input is the picker.
 const NATIVE_INPUT_TYPES = new Set(["hidden", "file"]);
-// Primitives that style the element they render through `asChild`, such as <Item asChild><li>.
 const STYLING_PARENTS = new Set(["Item", "Button"]);
 
-/** A link that opens outside the app; in-app links are router Links and downloads stay raw. */
 function externalLink(node: NodeOf<"JSXOpeningElement">) {
   if (attributeString(node, "target") !== "_blank") return undefined;
   return `${ui("TextLink", "text-link")}, which opens a new tab with a safe rel. Inside <Button asChild> a raw <a> stays fine`;

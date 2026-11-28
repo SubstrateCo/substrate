@@ -18,7 +18,6 @@ export interface CalendarAccountActions extends CalendarRowActions {
   onReconnectAccess: () => void;
 }
 
-/** One linked provider account and the calendars connected from it. */
 export function CalendarAccountCard({
   account,
   now,
@@ -29,7 +28,6 @@ export function CalendarAccountCard({
   account: CalendarAccountView;
   now: number;
   pendingCalendarId: string | null;
-  /** The provider's consent page is opening. */
   reconnecting: boolean;
   actions: CalendarAccountActions;
 }) {

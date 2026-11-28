@@ -8,7 +8,6 @@ import { expect, type Page } from "@playwright/test";
 async function mouseHistory(page: Page, button: "back" | "forward") {
   const cdp = await page.context().newCDPSession(page);
   try {
-    // Blank list content, outside the sheet. Moving first also makes the pointer target explicit.
     await cdp.send("Input.dispatchMouseEvent", {
       type: "mouseMoved",
       x: 400,

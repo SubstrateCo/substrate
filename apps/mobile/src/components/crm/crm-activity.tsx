@@ -50,7 +50,6 @@ function describe(item: CrmActivity) {
   return `${base} ${item.changedFields.map((field) => fieldLabels[field] ?? field).join(", ")}`;
 }
 
-/** Who changed the record and when. */
 export function CrmActivityLog({ scope, entityId }: { scope: QueryScope; entityId: string }) {
   const query = useInfiniteQuery(recordQueries.crmActivity(scope, entityId));
   const items = query.data?.pages.flatMap((page) => page.items) ?? [];

@@ -27,7 +27,6 @@ export class ServiceError extends Error {
   }
 }
 
-/** Creates `serviceResult` with a log for unexpected errors. */
 export const createServiceResult =
   (log: (message: string, name: string) => void = console.error) =>
   async <T>(work: () => Promise<T>, signal?: AbortSignal): Promise<ServiceResult<T>> => {

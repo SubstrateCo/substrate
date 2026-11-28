@@ -56,7 +56,6 @@ export function useSharingAction(organizationId: string, conversationId: string)
   });
 }
 
-/** Invitations to shared conversations waiting for this person or, for admins, this workspace. */
 export function useSharingInbox(organizationId: string) {
   const scope = useMessagingScope(organizationId);
   return useQuery({
@@ -75,7 +74,6 @@ export function useSharingInvitation(organizationId: string, invitationId: strin
   });
 }
 
-/** Accept and decline share one scope, so this client never sends competing decisions. */
 export function useSharingDecision(organizationId: string, invitationId: string) {
   const scope = useMessagingScope(organizationId);
   const client = useQueryClient();

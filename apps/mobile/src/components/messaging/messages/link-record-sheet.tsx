@@ -19,7 +19,6 @@ export function LinkRecordSheet({
 }: {
   organizationId: string;
   messageId: string;
-  /** Records already linked or mentioned, shown as linked instead of selectable. */
   linkedIds: readonly string[];
   onClose: () => void;
 }) {

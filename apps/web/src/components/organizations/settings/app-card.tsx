@@ -5,13 +5,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import type { LucideIcon } from "lucide-react";
 
-/** Whether the viewer can turn an app on or off. Required apps are always on. */
 export type AppCardMode =
   | { kind: "required" }
   | { kind: "editable"; enabled: boolean; pending: boolean; onChange: (enabled: boolean) => void }
   | { kind: "readOnly"; enabled: boolean };
 
-/** One app row: its name, description, agent support, and control. */
 export function AppCard({
   id,
   label,
@@ -40,7 +38,6 @@ export function AppCard({
           <ItemTitle>
             {mode.kind === "editable" ? <Label htmlFor={controlId}>{label}</Label> : label}
           </ItemTitle>
-          {/* ItemDescription clamps to two lines; these descriptions run longer. */}
           <p className="text-sm text-muted-foreground">{description}</p>
         </ItemContent>
         <ItemActions className="ml-auto">

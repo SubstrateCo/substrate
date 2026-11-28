@@ -44,7 +44,6 @@ test("reference hints name the message to its conversation and the work to its r
   ]) {
     expect(change.hints).toContainEqual(pages);
     expect(change.hints).toContainEqual(related);
-    // The private channel's message and the project's task never go to the whole workspace.
     expect(change.hints.filter((hint) => hint.audience[0] === "organization")).toEqual([]);
   }
 });
@@ -84,7 +83,6 @@ test("source creation is atomic, concurrent-idempotent, and preserves the exact 
   await createContextService(db, { userId: "alice", organizationId: f.orgA }).createTaskFromMessage(
     { ...input, requestId: crypto.randomUUID() },
   );
-  // Includes one archive check of the project.
   expect(queries).toHaveLength(11);
 });
 

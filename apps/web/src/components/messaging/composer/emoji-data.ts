@@ -6,7 +6,6 @@ const emojiByCharacter = new Map(
   emojiCategories.flatMap((category) => category.emojis).map((item) => [item.emoji, item]),
 );
 
-/** The named catalog entry for an emoji, or undefined when it is not in the picker. */
 export function findEmoji(emoji: string): Emoji | undefined {
   return emojiByCharacter.get(emoji);
 }
@@ -37,7 +36,5 @@ export function rememberEmoji(emoji: string) {
       (item, index, all) => all.indexOf(item) === index,
     );
     localStorage.setItem(recentKey, JSON.stringify(next.slice(0, recentLimit)));
-  } catch {
-    // Recents are a convenience; a blocked storage keeps the picker working.
-  }
+  } catch {}
 }

@@ -7,7 +7,6 @@ import {
 } from "./tool-label.ts";
 import { expect, test } from "bun:test";
 
-/** Native input as harnesses send it: JSON fields of any type, or not an object at all. */
 type NativeInput = { [key: string]: string | number } | string;
 
 const titles = new Map([
@@ -15,7 +14,6 @@ const titles = new Map([
   ["list_projects", "List projects"],
   ["create_task", "Create task"],
 ]);
-/** The host's own MCP server, as the runtime passes it to adapters. */
 const host: HostTools = { server: "substrate", title: (name) => titles.get(name) };
 
 const label = (name: string, input?: NativeInput) =>

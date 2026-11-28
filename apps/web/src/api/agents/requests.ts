@@ -14,6 +14,5 @@ export const saveAgentTriggers = (json: SaveAgentTriggersInput) =>
   readResult(api.agents.actors.triggers.$post({ json }));
 export const setAgentAvatar = (json: SetAgentAvatarInput) =>
   readResult(api.agents.actors.avatar.$post({ json }));
-// The server reads the calling desktop from the request. Other clients cannot become a home.
 export const setAgentHomeDevice = (id: string) =>
   readResult(api.agents.actors.home.$post({ json: { id } }));

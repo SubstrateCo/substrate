@@ -18,10 +18,8 @@ export function InboxReceipt({
   asReply = false,
 }: {
   item: AgentWorkItemView;
-  /** The agent the item waits for. */
   agentId: string;
   context: ItemContext;
-  /** The message the agent's next turn starts from: a queued reply row stands in for the reply. */
   asReply?: boolean;
 }) {
   const { userId, organizationId } = useWorkspaceScope();
@@ -29,7 +27,6 @@ export function InboxReceipt({
   const resend = useResendItem(userId, organizationId);
   const discard = useDiscardItem(userId, organizationId);
   const status = itemStatus(item, context);
-  // Only the owner sees agent work, so the agent is in the viewer's own catalog.
   const { data: avatar } = useQuery(agentAvatarQueryOptions(userId, agentId));
   if (asReply)
     return (

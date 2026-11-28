@@ -65,7 +65,6 @@ test("a concurrent deal edit, transition, and reassignment at one version apply 
       expect(result.reason).toMatchObject({ name: "ConflictError" });
   const current = (await a.crm.getDeal(deal.entityId)).deal;
   expect(current.version).toBe(deal.version + 1);
-  // Exactly one of the three changes is visible.
   expect(
     [
       current.title === "Edited",
@@ -124,7 +123,6 @@ test("concurrent ensurePipeline calls create one default pipeline", async () => 
     "Proposal",
     "Qualification",
   ]);
-  // Every caller gets the stages of the one pipeline.
   const ids = stored.map((stage) => stage.id).sort();
   for (const result of results) expect(result.map((stage) => stage.id).sort()).toEqual(ids);
 });
@@ -132,7 +130,6 @@ test("concurrent ensurePipeline calls create one default pipeline", async () => 
 test("concurrent stage configurations never interleave", async () => {
   const a = f.forActor(f.alice);
   const [first, second, third, fourth] = await a.crm.ensurePipeline();
-  // Each call keeps a different pair, so an interleaved result would be visible.
   const requests = [
     [{ id: first!.id, name: "A one" }, { id: second!.id, name: "A two" }, { name: "A new" }],
     [{ id: fourth!.id, name: "B four" }, { id: third!.id, name: "B three" }, { name: "B new" }],
@@ -145,7 +142,6 @@ test("concurrent stage configurations never interleave", async () => {
   for (const result of results)
     if (result.status === "rejected")
       expect(result.reason).toMatchObject({ name: "ConflictError" });
-  // The active pipeline is exactly what the last successful call asked for.
   const active = (await a.crm.pipeline()).filter((stage) => !stage.retired);
   const names = active.map((stage) => stage.name);
   expect(winners.map((stages) => stages.map((stage) => stage.name))).toContainEqual(names);

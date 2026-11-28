@@ -19,8 +19,6 @@ export function createSharingService({ publish }: { publish: CommittedPublisher 
       return serviceResult(() => scope.owner.sharing.invitation(input.invitationId));
     },
     acceptInvitation(this: void, scope: UserScope, input: z.output<typeof sharingAcceptInput>) {
-      // Accept selects a destination workspace, not necessarily the active one. The database
-      // checks destination membership under the invitation transaction's locks.
       return serviceResult(async () =>
         publish(
           await scope.owner.sharing.accept(

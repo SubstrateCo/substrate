@@ -41,10 +41,6 @@ function deviceRequests(db: DatabaseExecutor, identity: DeviceIdentity, deviceId
   );
 }
 
-/**
- * Opens a native blocking prompt of a live turn this device holds. The agent and session come
- * from the turn. Opening the same prompt again returns the same request.
- */
 export async function openRequestForDevice(
   tx: DatabaseExecutor,
   identity: ResolvedDeviceIdentity,
@@ -95,7 +91,6 @@ export async function openRequestForDevice(
   return existing;
 }
 
-// Try the machine events in order: an orphaned callback leaves an answered request undelivered.
 const closable = {
   delivered: ["deliver"],
   cancelled: ["cancel"],
@@ -103,10 +98,6 @@ const closable = {
   orphaned: ["orphan", "undeliver"],
 } as const satisfies Record<string, readonly (keyof typeof requestMachine.events)[]>;
 
-/**
- * The desktop reports what happened to a request after the owner answered it or its native
- * callback went away. A transition that already happened, or no longer applies, changes nothing.
- */
 export async function closeRequestForDevice(
   tx: DatabaseExecutor,
   identity: ResolvedDeviceIdentity,
@@ -145,7 +136,6 @@ export async function closeRequestForDevice(
   return { changed: false };
 }
 
-/** Answers the owner gave to this device's blocking requests that it has not delivered yet. */
 export async function requestAnswersForDevice(
   tx: DatabaseExecutor,
   identity: ResolvedDeviceIdentity,
@@ -174,10 +164,6 @@ export async function requestAnswersForDevice(
   );
 }
 
-/**
- * A request's status and outcome, for the home desktop of its agent. The desktop reads it to
- * learn whether a proposal it waits on was decided; the approval_result wake carries the same.
- */
 export async function requestStatusForDevice(
   db: DatabaseExecutor,
   identity: ResolvedDeviceIdentity,

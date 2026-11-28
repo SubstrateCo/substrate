@@ -175,7 +175,6 @@ interface LayersProps {
   outline: string | null;
 }
 
-/** The moving layers. Only this re-renders on each frame. */
 function Layers({ store, id, palette, outline }: LayersProps) {
   const frame = useSyncExternalStore(store.subscribe, store.get, store.get);
   if (!frame) return null;
@@ -331,7 +330,6 @@ function AgentAvatarView(props: NativeAgentAvatarProps) {
   const touchHandlers = interactive
     ? {
         onStartShouldSetResponder: () => true,
-        // A scroll view that starts scrolling takes the touch over.
         onResponderTerminationRequest: () => true,
         onResponderGrant: (event: GestureResponderEvent) => {
           noteActivity();
@@ -372,5 +370,4 @@ function AgentAvatarView(props: NativeAgentAvatarProps) {
   );
 }
 
-/** Memoised: a parent re-render (for example a streaming chat) skips unchanged avatars. */
 export const AgentAvatar = memo(AgentAvatarView);

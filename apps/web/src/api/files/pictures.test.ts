@@ -48,7 +48,6 @@ test("does not save a picture URL when the upload fails", async () => {
 test("cancellation after preparation prevents the committing attachment", async () => {
   const controller = new AbortController();
   const { requests, pictures } = fakePictureServer(() => {
-    // The person cancels while the uploaded picture's response arrives.
     controller.abort();
     return success({ url: pictureUrl });
   });

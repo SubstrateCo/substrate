@@ -63,7 +63,6 @@ export function ReferenceEditor({
   onChange: (value: string, caret: number) => void;
   onSelectionChange: (caret: number) => void;
   onKeyDown: (event: KeyboardEvent) => void;
-  /** Receives pasted files, such as a screenshot. Without it, a file paste does nothing. */
   onPasteFiles?: (files: File[]) => void;
   disabled?: boolean;
   listId?: string;
@@ -78,7 +77,6 @@ export function ReferenceEditor({
     editorProps: {
       attributes: {
         role: "textbox",
-        // Lets the surrounding InputGroup draw its focus ring.
         "data-slot": "input-group-control",
         "aria-label": label,
         "aria-multiline": "true",

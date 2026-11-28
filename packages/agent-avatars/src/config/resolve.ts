@@ -75,10 +75,6 @@ export function resolvePalette(config: AvatarConfig): Palette {
   };
 }
 
-/**
- * The colours under the eyes, for contrast checks. The eyes sit across the middle of the
- * gradient, not on its ends.
- */
 export function eyeSurfaceColors(config: AvatarConfig): string[] {
   const palette = resolvePalette(config);
   return [0.3, 0.5, 0.65].map((share) => mix(palette.from, palette.to, share));

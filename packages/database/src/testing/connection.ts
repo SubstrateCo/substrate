@@ -6,8 +6,6 @@ import { testDatabaseURL } from "./environment";
 import { is } from "drizzle-orm";
 import { getTableConfig, PgTable } from "drizzle-orm/pg-core";
 
-// Tests call repositories and services directly, outside commit(). Their hints are discarded here;
-// tests that check hints call commit() or transaction(), which collect their own.
 class DiscardedEffects extends RepositoryEffects {
   override hint() {}
   override mail() {}
@@ -20,7 +18,6 @@ export function discardEffects<T extends DatabaseExecutor>(db: T) {
 
 const connection = createDatabase({ connectionString: testDatabaseURL().href, maxConnections: 4 });
 export const testDatabase = discardEffects(connection.db);
-// A query that never ends must not hold the run open; close its connection after 5 s.
 export const closeTestDatabase = () => connection.db.$client.end({ timeout: 5 });
 
 // Deleting children before their parents satisfies every foreign key. On small tables this is much

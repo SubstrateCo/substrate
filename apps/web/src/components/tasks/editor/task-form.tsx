@@ -36,7 +36,6 @@ export function TaskForm({
   const uploads = useAttachmentUploads();
   const router = useRouter();
   const detail = useLoadedProject(organizationId, projectEntityId).resource.data;
-  // The project pane opens this form only once its project has loaded.
   if (!detail) return null;
   return (
     <TaskFormView
@@ -90,7 +89,6 @@ export function TaskForm({
                 attachmentFileIds: uploads.fileIds,
               },
           {
-            // Opening the saved task would undo a move the person made while it saved.
             onSuccess: ({ id }) => {
               if (router.latestLocation.href === destination) onSaved(id);
             },

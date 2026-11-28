@@ -10,7 +10,6 @@ const sendMessageKey = (organizationId: string, conversationId: string, threadId
   "send",
 ];
 
-/** Whether this window is sending a message to the conversation or thread. */
 export function useSendingMessage(
   organizationId: string,
   conversationId: string,

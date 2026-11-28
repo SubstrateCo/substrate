@@ -41,7 +41,6 @@ const colorLabels: Record<BodyColorName, string> = {
   cloud: "Cloud",
 };
 
-/** One choice in a tile grid: the tile, with its name in a tooltip. */
 function ChoiceTile({
   value,
   label,
@@ -66,7 +65,6 @@ function ChoiceTile({
   );
 }
 
-/** A labelled set of tiles. Shapes and colours share one 6-column grid, so their tiles line up. */
 function ChoiceGrid<T extends string>({
   legend,
   options,
@@ -104,10 +102,6 @@ function ChoiceGrid<T extends string>({
   );
 }
 
-/**
- * How the agent looks everywhere it appears: a live preview on its own stage, then its shape
- * and colour. Each choice shows and saves at once, so this section has no footer or draft.
- */
 export function AgentAppearanceView({
   name,
   avatar,
@@ -117,7 +111,6 @@ export function AgentAppearanceView({
   name: string;
   avatar: AgentAvatarCode;
   error?: Error | null;
-  /** The new code for the chosen shape or colour. */
   onChange: (avatar: AgentAvatarCode) => void;
 }) {
   const look = decodeAvatarCode(avatar);
@@ -159,7 +152,6 @@ export function AgentAppearanceView({
           <ChoiceGrid<BodyColorName>
             legend="Colour"
             options={BODY_COLOR_NAMES}
-            // A decoded code always holds a preset colour, never a custom hex.
             value={BODY_COLOR_NAMES.find((name) => name === look?.color)}
             disabled={!look}
             onChoose={(color) => choose({ color })}

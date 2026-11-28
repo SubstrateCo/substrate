@@ -18,10 +18,6 @@ type ConfirmAction =
   | { confirmLabel?: undefined; onConfirm?: undefined }
   | { confirmLabel: string; onConfirm: () => void };
 
-/**
- * Without confirmLabel, the dialog only informs and offers Close. A destructive confirm uses the
- * solid red button; give it a specific verb, such as "Delete channel" or "Remove Bob".
- */
 export function ConfirmDialog({
   title,
   description,
@@ -45,12 +41,9 @@ export function ConfirmDialog({
   confirmDisabled?: boolean;
   pending?: boolean;
   error?: Error | string | null;
-  /** Shown when the error is not a reviewed, user-facing message. */
   errorDescription?: string;
   onClose: () => void;
-  /** Focus a specific element on close instead of the element that opened the dialog. */
   onRestoreFocus?: () => void;
-  /** Why the confirm button is disabled, on the footer's left ("Choose a new owner"). */
   status?: string;
   children?: ReactNode;
 }) {

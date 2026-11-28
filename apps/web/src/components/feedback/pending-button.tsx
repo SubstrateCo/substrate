@@ -4,11 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "cn";
 
-/**
- * While pending, the button keeps its label and width and is disabled and aria-busy. A leading
- * icon gives its slot to a Spinner. Without one, the content stays in layout but turns
- * transparent, and the Spinner sits centered over it.
- */
 export function PendingButton({
   pending = false,
   disabled,
@@ -17,7 +12,6 @@ export function PendingButton({
   ...props
 }: ComponentProps<typeof Button> & { pending?: boolean }) {
   const [first, ...rest] = Children.toArray(children);
-  // A leading component (a lucide icon) is the icon slot; text or a host element is the label.
   // oxlint-disable-next-line deslop/no-runtime-typeof -- A React element type is a tag name or a component.
   const leadingIcon = isValidElement(first) && typeof first.type !== "string";
   const overlay = pending && !leadingIcon;
@@ -49,7 +43,6 @@ export function PendingButton({
   );
 }
 
-/** Transparent but still laid out and still part of the accessible name. */
 function hide(child: ReturnType<typeof Children.toArray>[number], index: number) {
   if (isValidElement<{ className?: string }>(child))
     return cloneElement(child, {

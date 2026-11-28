@@ -5,7 +5,6 @@ const USE_INSTEAD =
   'Render <Timestamp> from "@/components/time/timestamp" or <DueDate> from "@/components/time/due-date", or call a helper from "@/lib/format/date": formatRelativeTime (lists, activity), formatTime (messages), formatDateTime (records, tables), formatDayLabel (day dividers), formatFullTimestamp (tooltips), formatDueDate (date-only values).';
 const WHY = "so the same moment reads differently on different screens.";
 
-// Date-only methods: any call is date formatting.
 const DATE_METHODS = new Set([
   "toLocaleDateString",
   "toLocaleTimeString",
@@ -36,7 +35,6 @@ function unwrap(node: AstNode): AstNode {
     : node;
 }
 
-/** `toLocaleString` also formats numbers, so only date-looking receivers or options count. */
 function formatsDate(call: NodeOf<"CallExpression">, receiver: AstNode) {
   const target = unwrap(receiver);
   if (target.type === "NewExpression" && target.callee.type === "Identifier")
@@ -62,10 +60,6 @@ function intlFormat(callee: AstNode) {
   return callee.object.type === "Identifier" && callee.object.name === "Intl" ? name : undefined;
 }
 
-/**
- * `Intl.DateTimeFormat().resolvedOptions()` reads the user's time zone, and a discarded
- * `new Intl.DateTimeFormat("en", { timeZone })` validates one. Neither formats a date.
- */
 function formatsNothing(node: AstNode) {
   const parent = node.parent;
   if (parent?.type === "ExpressionStatement") return true;

@@ -6,7 +6,6 @@ import { createSharpImageCodec } from "../files/image";
 
 type Fixture = ReturnType<typeof setupDatabase>;
 
-/** Object storage in memory. Only reads and writes are supported. */
 export function memoryStorage(objects = new Map<string, Uint8Array>()): ObjectStorage & {
   objects: Map<string, Uint8Array>;
 } {
@@ -30,7 +29,6 @@ export function memoryStorage(objects = new Map<string, Uint8Array>()): ObjectSt
   };
 }
 
-/** The agent's MCP tools, reading file bytes from in-memory object storage. */
 export async function agentWorkFixture(f: Fixture) {
   const storage = memoryStorage();
   return {

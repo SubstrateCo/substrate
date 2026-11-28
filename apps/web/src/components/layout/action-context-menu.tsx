@@ -17,12 +17,6 @@ export type ContextAction = {
   disabled?: boolean;
 };
 
-/**
- * The right-click menu for one kind of target. Each target passes its own actions, in groups
- * that render with a separator between them. Empty groups are skipped, and with no actions the
- * browser's own menu stays. The innermost target wins, so an image inside a message shows the
- * image's menu.
- */
 export function ActionContextMenu({
   actions,
   children,

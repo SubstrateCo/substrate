@@ -7,14 +7,7 @@ import { createGoogleLinkTicket } from "@/api/integrations/google-link";
 import { isDesktop } from "@/lib/desktop/auth";
 import { windowBridge } from "@/lib/desktop/bridges";
 
-/**
- * Starts a Google link that asks for one product's scopes, then returns to `callbackURL`. The
- * server adds identity scopes, offline access and consent. Desktop Gmail uses its own client.
- *
- * Call it in the browser that will complete the OAuth callback: the state cookie belongs there.
- * The auth client runs without its redirect plugin, so this navigates to Google itself.
- */
-async function linkGoogleProduct(product: GoogleProduct, callbackURL: string) {
+async function navigateToGoogleConsent(product: GoogleProduct, callbackURL: string) {
   const result = await authClient.linkSocial({
     provider: "google",
     scopes: [...googleProductScopes[product]],
@@ -24,14 +17,6 @@ async function linkGoogleProduct(product: GoogleProduct, callbackURL: string) {
   window.location.assign(googleConsentURL(result.data.url));
 }
 
-/**
- * Links a Google account for a product, or asks again for access an account lacks.
- *
- * In the web app, Google returns to the product's settings page in this tab. The desktop must
- * finish OAuth in the system browser, which has no Substrate session: it asks the server for a
- * single-use ticket, and desktop main opens the API start page with it. That page goes straight
- * to Google, and Google returns through /desktop/open, which reopens the settings page here.
- */
 export async function startGoogleLink(product: GoogleProduct) {
   if (isDesktop()) {
     const bridge = windowBridge();
@@ -39,7 +24,7 @@ export async function startGoogleLink(product: GoogleProduct) {
     const { ticket } = await createGoogleLinkTicket({ data: { product } });
     return bridge.openGoogleLink({ ticket });
   }
-  await linkGoogleProduct(
+  await navigateToGoogleConsent(
     product,
     new URL(googleProductSettingsPath[product], window.location.origin).toString(),
   );

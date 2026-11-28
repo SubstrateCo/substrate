@@ -29,7 +29,6 @@ export interface CalendarRowActions {
   onReconnect: (calendar: CalendarView) => void;
 }
 
-/** One connected calendar: its name and state on the left, its settings on the right. */
 export function CalendarRow({
   calendar,
   now,
@@ -38,9 +37,7 @@ export function CalendarRow({
 }: {
   calendar: CalendarView;
   now: number;
-  /** A change to this calendar is saving. */
   pending: boolean;
-  /** Detached calendars have none and only show their history. */
   actions?: CalendarRowActions;
 }) {
   return (
@@ -69,7 +66,6 @@ export function CalendarRow({
   );
 }
 
-/** A disconnected calendar can only be reconnected; a connected one has its switch and menu. */
 function CalendarRowControls({
   calendar,
   pending,

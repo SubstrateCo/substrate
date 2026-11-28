@@ -2,7 +2,6 @@ import type { McpOutput } from "@substrate/contracts/agent-tools/tools";
 import { mcpOutputOffloadBytes } from "@substrate/contracts/harness-runtime";
 import { mailFlag, mailboxName, type Mailbox, type MailHeader } from "@substrate/contracts/mail";
 
-/** Count escaped JSON bytes, not UTF-16 units. Never split a surrogate pair between excerpts. */
 function excerpt(text: string, budget: number) {
   let low = 0,
     high = Math.min(text.length, budget);

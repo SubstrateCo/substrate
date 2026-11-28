@@ -19,7 +19,6 @@ if (count === 1) {
 } else {
   // Bun gives the slowest files to the workers first when it knows the last durations.
   mkdirSync("node_modules/.cache", { recursive: true });
-  // An interrupt while the databases are created must still let close drop them.
   const interrupt = new AbortController();
   let child: Bun.Subprocess | undefined;
   const cancel = () => {
@@ -30,7 +29,6 @@ if (count === 1) {
   try {
     const databases = await createTestDatabases(count);
     try {
-      // Each worker runs its files serially against its own database.
       if (!interrupt.signal.aborted)
         child = Bun.spawn(
           [

@@ -10,7 +10,6 @@ const web = fileURLToPath(new URL("../../web/", import.meta.url));
 const publicConfig = resolvePublicConfig(process.env, { packaged: true });
 const manifest = JSON.parse(await readFile(`${desktop}/package.json`, "utf8"));
 const releaseRepository = resolveReleaseRepository(process.env, manifest.build?.publish ?? {});
-// This is a generated staging directory, never a source directory.
 await rm(`${desktop}/dist`, { recursive: true, force: true });
 const renderer = Bun.spawn([process.execPath, "run", "build"], {
   cwd: web,

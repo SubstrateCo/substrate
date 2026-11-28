@@ -7,7 +7,6 @@ let initialized = false;
 export async function createTemporaryFile(input: TemporaryFileInput): Promise<PrivateFile> {
   const root = new Directory(Paths.cache, "substrate-private");
   if (!initialized) {
-    // Remove only this adapter's abandoned cache from an earlier process.
     if (root.exists) root.delete();
     root.create({ intermediates: true, idempotent: true });
     initialized = true;

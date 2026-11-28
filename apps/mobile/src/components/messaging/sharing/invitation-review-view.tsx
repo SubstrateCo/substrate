@@ -14,7 +14,6 @@ export type InvitationOutcome =
   | { kind: "approval-required" }
   | { kind: "accepted"; organizationId: string; conversationId: string | null; here: boolean };
 
-/** The recipient's decision on a shared conversation invitation. */
 export function InvitationReviewView({
   invitation,
   organizations,

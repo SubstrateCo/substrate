@@ -1,6 +1,5 @@
 export type ReleaseBump = "patch" | "minor" | "major";
 
-// The workflow input is untrusted text until this boundary validates it.
 // oxlint-disable-next-line deslop/prefer-literal-union
 export function parseReleaseBump(value: string): ReleaseBump {
   switch (value) {

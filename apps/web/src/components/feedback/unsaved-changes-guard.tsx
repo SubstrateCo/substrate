@@ -5,18 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { DiscardChangesDialog } from "@/components/feedback/discard-changes-dialog";
 import { registerUnsavedDraft } from "@/lib/navigation/unsaved-drafts";
 
-/**
- * Asks before the person leaves a page with an unsaved draft. A clean page never asks.
- * `description` names what would be lost, such as "Your new name isn’t saved."
- *
- * Two exits are covered while `dirty`:
- * - Router navigation, including search results and links. Pass `shouldBlock` to let some moves
- *   keep the draft, such as switching between one agent's settings sections.
- * - Full-document exits, such as a workspace switch or sign-out. They go through
- *   `leaveDocument()` from "@/lib/navigation/unsaved-drafts", which asks before they start.
- *
- * It does not use the unload event: Electron would cancel closing the window without asking.
- */
+// It does not use the unload event: Electron would cancel closing the window without asking.
 export function UnsavedChangesGuard({
   dirty,
   description,
@@ -25,7 +14,6 @@ export function UnsavedChangesGuard({
 }: {
   dirty: boolean;
   description: string;
-  /** How a document exit lists this draft when several are dirty, such as "Project details". */
   name?: string;
   shouldBlock?: ShouldBlockFn;
 }) {
@@ -49,7 +37,6 @@ export function UnsavedChangesGuard({
     );
     return () => {
       unregister();
-      // The draft went away while the question was open; the exit that asked stays cancelled.
       answer.current?.(false);
       answer.current = null;
     };
@@ -58,7 +45,6 @@ export function UnsavedChangesGuard({
   const lastFocus = useRef<HTMLElement | null>(null);
   useEffect(() => {
     if (!dirty) return;
-    // The draft usually becomes dirty while its field already has focus.
     if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body)
       lastFocus.current = document.activeElement;
     const remember = (event: FocusEvent) => {
@@ -83,7 +69,6 @@ export function UnsavedChangesGuard({
     setAsking(null);
   };
   if (!open) return null;
-  // One question covers every dirty draft, so it lists each one by name.
   const several = blocker.status !== "blocked" && asking && asking.length > 1 ? asking : null;
   return (
     <DiscardChangesDialog

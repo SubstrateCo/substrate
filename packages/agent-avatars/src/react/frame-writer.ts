@@ -58,13 +58,11 @@ export function collectNodes(svg: SVGSVGElement): AvatarNodes {
   };
 }
 
-/** Writes frames straight to the SVG, skipping attributes that did not change. */
 export class FrameWriter {
   private readonly nodes: AvatarNodes;
   private readonly eyeFill: string;
   private readonly cache = new Map<Element, Record<string, string>>();
 
-  /** `eyeFill` paints filled eyes, such as `url(#id-eye)`. */
   constructor(nodes: AvatarNodes, eyeFill: string) {
     this.nodes = nodes;
     this.eyeFill = eyeFill;
@@ -85,7 +83,6 @@ export class FrameWriter {
     }
   }
 
-  /** `outline` is a CSS colour, or `null` for none. */
   write(frame: Frame, palette: Palette, outline: string | null): void {
     const n = this.nodes;
     this.set(n.group, { transform: frame.transform });

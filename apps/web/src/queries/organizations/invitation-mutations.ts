@@ -8,8 +8,6 @@ import { authError } from "@/api/auth/error";
 
 export function useInvitationMutations(organizationId: string) {
   const client = useQueryClient();
-  // A failed request may still have changed an invitation, such as one saved before its email
-  // failed, so the list refreshes either way.
   const onSettled = () =>
     client.invalidateQueries({ queryKey: queryKeys.invitations(organizationId) });
   const invite = useMutation({

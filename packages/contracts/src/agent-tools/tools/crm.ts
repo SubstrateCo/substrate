@@ -25,7 +25,6 @@ export const contactDetailActions = [
   "removeUrl",
 ] as const;
 const detailText = z.string().trim().min(1).max(1000).nullable().optional();
-// CRM services own their access-filtered projections. Keep every field in the JSON boundary.
 const record = z.record(z.string(), z.json());
 const recordResult = z.object({ record: z.object({ entityId: id }).catchall(z.json()) });
 const interactionCursor = z.object({ occurredAt: timestamp, entityId: id }).strict();

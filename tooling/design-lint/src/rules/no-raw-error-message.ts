@@ -29,7 +29,6 @@ function climb(node: AstNode): AstNode {
   return current;
 }
 
-/** Rendered as JSX text, passed as a JSX prop, or sent to a toast. */
 function isShown(node: AstNode) {
   if (isRenderedChild(node)) return true;
   const outer = climb(node);

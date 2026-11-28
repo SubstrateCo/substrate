@@ -54,7 +54,6 @@ test("a task reads each link from its own side, in the standard relation order",
     })),
   ).toEqual([
     { id: "blocked", relation: "blocks", other: "d", blocking: false },
-    // The reader cannot open the blocker, but the task is still blocked.
     { id: "blocker", relation: "blocked_by", other: null, blocking: true },
     { id: "dup", relation: "duplicated_by", other: "c", blocking: false },
     { id: "related", relation: "related_to", other: "b", blocking: false },
@@ -67,7 +66,6 @@ test("a task's descendants are its subtasks at every depth, not its siblings or 
     parentTaskEntityId: parent,
   });
   const tasks = [
-    // Listed before its parent, so one pass in list order would miss it.
     child("grandchild", "child"),
     task("root"),
     child("child", "root"),

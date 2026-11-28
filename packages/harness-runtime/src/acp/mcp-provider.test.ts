@@ -25,9 +25,7 @@ const listProjects = {
 let folder: string;
 let host: Awaited<ReturnType<typeof createStartupMcp>>;
 let calls: ReturnType<typeof testToolProvider>["calls"];
-/** Makes workspace calls never settle, as a stalled server request would. */
 let stallWorkspace: boolean;
-/** Resolves on the first workspace call. */
 let workspaceCalled: PromiseWithResolvers<void>;
 
 beforeEach(async () => {
@@ -243,7 +241,6 @@ test("disconnect finishes while the agent holds an MCP subscription stream open"
     },
     lease,
   );
-  // The provider touches the lease when the subscriptions/listen request reaches it.
   const reached = Promise.withResolvers<void>();
   const endpoint = lease.endpoint!;
   const touch = endpoint.touch.bind(endpoint);

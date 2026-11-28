@@ -25,7 +25,6 @@ export function createSharpImageCodec(): ImageCodec {
         width: metadata.width,
         height: metadata.height,
         pages: metadata.pages ?? 1,
-        // New pixels, no source metadata, no active content, and one predictable output format.
         toWebp: ({ maxEdge, quality }) =>
           decoding(() =>
             image

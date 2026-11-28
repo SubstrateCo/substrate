@@ -10,7 +10,6 @@ import { createAuthClient } from "better-auth/client";
 import type { BrowserWindow } from "electron";
 import { createHash } from "node:crypto";
 
-/** The session token cookie alone. Cache-cookie updates do not change the signed-in identity. */
 export function sessionTokenCookie(cookie: string) {
   return (
     cookie
@@ -68,7 +67,6 @@ export function createDesktopAuthClient(
   });
   return {
     authClient,
-    // Call after app readiness, before starting any session-dependent services.
     initializeSession: () => {
       previousToken = sessionToken();
     },

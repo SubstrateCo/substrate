@@ -8,7 +8,6 @@ import type { SessionIdentity } from "../../core/session/identity";
 import type { FileContentReader } from "./files";
 import { executeAgentToolInTransaction, parseAgentToolInput } from "./tool-execution";
 
-/** The agent that calls, and the installation the call came from. */
 type CallerIdentity = SessionIdentity & { actorEntityId: string; installationId?: string };
 
 export async function executeAgentTool<K extends ServerToolName>(

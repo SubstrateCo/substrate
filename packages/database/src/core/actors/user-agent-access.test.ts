@@ -35,7 +35,6 @@ test("agents use their owner's live access, not grants of their own", async () =
   const { repositories: agent, actor } = await assistant();
   const account = await f.forActor(f.bob).crm.createAccount({ name: "Shared" });
   expect(await rejection(agent.crm.getAccount(account.entityId))).toBeInstanceOf(AccessDeniedError);
-  // The database holds no grant rows for agents.
   expect(
     await rejection(
       f.db
@@ -157,7 +156,6 @@ test("other members cannot see or assign a user's local agent, but see it on ass
       avatar: "100000",
     });
   await alice.tasks.update(task.entityId, { assigneeActorEntityId: actor.entityId });
-  // Keeping the existing assignee does not block other edits.
   expect(
     (
       await bob.tasks.update(task.entityId, {
@@ -203,7 +201,6 @@ test("agents cannot cross workspaces or outlive the owner's active identity", as
     AccessDeniedError,
   );
   await f.db.update(actors).set({ disabledAt: null }).where(eq(actors.entityId, f.alice));
-  // The session refuses the agent once its owner's actor is deleted or their membership ends.
   const session = () =>
     createRepositories(f.db).forSession({
       userId: "alice",

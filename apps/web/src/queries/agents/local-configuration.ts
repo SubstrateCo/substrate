@@ -5,10 +5,6 @@ import { queryOptions, skipToken } from "@tanstack/react-query";
 import { queryKeys } from "../keys";
 import { desktopLocalConfiguration } from "@/lib/desktop/agents/local-configuration";
 
-/**
- * One saved agent's files on this desktop. Skills and MCP servers stay on the agent's home
- * desktop, so only the desktop app that is its home can read them; elsewhere this is `undefined`.
- */
 export function localAgentConfiguration(
   userId: string,
   organizationId: string,
@@ -27,7 +23,6 @@ export function localAgentConfiguration(
 
 export type LocalAgentConfiguration = NonNullable<ReturnType<typeof localAgentConfiguration>>;
 
-/** Reads the agent's files. Without a local configuration the query stays idle. */
 export const localConfigurationOptions = (
   userId: string,
   local: LocalAgentConfiguration | undefined,

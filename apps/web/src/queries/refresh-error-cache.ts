@@ -19,7 +19,6 @@ export function createRefreshErrorCache(notifier: Pick<typeof toast, "error" | "
     onError: (error, query) => {
       const message = query.meta?.refreshError;
       if (!message) return;
-      // Checked before the data: the realtime cache clears a denied query's data first.
       if (isAccessFailure(error)) {
         if (notified.delete(query)) notifier.dismiss(query.queryHash);
         return;

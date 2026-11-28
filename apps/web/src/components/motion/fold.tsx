@@ -9,10 +9,6 @@ const IN_DELAY_MS = 80;
 
 type Shown = { state: string; content: Element | null; height: number };
 
-/**
- * Folds the old content into the new: the height moves from one to the other while the old
- * content fades out over the new, which settles in. Returns a function that ends the fold now.
- */
 function fold(wrapper: HTMLElement, old: Element, from: number, done: () => void) {
   const ghost = ghostOf(old);
   if (!ghost) return null;
@@ -56,16 +52,10 @@ function fold(wrapper: HTMLElement, old: Element, from: number, done: () => void
   return end;
 }
 
-/**
- * Swaps its content and, when `state` changes, folds the old content into the new one, such as
- * an answered request becoming its one-line result. The first render and updates within one
- * state do not move.
- */
 export function Fold({ state, children }: { state: string; children: ReactNode }) {
   const wrapper = useRef<HTMLDivElement>(null);
   const shown = useRef<Shown | null>(null);
   const folding = useRef<(() => void) | null>(null);
-  // The content can change height without this component rendering, such as a step change.
   useLayoutEffect(() => {
     const node = wrapper.current;
     if (!node) return;
@@ -84,7 +74,6 @@ export function Fold({ state, children }: { state: string; children: ReactNode }
     if (!node) return;
     const previous = shown.current;
     const changed = !!previous && previous.state !== state;
-    // A new state ends the running fold, so the heights below are the real ones.
     if (changed) folding.current?.();
     const content = node.firstElementChild;
     const height = folding.current && previous ? previous.height : node.offsetHeight;

@@ -23,7 +23,6 @@ test("self assignment and unchanged assignment emit no notification hint", async
       assigneeActorEntityId: f.alice,
     }),
   );
-  // Only the project's readers hear of the task, by project and task ID.
   expect(created.hints).toEqual([
     {
       audience: realtimeKeys.entity(f.orgA, project.entityId),

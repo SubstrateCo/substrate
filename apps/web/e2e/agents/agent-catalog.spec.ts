@@ -27,7 +27,6 @@ test("a delayed catalog keeps Needs you usable and opens selected settings when 
   const user = await client(account);
   const release = Promise.withResolvers<void>();
   await user.page.route(catalogPath, async (route) => {
-    // Refetches can cancel the initial query while the catalog is held.
     await release.promise;
     await route.continue();
   });
@@ -111,7 +110,6 @@ for (const status of [503, 403]) {
     await user.page.route(catalogPath, (route) =>
       failing ? failCatalog(route, status) : route.continue(),
     );
-    // A real owner edit emits the catalog change event and refetches the cached query.
     const changed = await account.request.post("/api/v1/agents/actors/save", {
       data: {
         id: agent.id,
@@ -122,7 +120,6 @@ for (const status of [503, 403]) {
       },
     });
     expect(changed.ok()).toBe(true);
-    // Lost access replaces the list with an alert; a failed refresh keeps it under a status.
     const feedback = agents(user.page)
       .getByRole(status === 403 ? "alert" : "status")
       .filter({ hasText: status === 403 ? "Agents unavailable" : "Couldn’t load agents" });

@@ -7,10 +7,6 @@ const shortcut = <const Id extends ShortcutId>(id: Id, name: string) => ({
   meta: { name },
 });
 
-/**
- * Every shortcut a person can change, in settings order. `ShortcutsProvider` applies their saved
- * keys, so code that registers one of these gets the person's keys, not the defaults.
- */
 export const appHotkeys = defineAppHotkeys({
   "app.messages": shortcut("app.messages", "Go to Messages"),
   "app.tasks": shortcut("app.tasks", "Go to Tasks"),
@@ -23,7 +19,6 @@ export const appHotkeys = defineAppHotkeys({
   "app.notifications": shortcut("app.notifications", "Go to Notifications"),
   "search.open": shortcut("search.open", "Search workspace"),
 });
-// Every contract shortcut needs a declaration here.
 appHotkeys satisfies Record<ShortcutId, AppHotkey>;
 
 declare module "@tanstack/react-hotkeys" {

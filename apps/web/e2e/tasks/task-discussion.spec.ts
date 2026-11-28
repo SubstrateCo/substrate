@@ -57,7 +57,6 @@ test("task discussion opens shared messaging and opens its task over the message
       .getByRole("region", { name: "Discussion", exact: true })
       .getByText(body, { exact: true }),
   ).toBeVisible();
-  // The task opens in a sheet over its discussion, not in Tasks.
   expect(new URL(sender.page.url()).pathname).toBe("/messages");
   await expect(message.getByText(body, { exact: true })).toBeVisible();
   await details.getByRole("button", { name: "Close task", exact: true }).click();

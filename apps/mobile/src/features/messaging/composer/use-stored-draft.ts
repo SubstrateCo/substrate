@@ -15,7 +15,6 @@ export function useStoredDraft(key: string) {
   return {
     draft,
     update: (update: (draft: StoredDraft) => StoredDraft) => messageDrafts.set(key, update),
-    /** Reads the latest draft, such as after an awaited send. */
     read: () => messageDrafts.get(key),
   };
 }

@@ -25,7 +25,6 @@ const pageRow = (messageId: string, title = messageId): MessagePageContext => ({
   agents: [],
 });
 
-// Fakes the server and records the message IDs of each request.
 const fakeMessagePageServer = (row = (id: string) => pageRow(id)) => {
   const requests: string[][] = [];
   const getPage: typeof getMessagePage = async ({ data }) => {
@@ -61,7 +60,6 @@ test("overlapping pages reuse the most recently refreshed message context", asyn
     await client.query(second);
     title = "Renamed";
     const refreshed = await client.query({ ...first, staleTime: 0 });
-    // Make the relative refresh times explicit, independent of the system clock's resolution.
     client.setQueryData(second.queryKey, client.getQueryData(second.queryKey), { updatedAt: 1 });
     client.setQueryData(first.queryKey, refreshed, { updatedAt: 2 });
     const after = await client.query(page("conversation", ["a", "b", "c", "d"]));
@@ -127,15 +125,12 @@ test("a new message's context page keeps the row objects of unchanged messages",
     messagePageOptions("org", conversationId, messageIds, getPage);
   try {
     const before = await client.query(page("conversation", ["one", "two"]));
-    // The second message's link was renamed before the third message arrived. The change
-    // reaches the client as an invalidation hint.
     server = [row("one", "First"), row("two", "Renamed"), row("three", "Third")];
     await client.invalidateQueries({ queryKey: queryKeys.messagePages("org", "conversation") });
     const after = await client.query(page("conversation", ["one", "two", "three"]));
     expect(after[0]).toBe(before[0]!);
     expect(after[1]).not.toBe(before[1]!);
     expect<unknown>(after).toEqual(server);
-    // Another conversation never shares rows, even for equal content.
     const other = await client.query(page("other", ["one"]));
     expect(other[0]).not.toBe(after[0]!);
   } finally {

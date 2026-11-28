@@ -8,12 +8,9 @@ import {
 
 import { systemClock, type CancelTimer, type Clock } from "./timers.ts";
 
-/** The overlay window, as the center sees it. */
 export interface ScreenNotificationSink {
   emit(event: ScreenNotificationEvent): void;
-  /** At least one card is visible. */
   show(): void;
-  /** No card is visible. */
   hide(): void;
 }
 
@@ -26,17 +23,12 @@ const rank = { high: 0, normal: 1 } as const;
 const order = (a: ScreenNotification, b: ScreenNotification) =>
   rank[a.priority] - rank[b.priority] || Date.parse(a.createdAt) - Date.parse(b.createdAt);
 
-/**
- * Holds every posted card, shows the first three by priority and age, and queues the rest. It knows
- * nothing about card kinds: producers register the actions for their kind.
- */
 export function createScreenNotificationCenter(options: {
   sink: ScreenNotificationSink;
   clock?: Clock;
 }) {
   const clock = options.clock ?? systemClock;
   const cards = new Map<string, ScreenNotification>();
-  // The card last sent to the sink for each visible ID.
   let visible = new Map<string, ScreenNotification>();
   const registry = new Map<ScreenNotificationKind, ScreenNotificationHandlers>();
   let expiry: CancelTimer | undefined;
@@ -82,18 +74,15 @@ export function createScreenNotificationCenter(options: {
       // SAFETY: act() dispatches only cards whose kind selected these handlers.
       registry.set(kind, handlers as ScreenNotificationHandlers);
     },
-    /** Adds a card, or replaces the card with the same ID. */
     post(card: ScreenNotification) {
       upsert(card, false);
     },
-    /** Replaces a card by ID and keeps its place in the queue. Adds it when it is missing. */
     update(card: ScreenNotification) {
       upsert(card, true);
     },
     retract(id: string) {
       if (cards.delete(id)) render();
     },
-    /** The visible cards, in display order. */
     list() {
       return [...visible.values()];
     },

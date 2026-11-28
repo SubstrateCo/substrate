@@ -20,7 +20,6 @@ import { referenceChangeHints } from "../realtime/routing";
 import { recordCrmActivity } from "./activity/activity";
 import { crmRepository } from "./repository";
 
-// The identity and actor context are supplied by the host, never by model/request fields.
 export async function createCrmFromMessageInContext(
   context: RepositoryContext,
   identity: SessionIdentity,
@@ -38,7 +37,6 @@ export async function createCrmFromMessageInContext(
     if (resolved.context.scope.actorEntityId !== ctx.scope.actorEntityId)
       throw new AccessDeniedError();
 
-    // Admin/CRM access never substitutes for independently readable source access.
     const { conversation, message } = await requireMessage(ctx.db, identity, value.messageId);
     if (message.deletedAt || conversation.organizationId !== ctx.scope.organizationId)
       throw new AccessDeniedError();
@@ -61,7 +59,6 @@ export async function createCrmFromMessageInContext(
     const contacts = contactApplicationRepository(ctx);
     let entityId: string;
     if (previous) {
-      // Read the current record, not stored source content. Never restore a missing source edge.
       if (value.kind === "account") await crm.getAccount(previous);
       else if (value.kind === "contact") await contacts.getContact(previous);
       else await crm.getDeal(previous);
@@ -71,7 +68,6 @@ export async function createCrmFromMessageInContext(
       else if (value.kind === "contact")
         entityId = (await contacts.createContact(value.fields)).entityId;
       else entityId = (await crm.createDeal(value.fields)).entityId;
-      // Only reviewed fields above are saved. A message is not an entity or a contact identity.
       await ctx.db.insert(messageEntityReferences).values(
         (value.associate ? (["source", "association"] as const) : (["source"] as const)).map(
           (purpose) => ({
@@ -85,7 +81,6 @@ export async function createCrmFromMessageInContext(
           }),
         ),
       );
-      // Account/deal and the canonical contact wrapper already record "created" activity.
       if (value.associate) await recordCrmActivity(ctx, { entityId, action: "discussion_linked" });
       await recordRequest(ctx, "crm_from_message", value.requestId, entityId);
     }

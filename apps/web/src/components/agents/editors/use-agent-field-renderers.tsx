@@ -7,7 +7,6 @@ import { ModelPicker } from "@/components/agents/model-picker/model-picker";
 import { HarnessAccount } from "@/components/agents/sign-in/harness-account";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 
-/** The connected model and built-in rules fields of the agent form, for a new or saved agent. */
 export function useAgentFieldRenderers(agentId?: string) {
   const { userId, organizationId } = useWorkspaceScope();
   const renderModel = ({ id, harness, model, disabled, onChange }: AgentModelField) => (

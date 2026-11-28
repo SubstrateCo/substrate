@@ -6,10 +6,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Input } from "@/components/ui/input";
 import { ChevronRight } from "lucide-react";
 
-/**
- * A skills or MCP servers page in the settings sheet: a toolbar, then its lists. The
- * sheet header names the page, so it has no title of its own.
- */
 export function ConfigurationPage({
   toolbar,
   children,
@@ -48,10 +44,6 @@ export function ConfigurationSearch({
   );
 }
 
-/**
- * A flat list of skills or servers: its title and description, then rows split by dividers. No
- * card frame: the sheet is already the surface.
- */
 export function ConfigurationList({
   title,
   description,
@@ -61,9 +53,7 @@ export function ConfigurationList({
 }: {
   title?: string;
   description?: string;
-  /** The list's accessible name when it has no title. */
   label?: string;
-  /** Hides the list from assistive technology, such as placeholder rows under a status. */
   hidden?: boolean;
   children: ReactNode;
 }) {
@@ -83,7 +73,6 @@ export function ConfigurationList({
   );
 }
 
-/** What Substrate adds on its own. The list is folded by default: the owner can't change it. */
 export function BuiltInGroup({
   title,
   description,
@@ -95,7 +84,6 @@ export function BuiltInGroup({
   title: string;
   description: string;
   count: number;
-  /** What the list holds, such as "skill", for "Show 5 skills". */
   noun: string;
   actions?: ReactNode;
   children: ReactNode;

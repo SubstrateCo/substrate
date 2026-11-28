@@ -11,7 +11,6 @@ const place = z
     "Where each run posts: a conversation your owner can see, and optionally the root message of a thread in it. Null posts in your owner's direct message with you.",
   );
 
-/** The routine fields an agent may set. */
 const routineInput = {
   name: routineFields.name,
   prompt: routineFields.prompt.describe(

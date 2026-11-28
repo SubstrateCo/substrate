@@ -1,4 +1,3 @@
-/** The editable text of a contact address. Empty strings mean "not set". */
 export type AddressText = {
   label: string;
   streetAddress: string;
@@ -25,10 +24,6 @@ export function addressText(address: StoredAddress): AddressText {
   };
 }
 
-/**
- * The address fields to save, or null when the address has no content or an invalid country.
- * Blank fields are cleared, and the country code is upper-cased to the stored ISO form.
- */
 export function addressInput(text: AddressText): StoredAddress | null {
   const value = (field: string) => field.trim() || null;
   const countryCode = value(text.countryCode)?.toUpperCase() ?? null;
@@ -47,7 +42,6 @@ export function addressInput(text: AddressText): StoredAddress | null {
   return Object.values(content).some((field) => field !== null) ? input : null;
 }
 
-/** One line for an address, preferring the text as the person wrote it. */
 export function addressLine(address: StoredAddress) {
   return (
     address.formattedAddress ??

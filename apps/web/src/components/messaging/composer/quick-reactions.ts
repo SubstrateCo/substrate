@@ -5,7 +5,6 @@ import { useSyncExternalStore } from "react";
 import { findEmoji } from "./emoji-data";
 import { z } from "zod";
 
-/** Quick reactions are a device preference, like the theme, so they stay in localStorage. */
 const storageKey = "substrate:quick-reactions";
 
 const quickReactionCount = 3;
@@ -13,10 +12,6 @@ export const defaultQuickReactions = ["😂", "👍", "🙌"] as const;
 
 const stored = z.array(z.string()).catch([]);
 
-/**
- * Reads a stored list. Unknown or repeated emoji fall back to the defaults slot by slot, so a
- * partly broken value keeps the user's valid picks.
- */
 export function parseQuickReactions(raw: string | null): string[] {
   let values: string[] = [];
   try {
@@ -34,7 +29,6 @@ export function parseQuickReactions(raw: string | null): string[] {
   return picked.map((emoji) => emoji || spare.shift()!);
 }
 
-/** Puts `emoji` in `slot`. If it is already in another slot, the two slots swap. */
 export function replaceQuickReaction(current: string[], slot: number, emoji: string): string[] {
   const next = [...current];
   const existing = next.indexOf(emoji);
@@ -77,13 +71,10 @@ export function setQuickReactions(next: string[]) {
   try {
     if (valid.join() === defaultQuickReactions.join()) localStorage.removeItem(storageKey);
     else localStorage.setItem(storageKey, JSON.stringify(valid));
-  } catch {
-    // Keep the in-memory choice if persistence is blocked.
-  }
+  } catch {}
   publish(valid);
 }
 
-/** The three emoji shown in the message toolbar, with their names. */
 export function useQuickReactions(): Emoji[] {
   const emojis = useSyncExternalStore(subscribe, () => snapshot);
   return emojis.map((emoji) => findEmoji(emoji)!);

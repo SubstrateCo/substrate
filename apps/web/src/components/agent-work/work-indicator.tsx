@@ -19,7 +19,6 @@ const labels: Record<WorkTone, string> = {
   failed: "Agent work failed",
 };
 
-/** A small dot on the agent's avatar. Working pulses softly; needing you is a steady dot. */
 export function WorkIndicator({
   tone,
   label = labels[tone],

@@ -20,14 +20,12 @@ export function useComposerDraft({
   hasAttachments?: boolean;
   attachmentsReady?: boolean;
   submitDisabled?: boolean;
-  /** Focuses the end of the draft on mount. */
   autoFocus?: boolean;
 }) {
   const drafts = useContext(ComposerDrafts);
   if (!drafts) throw new Error("Composer requires ComposerDraftProvider");
   const draft = drafts.get(draftKey) ?? "";
   const setDraft = (value: string) => drafts.set(draftKey, value);
-  // Focus waits until a send finishes, because the editor is disabled while it is pending.
   const [pendingCaret, setPendingCaret] = useState<number | null>(null);
   const [initialFocus] = useState(autoFocus ? draft.length : null);
   const editor = useRef<ReferenceEditorHandle>(null);
@@ -43,7 +41,6 @@ export function useComposerDraft({
     selection.current = null;
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Restore the selection after the editor applies the new draft.
   }, [draft]);
-  // Runs on every mount, so focus survives an editor remount.
   useEffect(() => {
     if (initialFocus !== null) editor.current?.focusAt(initialFocus);
   }, [initialFocus]);

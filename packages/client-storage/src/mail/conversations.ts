@@ -40,8 +40,6 @@ export function conversationFilter(q: MailFolder, now: number) {
       ? sql`instr(fold_search(${mailMessages.subject} || ' ' || ${mailMessages.from} || ' ' || ${mailMessages.to} || ' ' || ${mailMessages.snippet}),${term}) > 0`
       : undefined,
   )!;
-  // For a search, label or special folder, preview its latest match. Inbox threads sort by latest
-  // activity, including replies sent since the latest inbound message. No body enters this query.
   const inbox = q.view === "inbox" && !q.label && !term;
   return { match, priority: inbox ? normal : match, inbox };
 }

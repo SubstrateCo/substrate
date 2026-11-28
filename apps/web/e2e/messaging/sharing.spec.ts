@@ -180,7 +180,6 @@ test("disconnecting clears a partner’s open messages without a reload", async 
   await sender.page.getByRole("menuitem", { name: "External collaboration", exact: true }).click();
   await sender.page.getByRole("button", { name: "Disconnect", exact: true }).click();
   await sender.page.getByRole("button", { name: "Remove access", exact: true }).click();
-  // The sender's own access hint refreshes the open sharing details.
   await expect(sender.page.getByRole("button", { name: "Disconnect", exact: true })).toHaveCount(0);
   await expect(partner.page.getByText(body, { exact: true })).toHaveCount(0);
   await expect(conversationButton(partner.page, c.name)).toHaveCount(0);

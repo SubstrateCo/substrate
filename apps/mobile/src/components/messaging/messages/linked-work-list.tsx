@@ -24,7 +24,6 @@ const icons = {
   contact_interaction: MessagesSquare,
 } as const;
 
-/** Records linked to a message, with what the link means and an unlink action when allowed. */
 export function LinkedWorkList({
   links,
   pending,

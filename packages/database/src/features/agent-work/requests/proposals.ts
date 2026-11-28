@@ -38,14 +38,8 @@ type Receipt = Extract<ProposalOutcome, { status: "executed" }>["receipt"];
 type ActionInput = ProposalAction["input"];
 
 const serverToolName = mcpCall.shape.tool;
-// A quoted UUID in JSON text: a string value that is exactly one ID.
 const quotedUuid = /"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"/gi;
 
-/**
- * The server tool, if a call of it can wait for the owner and run later without the turn.
- * Reads never need approval. A live-turn-only tool shares data at its owner's request, so it
- * cannot wait. The agent's own work, such as its helpers, never waits.
- */
 function proposableTool(tool: string): ServerToolName | null {
   const parsed = serverToolName.safeParse(tool);
   if (!parsed.success) return null;
@@ -54,7 +48,6 @@ function proposableTool(tool: string): ServerToolName | null {
   return !definition.readOnly && !definition.liveTurnOnly && !definition.ownWork ? name : null;
 }
 
-/** The stored call input: the parsed input as JSON, without the call's own requestId. */
 export function proposalInput(input: McpInput<ServerToolName>): ActionInput {
   const { requestId: _, ...rest } = proposalAction.shape.input.parse(
     JSON.parse(JSON.stringify(input)),
@@ -62,10 +55,6 @@ export function proposalInput(input: McpInput<ServerToolName>): ActionInput {
   return rest;
 }
 
-/**
- * Parses a stored call input with the tool's schema. A tool with requestId gets `requestId`,
- * which keys the call's idempotent writes; other tools' schemas reject or strip the extra key.
- */
 function parseInput(tool: ServerToolName, input: ActionInput, requestId: string) {
   const schema: ToolDefinition["input"] = mcpTools[tool].input;
   const keyed = schema.safeParse({ ...input, requestId });
@@ -74,21 +63,14 @@ function parseInput(tool: ServerToolName, input: ActionInput, requestId: string)
   return parsed as McpInput<ServerToolName>;
 }
 
-// Every ID the input names, at any depth.
 function namedUuids(input: ActionInput) {
   return new Set([...canonicalJson(input).matchAll(quotedUuid)].map(([, id]) => id!.toLowerCase()));
 }
 
-// The entity's version: the time of its last change, to the millisecond.
 async function readableVersion(ctx: RepositoryContext, entityId: string) {
   return (await ctx.requireAccess(entityId, "view")).entity;
 }
 
-// Checks the agent can read each named record, and returns the version of each entity and the
-// audience of each conversation. Messages and people are checked but not bound: a message does
-// not change what the call does, and a person's grants are checked again when the call runs.
-// Other IDs, such as a pipeline stage or a task link, name parts of a bound record; the tool
-// checks them inside it.
 async function namedTargets(
   ctx: RepositoryContext,
   identity: SessionIdentity,
@@ -140,8 +122,6 @@ async function namedTargets(
   return basis;
 }
 
-// Cheap checks that fail a proposal which could never run, before the owner sees it. The tool
-// checks everything again when it runs.
 async function precheck(
   ctx: RepositoryContext,
   identity: SessionIdentity,
@@ -171,12 +151,6 @@ async function precheck(
     if (!(await deletableAuthors(ctx, [author])).has(author)) throw new AccessDeniedError();
   } else parseInput(tool, input, requestId);
 }
-/**
- * Checks that the agent may propose the call now and returns the state of the records it names.
- * The tool must be a server write that can run without the turn, its apps must be enabled, and
- * every record it names must be readable: a proposal never names a hidden record. Execution
- * checks again through the tool itself.
- */
 export async function checkProposalAccess(
   ctx: RepositoryContext,
   identity: SessionIdentity,
@@ -190,8 +164,6 @@ export async function checkProposalAccess(
   return namedTargets(ctx, identity, namedUuids(action.input));
 }
 
-// Compare-and-set on the target row, without changing it. The update holds the row until the
-// transaction ends, so a change that committed after the check fails it and a later change waits.
 async function bindTarget(write: Promise<unknown[]>) {
   if (!(await write).length) throw new ConflictError(staleProposalError);
 }
@@ -233,7 +205,6 @@ function bindConversation(
   );
 }
 
-// Binds every named record to the state that was proposed, in the call's transaction.
 async function bindTargets(ctx: RepositoryContext, basis: ProposalTargetBasis) {
   for (const [id, version] of Object.entries(basis.entities)) await bindWork(ctx, id, version);
   for (const [id, audience] of Object.entries(basis.conversations))
@@ -250,7 +221,6 @@ const deletions = new Map<
 ]);
 
 const optionalId = z.uuid().optional().catch(undefined);
-// The record a call created or changed: named by its output, else by its input.
 const outputRecord = z.object({
   record: z.object({ entityId: optionalId }).optional().catch(undefined),
   entityId: optionalId,
@@ -263,10 +233,6 @@ const inputRecord = z.object({
   contactEntityId: optionalId,
 });
 
-/**
- * The receipt of an executed call: the message it posted, or the record it created or changed,
- * so the owner can open it. A deletion names what it deleted. Other calls name only the tool.
- */
 async function receiptFor(
   ctx: RepositoryContext,
   tool: ServerToolName,
@@ -325,13 +291,6 @@ async function receiptFor(
   return { kind: "done", tool };
 }
 
-/**
- * Runs exactly the approved call as the agent, only while the records it names are as they
- * were proposed. Access is checked again and the records are bound to that state before the
- * tool runs. The caller's claim on the request makes the call run once, and the request ID keys
- * the call's idempotent writes, so the same proposal cannot post twice. Returns the receipt and
- * the tool's output, as the call would have returned it.
- */
 export async function runProposalAction(
   ctx: RepositoryContext,
   identity: SessionIdentity,
@@ -354,7 +313,6 @@ export async function runProposalAction(
   // SAFETY: parseInput parses with the registry entry for `tool`, the input this handler takes.
   const handler = handlers[tool] as (input: McpInput<ServerToolName>) => Promise<object>;
   const result = await handler(parseInput(tool, action.input, proposal.id));
-  // The output crosses the tool's output schema, as the call's own result would.
   const output = z
     .json()
     .parse(

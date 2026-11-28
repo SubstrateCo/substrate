@@ -132,7 +132,6 @@ async function readWorkspacePreferences(
   return { organizationId: identity.organizationId, ...toWorkspace(row) };
 }
 
-/** The actor's own settings for each conversation they are a live member of. */
 async function readConversationPreferences(
   db: DatabaseExecutor,
   actorEntityId: string,
@@ -159,7 +158,6 @@ async function readConversationPreferences(
   return preferences;
 }
 
-// Every device of the account refreshes its settings and alert decisions.
 const changed = (db: DatabaseExecutor, userId: string) =>
   effectsFor(db).hint({ audience: realtimeKeys.user(userId), domain: "notification-preferences" });
 
@@ -220,7 +218,6 @@ export function notificationPreferencesRepository(
       if (channels !== undefined) values.channels = channels;
       if (assignments !== undefined) values.assignments = assignments;
       if (mutedUntil !== undefined) values.mutedUntil = date(mutedUntil);
-      // The workspace context verified membership; the member foreign key keeps it.
       await db
         .insert(notificationWorkspacePreferences)
         .values({ organizationId: identity.organizationId, userId: identity.userId, ...values })
@@ -248,7 +245,6 @@ export function notificationPreferencesRepository(
       const values: Partial<typeof messagingParticipants.$inferInsert> = {};
       if (level !== undefined) values.notificationLevel = level;
       if (mutedUntil !== undefined) values.notificationsMutedUntil = date(mutedUntil);
-      // Only the actor's own live membership holds these settings.
       const written = await db
         .update(messagingParticipants)
         .set(values)

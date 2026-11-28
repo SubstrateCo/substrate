@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { actorIdentity } from "@/lib/actors/identity";
 
-/** Sets the value, then checks an invalid field again so its error clears on a valid choice. */
 function change<T>(
   field: {
     handleChange: (value: T) => void;

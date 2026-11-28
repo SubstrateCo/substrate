@@ -135,7 +135,6 @@ describe("Windows updates", () => {
 
     await updater.installNow();
     await updater.installNow();
-    // Agent work stops before the installer replaces the app, and the installer starts once.
     expect(steps).toEqual(["shutdown", "install"]);
     expect(engine.installs).toEqual([[true, true]]);
   });

@@ -59,7 +59,6 @@ test.each([
         .set({ deletedAt: new Date() })
         .where(eq(entities.entityId, target));
   }
-  // Sessions refuse inactive actors first; creation also checks the actor in core.
   for (const attempt of [
     () => a.crm.createAccount({ name: "New" }),
     () => a.crm.createDeal({ title: "New", stageId: stage!.id, accountEntityId: account.entityId }),

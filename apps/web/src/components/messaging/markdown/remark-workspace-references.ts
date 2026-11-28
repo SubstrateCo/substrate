@@ -7,7 +7,6 @@ type MarkdownNode = {
   data?: { hName?: string; hProperties?: Record<string, string> };
 };
 
-// Emit a custom inline node, not a Markdown link. Code and links stay literal.
 export function remarkWorkspaceReferences() {
   return (tree: MarkdownNode) => {
     const visit = (node: MarkdownNode) => {

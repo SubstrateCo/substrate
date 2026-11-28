@@ -2,7 +2,6 @@ import type { CalendarViewMode } from "./days";
 
 const storageKey = "substrate:calendar:view";
 
-/** An explicit event link can override this device's preferred calendar view. */
 export function readCalendarView(): CalendarViewMode {
   try {
     const value = localStorage.getItem(storageKey);

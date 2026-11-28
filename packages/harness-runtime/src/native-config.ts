@@ -65,7 +65,6 @@ export async function saveNativeSkill(
     true,
   );
   const existing = await readOptional(path);
-  // Preserve all unrelated frontmatter fields when editing a native skill.
   const match = existing && /^---\r?\n([\s\S]*?)\r?\n---\r?\n/.exec(existing);
   const frontmatter = parseDocument(match ? match[1] : "{}");
   if (frontmatter.errors.length)

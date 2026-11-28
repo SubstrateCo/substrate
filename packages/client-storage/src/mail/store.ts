@@ -47,8 +47,6 @@ export async function openMailStore(path: string, org: string, migrations?: stri
           );
         return new Map(rows.map((r) => [r.id, r.stamp]));
       }),
-    // Paging is independent of inbox/history sync. Never move its checkpoint, replace
-    // a concurrently refreshed message, or resurrect mail after disconnect/reconnect.
     cacheOlder: (id: string, grant: string, messages: SyncedMail[]) =>
       run(async (tx) => {
         const present = await tx
@@ -84,13 +82,10 @@ export async function openMailStore(path: string, org: string, migrations?: stri
       }),
     commit: (id: string, previous: string | null, page: SyncPage) =>
       run(async (tx) => {
-        // Compare-and-set also rolls the page back if two wakes race on different connections to SQLite.
         const changed = await tx
           .update(mailConnections)
           .set({
             cursor: page.cursor,
-            // While the worker is alive the bridge reports syncing. On restart, a partial
-            // commit is resumable even when a previous sync had already set lastSync.
             status: page.done ? "idle" : "retry",
             lastSync: page.done ? Date.now() : undefined,
             unreadTotal: page.unreadTotal,

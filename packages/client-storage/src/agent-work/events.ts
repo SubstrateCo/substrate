@@ -26,7 +26,6 @@ function eventView(row: TurnEventRow): TurnEventView {
 const ofTurn = (organizationId: string, turnId: string) =>
   and(eq(turnEvents.organizationId, organizationId), eq(turnEvents.turnId, turnId));
 
-/** Turn transcripts. Each event belongs to an attempt that ran here. */
 export function eventRepository(run: RunTransaction) {
   return {
     /**
@@ -103,7 +102,6 @@ export function eventRepository(run: RunTransaction) {
           (row) => eventView(row) as Extract<TurnEventView, { kind: K }>,
         ),
       ),
-    /** Whether the attempt started a tool call that never finished: recovery evidence. */
     unfinishedTool: (organizationId: string, turn: { turnId: string; attempt: number }) =>
       run(async (tx) => {
         const rows = await tx

@@ -8,8 +8,6 @@ import { and, desc, eq, exists, isNull, lte, or, sql, type SQL } from "drizzle-o
 import { mapColumnsInSQLToAlias } from "drizzle-orm/alias";
 import { alias } from "drizzle-orm/sqlite-core";
 
-/** Walk mail_recent until one page plus a lookahead is found. Thread lookups use
- * mail_thread; older pages don't count or window-rank the entire mailbox. */
 export async function cachedConversations(
   tx: LocalTransaction,
   org: string,
@@ -55,12 +53,9 @@ export async function cachedConversations(
         eq(mailMessages.organizationId, org),
         q.mailboxId === null ? undefined : eq(mailMessages.mailboxId, q.mailboxId),
         q.before === undefined ? undefined : lte(mailMessages.timestamp, q.before),
-        // Start at the last shown time, so a deep page does not walk every shown row again.
-        // Ties at that time stay in range; `seen` drops the shown ones.
         q.shownThrough === undefined ? undefined : lte(mailMessages.timestamp, q.shownThrough),
         priority,
         inbox ? or(match, exists(inInbox)) : undefined,
-        // Match conversationKey regardless of which reply represents a previously visited thread.
         q.seen?.length
           ? sql`json_array(${mailMessages.mailboxId}, case when ${mailMessages.threadId} is null then 'message' else 'thread' end, coalesce(${mailMessages.threadId},${mailMessages.id})) not in (select value from json_each(${JSON.stringify(q.seen)}))`
           : undefined,

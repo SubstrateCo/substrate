@@ -49,7 +49,6 @@ test("message author metadata uses joins instead of per-message SQL subplans", a
       authorExternal: false,
     });
   }
-  // The agent's avatar is not private: other viewers see it too. Agents never have a picture.
   for (const row of await query("bob")) {
     expect(row.authorImage).toBe(row.authorType === "agent" ? null : humanImage);
     expect(row.authorAvatar).toBe(row.authorType === "agent" ? avatar : null);

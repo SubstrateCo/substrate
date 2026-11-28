@@ -1,14 +1,8 @@
 #!/usr/bin/env bun
-// Reference architecture scanner. It lists entrypoints, puts files into layers, and maps imports
-// between layers. Lint enforces the rules. Output follows references/scanner.md.
-//
-// Run:  bun scan.ts [--config architecture.config.json] [--entry <text>] [--json]
 // Node: node scan.ts (23.6+), or node --experimental-strip-types scan.ts (22.x)
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { builtinModules } from "node:module";
 import { dirname, join, relative, resolve, sep } from "node:path";
-
-// ---------------------------------------------------------------- config types
 
 interface Layer {
   name: string;
@@ -33,10 +27,6 @@ interface Config {
   layers: Layer[];
   entrypoints: EntrypointGroup[];
 }
-
-// ---------------------------------------------------------------- languages
-// Add a language by adding an entry here. Each adapter finds imports and
-// resolves internal ones to files. Everything else is language-neutral.
 
 interface RawImport {
   index: number;
@@ -149,8 +139,6 @@ const LANGUAGES = {
 } satisfies Record<string, Language>;
 const LANGUAGE_BY_NAME = new Map<string, Language>(Object.entries(LANGUAGES));
 
-// ---------------------------------------------------------------- shared helpers
-
 interface ImportRecord {
   line: number;
   specifier: string;
@@ -214,15 +202,12 @@ function loadConfig(configPath: string): Config {
   }
 }
 
-// `rules` and `exceptions` belong to the lint, which checks them. The scanner ignores them.
 const FIELDS = {
   config: ["$schema", "root", "scanner", "languages", "sourceRoots", "include", "ignore", "entrypoints", "layers", "rules", "exceptions"],
   layer: ["name", "files", "specifiers", "mayImport"],
   entrypoint: ["name", "files", "route", "mount"],
 };
 
-// A config mistake must not pass silently: a misspelled field or layer name
-// would drop files from a layer without any sign.
 function validateConfig(config: Config) {
   const problems: string[] = [];
   const unknownFields = (value: object, known: string[], where: string) => {
@@ -288,6 +273,15 @@ function escapeRegExp(text: string) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function manifestName(path: string): string | undefined {
+  try {
+    const manifest: { name?: string } = JSON.parse(readFileSync(path, "utf8"));
+    return manifest.name;
+  } catch {
+    return undefined;
+  }
+}
+
 function walk(root: string, extensions: string[], include: (f: string) => boolean, ignore: (f: string) => boolean) {
   const files: string[] = [];
   const packages = new Set<string>();
@@ -299,14 +293,8 @@ function walk(root: string, extensions: string[], include: (f: string) => boolea
       }
       const rel = toPosix(relative(root, join(dir, entry.name)));
       if (entry.name === "package.json") {
-        try {
-          const manifest: { name?: string } = JSON.parse(
-            readFileSync(join(dir, entry.name), "utf8"),
-          );
-          if (manifest.name) packages.add(manifest.name);
-        } catch {
-          // Not a valid manifest. Skip it.
-        }
+        const name = manifestName(join(dir, entry.name));
+        if (name) packages.add(name);
       }
       if (!extensions.some((ext) => entry.name.endsWith(ext))) continue;
       if (include(rel) && !ignore(rel)) files.push(rel);
@@ -315,8 +303,6 @@ function walk(root: string, extensions: string[], include: (f: string) => boolea
   visit(root);
   return { files: files.sort(), packages };
 }
-
-// ---------------------------------------------------------------- scan
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
@@ -381,10 +367,6 @@ function main() {
     );
   }
 
-  // Entrypoints. A mount links a prefix to a name (factory, router variable,
-  // controller class). A route file gets the prefix when it defines that name.
-  // Mounts found in the route file itself win, because names such as `router`
-  // repeat across files.
   const entrypoints: Entrypoint[] = [];
   for (const group of config.entrypoints) {
     const mounts: { prefix: string; name: string; file: string }[] = [];
@@ -428,7 +410,6 @@ function main() {
     }
   }
 
-  // Focus: entrypoints matching --entry, and files reachable from their files.
   const selected = args.entry
     ? entrypoints.filter((entry) => `${entry.method} ${entry.path} ${entry.file}`.includes(args.entry))
     : entrypoints;
@@ -446,7 +427,6 @@ function main() {
     inScope = (file) => reachable.has(file);
   }
 
-  // Layer dependency matrix.
   type Cell = { runtime: number; type: number; example: { file: string; line: number; specifier: string } };
   const matrix = new Map<string, Map<string, Cell>>();
   const unlayered = new Map<string, number>();
@@ -471,8 +451,6 @@ function main() {
     }
   }
 
-  // Two-layer cycles: runtime imports in both directions. The lint checks
-  // `mayImport` per import; a cycle between layers without `mayImport` shows here only.
   const cycles: Cycle[] = [];
   for (const [a, row] of matrix) {
     for (const [b, ab] of row) {

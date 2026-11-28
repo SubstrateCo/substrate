@@ -19,13 +19,8 @@ import { asc, eq } from "drizzle-orm";
 type Fixture = ReturnType<typeof setupDatabase>;
 type Agent = Awaited<ReturnType<typeof ownedAgent>>;
 
-/** A time after owner-message debouncing, so admitted work is available. */
 export const soon = () => new Date(Date.now() + 5_000);
 
-/**
- * Alice's agent homed on her laptop, with helpers that run host work as its device does and
- * read the rows they change.
- */
 export async function hostFixture(f: Fixture) {
   const x = await agentWorkFixture(f);
   const identity: ResolvedDeviceIdentity = { ...x.agent.identity, deviceId: x.agent.device.id };
@@ -33,7 +28,6 @@ export async function hostFixture(f: Fixture) {
     (await commit(f.db, work)).result;
   const claim = (options: ClaimOptions = {}, now = soon(), as = identity) =>
     run((tx) => claimTurns(tx, as, options, now));
-  /** Another of Alice's agents, homed on the same laptop. */
   const sibling = async (name: string) => {
     const agent = await ownedAgent(f, "alice", name);
     await f.db
@@ -57,7 +51,6 @@ export async function hostFixture(f: Fixture) {
       input,
       new Date(),
     );
-  /** Inserts an item directly, for claim rules that admission does not reach in one step. */
   const item = async (
     target: Awaited<ReturnType<typeof session>>,
     sourceRef: InboxSourceRef,

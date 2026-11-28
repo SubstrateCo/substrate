@@ -4,7 +4,6 @@ import { nativeValidationMessage } from "@/lib/forms/validation-messages";
 
 type Control = HTMLInputElement | HTMLTextAreaElement;
 
-/** Product copy for the control's current constraint failure, or "" when it is valid. */
 function messageFor(control: Control) {
   if (control.validity.valid) return "";
   return nativeValidationMessage({
@@ -22,10 +21,6 @@ function messageFor(control: Control) {
   });
 }
 
-/**
- * Shows constraint failures inline with field-specific copy instead of browser bubbles. Give a
- * required control `data-missing-message` when "Enter <label>." does not read well.
- */
 export function useNativeValidation() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 

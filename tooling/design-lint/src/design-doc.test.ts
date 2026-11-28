@@ -8,7 +8,6 @@ const root = join(import.meta.dirname, "../../..");
 const webSource = join(root, "apps/web/src");
 const design = readFileSync(join(root, DESIGN_DOC), "utf8").replaceAll("\r\n", "\n");
 
-/** The rule sources, whose messages point to the design doc and to web modules. */
 const sources = readdirSync(import.meta.dirname, { recursive: true, encoding: "utf8" })
   .filter((file) => file.endsWith(".ts") && !file.endsWith(".test.ts"))
   .map((file) => readFileSync(join(import.meta.dirname, file), "utf8"));
@@ -16,7 +15,6 @@ const matches = (pattern: RegExp) => [
   ...new Set(sources.flatMap((source) => [...source.matchAll(pattern)].map((match) => match[1]!))),
 ];
 
-/** The text of "## <number>. <title>", up to the next numbered section. */
 function section(number: string) {
   const start = design.search(new RegExp(`^## ${number}\\. `, "m"));
   if (start < 0) return undefined;

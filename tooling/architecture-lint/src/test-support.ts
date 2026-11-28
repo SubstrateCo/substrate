@@ -12,7 +12,6 @@ export const ruleTester = new RuleTester({
   languageOptions: { parserOptions: { lang: "ts" } },
 });
 
-/** A fake repository root. Rules see files below it by absolute path. */
 export const root = resolve("/fixture-repo");
 export const at = (file: string) => join(root, file);
 
@@ -27,7 +26,6 @@ export const fixtureConfig: ArchitectureConfig = {
   rules: [],
 };
 
-/** A layer model over the fixture config, with the given files on disk. */
 export function fixtureModel(config: ArchitectureConfig, files: string[] = []) {
   const existing = new Set(files.map(at));
   return layerModel(config, {

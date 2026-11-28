@@ -9,10 +9,8 @@ import { writeFile } from "node:fs/promises";
 import { z } from "zod";
 
 const previewCharacters = 1000;
-/** A result, or a part of one such as a thread's replies, that may be one page of a list. */
 const listPage = z.looseObject({ items: z.array(z.unknown()).optional() });
 
-/** pagingFields say whether a page has more. They follow the items, past the preview. */
 function pagingNotes(
   page: z.output<typeof listPage>,
   label: string,
@@ -35,10 +33,6 @@ function resultPaging(data: JsonObject, pagingFields: readonly string[]) {
     : "";
 }
 
-/**
- * Writes a large tool result to `<folder>/.substrate/outputs/<turnId>/<tool>-<n>.json` and
- * returns a reference instead. Small results return undefined and stay inline.
- */
 export async function offloadOutput(
   folder: string,
   turnId: string,
@@ -51,7 +45,6 @@ export async function offloadOutput(
   const bytes = Buffer.byteLength(text);
   if (bytes <= mcpOutputOffloadBytes) return undefined;
   if (!Number.isSafeInteger(sequence) || sequence < 1) throw new RangeError("Invalid sequence.");
-  // The path is relative to the native session's working directory, which is the folder.
   const path = `.substrate/outputs/${safeId(turnId)}/${safeId(tool)}-${sequence}.json`;
   await writeFile(await safePath(folder, path, false, true), text, { mode: 0o600 });
   return {

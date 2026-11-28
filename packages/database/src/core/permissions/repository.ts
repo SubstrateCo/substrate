@@ -10,19 +10,11 @@ import { entityGrants, permissionLevel } from "./schema";
 import { isMemberEdited } from "./visibility";
 import { and, eq, sql } from "drizzle-orm";
 
-// Untyped callers reach grants too; an unknown level must not be stored or read as a revoke.
 function requirePermissionLevel(level: PermissionLevel) {
   if (!permissionLevel.enumValues.includes(level))
     throw new ValidationError("Unknown permission level.");
 }
 
-/**
- * Sets or removes (no `level`) one actor's grant on the entity. `access` must come from
- * `ctx.requireStructuralAccess(entityId, "owner")` in the same transaction as `ctx`: that claim
- * makes grant changes on one entity run one at a time, so the owner count read here is current.
- * A domain records the change in `beforeChange`, which runs only when the grant changes, before
- * a self-revoke removes the caller's access.
- */
 export async function changePermission(
   ctx: RepositoryContext,
   access: AuthorizedAccess<"owner">,

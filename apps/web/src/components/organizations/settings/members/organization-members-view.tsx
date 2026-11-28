@@ -26,7 +26,6 @@ const roleCapabilities: Record<OrganizationRole, string> = {
 type OrganizationMembersProps = {
   resource: ResourceState<{ organizationName: string; members: MemberRowData[] }>;
   onRetry: () => void;
-  /** A link to invitations, for people who may invite. */
   inviteAction?: ReactNode;
   changing: boolean;
   changeError?: Error | null;
@@ -99,7 +98,6 @@ export function OrganizationMembers({
           getRowId={(member) => member.id}
           loading={resource.status === "loading"}
           loadingMessage="Loading members"
-          // The stale notice above already reports a failed refresh.
           error={resource.status === "stale" ? null : resource.error}
           errorTitle="Couldn’t load members"
           onRetry={blocked ? undefined : onRetry}

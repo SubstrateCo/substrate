@@ -29,7 +29,6 @@ test("a product is granted only when the grant has all of its scopes", () => {
   expect(hasGoogleProduct(`openid email ${calendarScope}`, "calendar")).toBe(true);
   expect(hasGoogleProduct("openid,email,profile", "calendar")).toBe(false);
   expect(hasGoogleProduct(null, "calendar")).toBe(false);
-  // A broader-looking scope with the same prefix is a different scope.
   expect(hasGoogleProduct("https://www.googleapis.com/auth/calendar.events", "calendar")).toBe(
     false,
   );

@@ -1,6 +1,5 @@
 import { app, BrowserWindow, dialog, type OpenDialogOptions } from "electron";
 
-/** User-initiated native selection only. The renderer never names a path. */
 export async function pickWorkspace(): Promise<string | null> {
   const window = BrowserWindow.getFocusedWindow();
   const options: OpenDialogOptions = {

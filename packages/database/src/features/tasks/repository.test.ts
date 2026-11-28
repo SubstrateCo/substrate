@@ -273,7 +273,6 @@ test("task create checks the project once and update batches activity with one a
     actorEntityId: fixture.alice,
   });
   const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Count" });
-  // Project access, archive check, entity, task, activity.
   expect(statements).toHaveLength(5);
   statements.length = 0;
   expect(
@@ -291,7 +290,6 @@ test("task create checks the project once and update batches activity with one a
     priority: "high",
     assigneeActorEntityId: fixture.bob,
   });
-  // Task, assignee claim, assignee access, update, touch, activity, notification.
   expect(statements).toHaveLength(7);
   const activity = await fixture.db
     .select()

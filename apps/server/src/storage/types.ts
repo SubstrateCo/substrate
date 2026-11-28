@@ -1,4 +1,3 @@
-/** Thrown by `read` when the object does not exist. */
 export class ObjectNotFoundError extends Error {
   override name = "ObjectNotFoundError";
 }

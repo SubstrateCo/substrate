@@ -1,4 +1,3 @@
-/** Origins come as comma-separated environment text or as the build's parsed list. */
 export function storageOrigins(value: string | string[] | undefined, packaged: boolean): string[] {
   if (value === undefined) return [];
   const values = Array.isArray(value) ? value : value.split(",");
@@ -38,8 +37,6 @@ export function storageRequest(
     }
     const headers = new Headers(request.headers);
     for (const name of ["cookie", "authorization", "proxy-authorization"]) headers.delete(name);
-    // Signed URLs authorize storage access. Never use the app session or follow a
-    // storage redirect to an origin that has not passed this allowlist.
     return fetchStorage(request, { headers, credentials: "omit", redirect: "error" });
   };
 }

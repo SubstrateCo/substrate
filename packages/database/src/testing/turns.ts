@@ -7,11 +7,6 @@ import { leaseUntil } from "../features/agent-work/host/lease-time";
 import { ensureSession } from "../features/agent-work/sessions";
 import { agentTurns } from "../schema";
 
-/**
- * A live server turn for a test, leased by the agent's home desktop. A call made with it comes
- * from installationId when the key is present, even when it is undefined, and from the agent's
- * home desktop otherwise.
- */
 export interface TurnSpec {
   key: string;
   kind: TurnKind;
@@ -19,7 +14,6 @@ export interface TurnSpec {
   destination?: TurnPlace | null;
   handoff?: boolean;
   installationId?: string;
-  /** The device that holds the lease. Defaults to the agent's home desktop. */
   leaseDeviceId?: string;
 }
 
@@ -35,7 +29,6 @@ export const threadTurn = (conversationId: string, rootId: string): TurnSpec => 
   origin: { conversationId, threadId: rootId },
 });
 
-/** A background turn of a new routine session that publishes to the destination. */
 export const routineTurn = (destination: TurnPlace | null): TurnSpec => ({
   key: sessionKeys.routine(crypto.randomUUID()),
   kind: "unattended",
@@ -50,7 +43,6 @@ type Agent = {
   identity: { userId: string; organizationId: string };
 };
 
-/** Inserts the spec's session and a running turn in its own folder, leased by the home desktop. */
 export async function insertTurn(db: DatabaseExecutor, agent: Agent, spec: TurnSpec) {
   const now = new Date();
   const kind = parseSessionKey(spec.key)?.kind;
@@ -72,7 +64,6 @@ export async function insertTurn(db: DatabaseExecutor, agent: Agent, spec: TurnS
     .values({
       ...ref,
       sessionId: session.id,
-      // Each test turn has its own folder, so tests may hold several live turns of one agent.
       folderKey: `test:${crypto.randomUUID()}`,
       kind: spec.kind,
       status: "running",
@@ -85,7 +76,6 @@ export async function insertTurn(db: DatabaseExecutor, agent: Agent, spec: TurnS
   return turn!;
 }
 
-/** The turn context for each spec, created on first use, so a reused spec is the same turn. */
 export function turnContexts(db: DatabaseExecutor, agent: Agent) {
   const turns = new WeakMap<TurnSpec, Promise<TurnContext>>();
   return (spec: TurnSpec) => {
@@ -98,6 +88,5 @@ export function turnContexts(db: DatabaseExecutor, agent: Agent) {
   };
 }
 
-/** The installation a spec's calls come from. */
 export const callerOf = (spec: TurnSpec, home: string) =>
   "installationId" in spec ? spec.installationId : home;

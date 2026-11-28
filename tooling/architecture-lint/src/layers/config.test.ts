@@ -21,7 +21,6 @@ void test("config mistakes that would silently turn a rule off are problems", ()
     ...fixtureConfig,
     layers: [...fixtureConfig.layers, { name: "worker", files: ["jobs/**"], mayImport: ["queue"] }],
     rules: [
-      // A misspelled check field leaves the rule with no checks.
       // SAFETY: the extra field is the misspelling under test; the type cannot express it.
       { ...rule, forbidImports: undefined, forbidPattern: ["x"] } as LayerRule,
       { ...rule, id: "R9", layer: "routes" },

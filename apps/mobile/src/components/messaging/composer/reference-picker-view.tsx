@@ -54,7 +54,6 @@ function description(option: ReferenceOption) {
   );
 }
 
-/** Suggestions above the composer while an `@` or `#` query is open. */
 export function ReferencePickerView({
   tabs,
   tab,

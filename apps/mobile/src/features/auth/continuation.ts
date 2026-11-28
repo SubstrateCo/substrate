@@ -2,7 +2,6 @@ import { parseRecordTarget } from "@/lib/navigation";
 
 const identifier = /^[a-zA-Z0-9_-]{1,200}$/;
 
-/** Authentication can resume an organization-aware native workspace destination, never a URL. */
 export function workspaceContinuation(value: string): string | undefined {
   try {
     const url = new URL(value, "https://mobile.invalid");

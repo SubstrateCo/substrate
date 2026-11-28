@@ -96,7 +96,6 @@ export function createS3Storage(
           }),
         );
       } catch (error) {
-        // The key contains the verified content hash. A previous identical completion may own it.
         if (!(error instanceof Error && "name" in error && error.name === "PreconditionFailed"))
           throw error;
       }

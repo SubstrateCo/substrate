@@ -11,7 +11,6 @@ export function verifiedSessionAccess(session: Session, destination: string) {
   return { session };
 }
 
-/** Where a signed-in visitor goes instead of a guest page. A destination is any internal URL. */
 export function guestSessionRedirect(session: Session, destination: string) {
   if (!session) return null;
   const fallback = session.session.activeOrganizationId ? "/messages" : "/organizations";

@@ -11,7 +11,6 @@ import {
 } from "@substrate/contracts/agent-work";
 import type { HostItem } from "@substrate/contracts/agent-work/control";
 
-/** Escapes text so that no body or attribute can open or close an envelope tag. */
 function fence(value: string) {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
@@ -36,10 +35,6 @@ function resume(note: EnvelopeResumeNote) {
   ])}>${fence(lines.join("\n"))}</resume>`;
 }
 
-/**
- * The desktop's wall clock at an instant. Agents read "today", weekdays and due dates from it:
- * the turn's own time is UTC, which is another calendar day for part of the owner's evening.
- */
 export function localTime(
   now: number,
   timezone = Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -67,7 +62,6 @@ export function localTime(
   };
 }
 
-/** What the host sends once to an owner's turn that wrote text and ended without a reply. */
 export const unsentAnswerNudge =
   "You ended the turn without calling reply, so your owner saw nothing. If you wrote an answer, send it now with the reply tool. Do not repeat work that is already done.";
 
@@ -104,7 +98,6 @@ export function renderEnvelope(turn: EnvelopeTurn) {
         ["message", item.messageId],
       ])}>${fence(item.body)}</item>`,
     );
-  // The most common failure of a turn is an answer written as plain text, which nobody sees.
   if (turn.kind === "interactive" && turn.items.some((item) => item.source === "owner_message"))
     parts.push(`<reminder>${replyReminder}</reminder>`);
   parts.push("</turn>");
@@ -134,7 +127,6 @@ function outcomeLine(outcome: ProposalOutcome | null) {
   }
 }
 
-/** What the owner decided on a request, in a fixed order so the same detail gives the same text. */
 function decisionLines(source: "answer" | "approval_result", request: AgentWakeRequestDetail) {
   const { payload } = request;
   if (source === "approval_result")
@@ -182,7 +174,6 @@ export function envelopeItem(
   return renderers[triggerRegistry[item.sourceRef.source].envelope](item, context);
 }
 
-/** Context batches share one delivery receipt, while preserving each message's attribution. */
 export function envelopeItems(
   item: HostItem,
   context: { sessionKind: string; messages: Map<string, AgentSourceMessage> },
@@ -226,7 +217,6 @@ function itemBase(item: HostItem) {
 }
 
 const renderers: Record<TriggerDefinition["envelope"], ItemRenderer> = {
-  // An owner message: the author is as device/sources names them.
   message: (item, context) => {
     const ref = item.sourceRef;
     const base = itemBase(item);
@@ -258,7 +248,6 @@ const renderers: Record<TriggerDefinition["envelope"], ItemRenderer> = {
     if (item.body) lines.push(item.body);
     return {
       ...base,
-      // The answer is the owner's words; a proposal's outcome is reported by the system.
       author: null,
       authorKind: ref.source === "answer" ? "owner" : "system",
       conversationId: request?.conversationId ?? null,

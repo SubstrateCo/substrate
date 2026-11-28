@@ -41,7 +41,6 @@ export type EntityRules<Type extends EntityType = EntityType> = {
 };
 
 const coreEntityRules = {
-  // Admins do not own actor records.
   actor: { apps: [], sharing: "grants" },
 } as const satisfies EntityRules<"actor">;
 

@@ -39,7 +39,6 @@ function changed(db: DatabaseExecutor, row: Pick<HelperRow, "ownerUserId">) {
   effectsFor(db).hint({ audience: realtimeKeys.user(row.ownerUserId), domain: "agent-work" });
 }
 
-/** Ends a running helper and drops its unclaimed input. False when it already ended. */
 async function endHelper(
   db: DatabaseExecutor,
   helper: HelperRow,
@@ -71,10 +70,6 @@ async function endHelper(
   return true;
 }
 
-/**
- * Stores the helper's report and gives the parent a helper_result item. A helper that ends
- * without a report fails, and the parent learns that too.
- */
 export async function finishHelper(
   db: DatabaseExecutor,
   helper: HelperRow,
@@ -104,7 +99,6 @@ export async function finishHelper(
   for (const hint of hints) effectsFor(db).hint(hint);
 }
 
-/** A helper that a turn of this parent session started. */
 export async function requireHelper(db: DatabaseExecutor, parentSessionId: string, id: string) {
   const [helper] = await db
     .select()
@@ -114,7 +108,6 @@ export async function requireHelper(db: DatabaseExecutor, parentSessionId: strin
   return helper;
 }
 
-/** The helpers that turns of this session started, newest first. */
 export function sessionHelpers(db: DatabaseExecutor, parentSessionId: string) {
   return db
     .select()
@@ -123,11 +116,6 @@ export function sessionHelpers(db: DatabaseExecutor, parentSessionId: string) {
     .orderBy(desc(agentHelpers.createdAt), desc(agentHelpers.id));
 }
 
-/**
- * Starts a helper in its own session and folder, with its task as the first item. A repeated
- * requestId in the same parent session returns the same helper. Helpers cannot start helpers,
- * and at most maxLiveHelpers run per agent.
- */
 export async function startHelper(
   db: DatabaseExecutor,
   parent: SessionRow,
@@ -170,7 +158,6 @@ export async function startHelper(
       task: input.task,
       createdAt: now,
     })
-    // A concurrent start with the same requestId wins; this one returns its helper.
     .onConflictDoNothing({ target: [agentHelpers.parentSessionId, agentHelpers.requestId] })
     .returning();
   if (!helper) {
@@ -195,10 +182,6 @@ export async function startHelper(
   return helper;
 }
 
-/**
- * Queues more instructions from the parent in the running helper's own session. The helper
- * reads them in its next turn: its turns run unattended, so nothing steers into them.
- */
 export async function messageHelper(
   db: DatabaseExecutor,
   helper: HelperRow,
@@ -228,7 +211,6 @@ export async function messageHelper(
   return items[0]!;
 }
 
-/** Stops a running helper. Its live turn stops too; a report it already saved stays. */
 export async function stopHelper(db: DatabaseExecutor, helper: HelperRow, now = new Date()) {
   await endHelper(db, helper, "stop", helper.report, now);
   await stopTurns(

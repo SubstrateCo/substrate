@@ -5,20 +5,12 @@ import { retainConversationDraft } from "@/lib/messaging/composer-draft-access";
 import type { Conversation } from "@/lib/messaging/conversations";
 import { queryKeys } from "@/queries/keys";
 
-/**
- * Calls `onRevoke` after each confirmed read that can change which composer drafts the viewer may
- * keep: a conversation list read, or an access failure on the organization summary. Its argument
- * tells whether a draft key (`organization:conversation:thread`) is still accessible. Cache resets
- * and network failures call nothing, so they never discard an unsent draft or the request ID of a
- * send whose response was lost. Returns the unsubscribe function.
- */
 export function subscribeDraftAccess(
   client: QueryClient,
   organizationId: string,
   onRevoke: (accessible: (draftKey: string) => boolean) => void,
 ) {
   const listPrefix = queryKeys.conversations(organizationId);
-  // The plain list omits task discussions, so remember the ones a selected read found.
   const discussions = new Set<string>();
   const rememberDiscussions = (rows: Conversation[]) => {
     for (const row of rows) if (row.task) discussions.add(row.id);

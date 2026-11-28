@@ -16,7 +16,6 @@ const purposeLabels = {
   discussion: "Discussion",
 } as const;
 
-/** Messages that reference this record and that the reader can see. */
 export function RecordDiscussions({
   scope,
   entityId,

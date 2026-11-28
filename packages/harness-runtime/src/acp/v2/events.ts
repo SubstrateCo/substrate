@@ -53,7 +53,6 @@ export function commandNamesV2(commands: AvailableCommand[] | null | undefined) 
   return (commands ?? []).filter(AvailableCommand.isCommand).map((command) => command.name);
 }
 
-/** An error stop reason fails the turn, as a v1 prompt error response did. */
 export function stopResultV2(idle: IdleState): AcpPromptResult | HarnessError {
   if (IdleStateUpdate.isError(idle))
     return new HarnessError("native-request", idle.error?.message ?? "The agent turn failed.");
@@ -95,9 +94,7 @@ function toolStatus(status: ToolCallStatus | null | undefined): AcpToolStatus | 
  * dropped. state_update is not reduced here: the driver owns turn state.
  */
 export class SessionUpdatesV2 {
-  /** Text the client got per agent message, until the message's turn ends. */
   private readonly messages = new Map<string, string>();
-  /** Tool calls the client knows, until they reach a final status. */
   private readonly tools = new Set<string>();
 
   reduce(update: SessionUpdate): AcpUpdate | undefined {
@@ -141,12 +138,9 @@ export class SessionUpdatesV2 {
       return { type: "commands", names: commandNamesV2(update.availableCommands) };
     if (SessionUpdate.isConfigOptionUpdate(update))
       return { type: "config", options: configOptionsV2(update.configOptions) };
-    // Thoughts, plans, terminals, user messages, child sessions, notices and unknown variants
-    // are not part of a canonical turn.
     return undefined;
   }
 
-  /** The turn ended: later updates to its messages start fresh. */
   endTurn() {
     this.messages.clear();
   }

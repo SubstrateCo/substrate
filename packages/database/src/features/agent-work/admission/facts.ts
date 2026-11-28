@@ -20,7 +20,6 @@ import { and, eq, inArray, ne, sql } from "drizzle-orm";
 const passiveThread = (trigger: MessageTrigger) =>
   trigger.message.threadId !== null && !isDirectConversation(trigger.conversationKind);
 
-/** The live turns of these agents' sessions for the thread, with their passive batch counts. */
 async function threadTurns(db: DatabaseExecutor, rootId: string, userAgentIds: string[]) {
   const rows = await db
     .select({
@@ -51,11 +50,6 @@ async function threadTurns(db: DatabaseExecutor, rootId: string, userAgentIds: s
   );
 }
 
-/**
- * The candidate agents for a message: the author's own live agents in the conversation, and in a
- * thread outside DMs every other live agent member, whose live thread turn may take it as
- * passive context. An agent author has no own agents to start, so only thread members remain.
- */
 export async function messageInputs(
   db: DatabaseExecutor,
   trigger: MessageTrigger,
@@ -113,7 +107,6 @@ export async function messageInputs(
   }));
 }
 
-/** Where a request's session came from: its conversation, and the thread its key names. */
 export function requestPlace(trigger: RequestTrigger): TurnPlace | null {
   const { request } = trigger;
   const key = parseSessionKey(request.sessionKey);

@@ -172,7 +172,6 @@ test("new notices in one conversation replace its alert with a count", async () 
   state.rows = [notice("two", { createdAt: "2026-01-01T00:00:02.000Z" }), ...state.rows];
   await notifications.reconcile();
   expect(open().map((entry) => entry.alert.title)).toEqual(["2 new notifications"]);
-  // Reading the newer notice keeps the alert for the older one.
   state.rows = [
     notice("two", { createdAt: "2026-01-01T00:00:02.000Z", readAt: "2026-01-01T00:00:03.000Z" }),
     notice("one", { createdAt: "2026-01-01T00:00:01.000Z" }),
@@ -232,7 +231,6 @@ test("a burst plays one sound: updates and alerts soon after the first stay sile
   ];
   await notifications.reconcile();
   expect(state.shown.map((entry) => entry.alert.silent)).toEqual([false, true, true]);
-  // The update replaced the open alert, so it does not flash again either.
   expect(state.shown[2]!.alert.flash).toBe("never");
   clock = 20_000;
   state.rows = [
@@ -263,7 +261,6 @@ test("a reconnect summarizes what arrived while away; a first connect stays quie
   ];
   await notifications.connect("org");
   expect(open().map((entry) => entry.alert.title)).toEqual(["1 new notification"]);
-  // Another account on this device does not inherit the summary.
   notifications.disconnect();
   state.cookie = "other";
   await notifications.connect("org");
@@ -302,7 +299,6 @@ test("alerts follow the account's sound, flash and preview settings", async () =
     silent: true,
     flash: "never",
   });
-  // A settings hint applies to the next alert.
   state.preferences = { preview: "hidden", sound: true, flash: "always" };
   await notifications.receive({ ...change, domain: "notification-preferences" });
   state.rows = [notice("next", { conversationId: "c2", createdAt: "2026-01-01T00:00:02.000Z" })];

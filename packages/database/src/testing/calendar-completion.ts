@@ -14,7 +14,6 @@ export interface TestAttendee {
   isResource?: boolean;
 }
 
-/** Enables the calendar app and verifies every user, as a connected owner needs. */
 export async function enableCalendar(f: Fixture, organizationId = f.orgA) {
   await f.verifyEmails();
   await f.db
@@ -22,7 +21,6 @@ export async function enableCalendar(f: Fixture, organizationId = f.orgA) {
     .values({ organizationId, appId: "calendar", enabled: true });
 }
 
-/** Alice's disconnected calendar, which records interactions from `interactionsFrom`. */
 export async function insertCalendar(
   f: Fixture,
   options: { recordsInteractions?: boolean; interactionsFrom?: Date } = {},
@@ -53,8 +51,6 @@ export async function insertCalendar(
   return entity.entityId;
 }
 
-/** An event in the calendar. Alice is always listed as the accepted owner unless `attendees`
- * includes a self attendee. */
 export async function insertMeeting(
   f: Fixture,
   calendarEntityId: string,

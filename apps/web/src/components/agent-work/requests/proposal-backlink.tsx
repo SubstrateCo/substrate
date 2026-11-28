@@ -3,7 +3,6 @@ import { Link } from "@tanstack/react-router";
 import type { RecordLink } from "@/lib/navigation/record-links";
 import { CornerUpLeft } from "lucide-react";
 
-/** Under a message an approved proposal created: where the owner approved it. */
 export function ProposalBacklink({ link, label }: { link?: RecordLink; label?: string }) {
   return (
     <p className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">

@@ -1,6 +1,6 @@
 import { taskLinkRelations } from "../../tasks/links.ts";
 import { permissionLevels, taskPriorityValues, taskStatusValues } from "../../tasks/status.ts";
-import { fileLocator, fileRefs } from "./files.ts";
+import { fileLocator, fileRefsOmittedByOlderServers } from "./files.ts";
 import { recordLinks } from "./links.ts";
 import { actor, id, messageRef, page, pageInput, requestId, timed, timestamp } from "./shared.ts";
 import { z } from "zod";
@@ -65,15 +65,12 @@ export const taskResult = z.object({
   parent: z.object({ id, title: z.string() }).nullable(),
   subtaskCount: z.number().int(),
   source: messageRef.nullable().describe("The message this task was created from."),
-  // Defaults keep results from servers without file tools parseable on newer desktops.
-  attachments: fileRefs
-    .default([])
-    .describe("Files attached to the task. Task readers can open them."),
-  sourceAttachments: fileRefs
-    .default([])
-    .describe(
-      "Files of the source message. Only readers who can open that message see and open them.",
-    ),
+  attachments: fileRefsOmittedByOlderServers.describe(
+    "Files attached to the task. Task readers can open them.",
+  ),
+  sourceAttachments: fileRefsOmittedByOlderServers.describe(
+    "Files of the source message. Only readers who can open that message see and open them.",
+  ),
   discussionConversationId: id
     .nullable()
     .describe("The shared task discussion, if it has been opened."),
@@ -84,7 +81,6 @@ export const taskResult = z.object({
   createdAt: timestamp,
   updatedAt: timestamp,
 });
-/** Every status is present, with 0 when no task has it. */
 const taskCounts = z.record(z.enum(taskStatusValues), z.number().int());
 const level = z.enum(permissionLevels);
 const archived = z
@@ -92,7 +88,6 @@ const archived = z
   .describe("An archived project and its tasks are read-only until an owner restores it.");
 const projectName = z.string().trim().min(1).max(200);
 const projectDescription = z.string().max(20000).describe("Markdown.");
-/** What get_project and the project write tools return. */
 const projectResult = z.object({
   id,
   name: z.string(),

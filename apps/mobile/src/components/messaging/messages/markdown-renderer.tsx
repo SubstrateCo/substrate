@@ -9,7 +9,6 @@ import { referenceDisplay } from "@/features/messaging/references/token-draft";
 import { cn } from "@/lib/utils";
 import { Renderer, type RendererInterface } from "react-native-marked";
 
-// On native a long press opens the message actions, which include Copy text.
 const selectable = Platform.OS === "web";
 const bodyText = "text-[15px] leading-5 text-foreground";
 
@@ -21,7 +20,6 @@ export type MarkdownReferences = {
 };
 
 export const MarkdownReferencesContext = createContext<MarkdownReferences | null>(null);
-// Text inside a link stays as written, so a token there is not turned into a chip.
 const LiteralContext = createContext(false);
 
 function ReferenceChip({ kind, id }: { kind: string; id: string }) {
@@ -48,7 +46,6 @@ function ReferenceChip({ kind, id }: { kind: string; id: string }) {
   );
 }
 
-/** Source text with its reference tokens as chips. The stored text itself is never rewritten. */
 function ReferenceRun({ text }: { text: string }) {
   const literal = useContext(LiteralContext);
   if (literal) return text;
@@ -67,10 +64,6 @@ function headingClass(depth: number) {
   return "text-base font-semibold leading-6";
 }
 
-/**
- * Draws Markdown with the app's text primitives and tokens. Links open only web and mail
- * addresses, images show their alt text without loading anything, and HTML shows as written.
- */
 export class MessageMarkdownRenderer extends Renderer implements RendererInterface {
   private run(children: string | ReactNode[]) {
     return Array.isArray(children) ? children : <ReferenceRun text={children} />;

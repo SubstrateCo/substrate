@@ -21,16 +21,12 @@ test("a live or stopped turn shows in the place where it runs, before the agent'
   const statuses = published({ state: "needs_you" });
   expect(kinds({ turns: [turn({ status: "running" })], statuses })).toEqual(["turn"]);
   expect(kinds({ turns: [turn({ status: "needs_attention" })], statuses })).toEqual(["turn"]);
-  // The turn runs in the conversation, so the thread shows neither the turn nor the status.
   expect(kinds({ turns: [turn({ status: "running" })], statuses, threadId: "thread" })).toEqual([]);
-  // A finished turn leaves the agent's status line.
   expect(kinds({ turns: [turn({ status: "completed" })], statuses })).toEqual(["needs_you"]);
 });
 
 test("a turn under its thread's root message shows in the conversation's composer", () => {
-  // A mention in a channel starts a thread session rooted at the mention, which the channel shows.
   expect(noticeThread("root", "root")).toBeNull();
-  // Work under a reply in the thread shows only in that thread.
   expect(noticeThread("root", "reply")).toBe("root");
   expect(noticeThread("root", undefined)).toBe("root");
   expect(noticeThread(null, "message")).toBeNull();

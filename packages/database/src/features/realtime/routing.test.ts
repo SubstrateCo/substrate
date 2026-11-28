@@ -46,7 +46,6 @@ test("profile changes refresh shared conversation labels across workspace bounda
       organizationId: fixture.orgB,
     },
   ]);
-  // Workspace conversations, joined or left, are covered by the organization hint.
   await approveFixtureParticipants(fixture.db, conversation.id);
   for (const leftAt of [null, new Date()]) {
     const [internal] = await fixture.db
@@ -114,8 +113,6 @@ test("project access hints reset only the granted actor and an agent's owner", a
   ]);
 });
 
-// Workspace members see agents only as names and pictures, so they need a label refresh, not the
-// forced session recheck and private-cache reset of an access hint.
 test("agent changes refresh the owner's agents and workspace labels without an access hint", async () => {
   const [definition] = await fixture.db
     .insert(userAgents)
@@ -152,8 +149,6 @@ test("invitation hints reach only the verified matching account and inviting wor
   ]);
 });
 
-// Deleting a conversation deletes its agent requests without a wake, so the owner's views and the
-// home desktop's open-request cache need a refresh.
 test("removing a conversation with an agent request refreshes the owner's agent work", async () => {
   const { dm, call } = await agentWorkFixture(fixture);
   const removal = (id: string) =>

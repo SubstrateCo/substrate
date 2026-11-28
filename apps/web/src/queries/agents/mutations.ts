@@ -27,7 +27,6 @@ export function useAgentRunSettingsMutations(userId: string, agentId: string) {
   return { home, triggers };
 }
 
-/** The catalog with one agent's avatar replaced. */
 function withAgentAvatar(catalog: AgentCatalog | undefined, { id, avatar }: SetAgentAvatarInput) {
   if (!catalog) return catalog;
   return {
@@ -36,15 +35,9 @@ function withAgentAvatar(catalog: AgentCatalog | undefined, { id, avatar }: SetA
   };
 }
 
-/**
- * Saves an agent's new look. The owner's catalog shows it at once and rolls back on failure.
- * Messages, members, reactions, pickers, tasks, and notifications in every workspace carry the
- * avatar too, so the settle refreshes all cached queries. Looks change rarely.
- */
 export function agentAvatarMutationOptions(client: QueryClient, userId: string) {
   const key = queryKeys.agents(userId);
   return {
-    // Saves run one at a time, so the last choice is the one the server keeps.
     scope: { id: `agent-avatar:${userId}` },
     mutationFn: setAgentAvatar,
     onMutate: async (input: SetAgentAvatarInput) => {

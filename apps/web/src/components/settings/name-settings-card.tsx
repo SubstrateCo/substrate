@@ -5,7 +5,6 @@ import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard
 import { NativeField, NativeForm } from "@/components/forms/native-form";
 import { SettingsDetail, SettingsFooter } from "@/components/layout/settings-section";
 
-/** A display-name detail with its own draft and save controls. */
 export function NameSettingsCard({
   id,
   title,
@@ -24,19 +23,15 @@ export function NameSettingsCard({
   title: string;
   description: string;
   label: string;
-  /** Shown when the name is empty or only spaces, such as "Enter your name." */
   missingMessage: string;
   value: string;
   maxLength?: number;
-  /** Shown under a read-only field, instead of the Save controls, when the viewer can't edit. */
   readOnlyNote?: string;
   pending: boolean;
   error?: Error | null;
   errorDescription: string;
-  /** Call `onSaved` after the new name is stored. */
   onSave: (name: string, onSaved: () => void) => void;
 }) {
-  // Null follows the saved value; a string is an unsaved edit.
   const [draft, setDraft] = useState<string | null>(null);
   const [formVersion, setFormVersion] = useState(0);
   const current = draft ?? value;
@@ -66,7 +61,6 @@ export function NameSettingsCard({
             maxLength={maxLength}
             autoComplete="off"
             required
-            // A name made only of spaces is empty.
             pattern=".*\S.*"
             title={missingMessage}
             missingMessage={missingMessage}

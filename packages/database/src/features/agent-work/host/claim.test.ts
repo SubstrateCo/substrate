@@ -20,7 +20,6 @@ test("a claim batches the session's owner messages into one interactive turn lea
   const x = await hostFixture(f);
   const first = await x.alice.sendMessage(x.dm.id, "Summarize the week");
   const second = await x.alice.sendMessage(x.dm.id, "Include risks");
-  // Debounced: nothing is available yet.
   expect(await x.claim({}, new Date())).toEqual([]);
   const now = soon();
   const [claimed, ...rest] = await x.claim({}, now);
@@ -59,7 +58,6 @@ test("one live turn per folder: the agent's other session waits for its main fol
   const [first] = await x.claim();
   expect(first!.session.key).toBe(sessionKeys.dm(x.dm.id));
   expect(await x.claim()).toEqual([]);
-  // A folder the host holds itself, such as during compaction, is busy too.
   await f.db
     .update(agentTurns)
     .set({ status: "completed" })
@@ -89,7 +87,6 @@ test("a device runs at most three live turns, and only its own homed, enabled ag
     .set({ enabled: false })
     .where(eq(userAgents.id, agents[3]!.agentId));
   expect(await x.claim()).toHaveLength(3);
-  // The fourth agent, enabled again, waits for a free slot.
   await f.db.update(userAgents).set({ enabled: true }).where(eq(userAgents.id, agents[3]!.agentId));
   expect(await x.claim()).toEqual([]);
 });
@@ -122,7 +119,6 @@ test("owner work goes first, and background work moves up a lane for every 10 mi
   ]);
   await f.db.update(agentTurns).set({ status: "completed" });
   await x.alice.sendMessage(x.dm.id, "Again");
-  // Waiting two aging periods, the background tick reaches the owner lane and is older.
   const later = new Date(now.getTime() + inboxLaneAgingMs);
   expect((await x.claim({}, later)).map((turn) => turn.items.map((item) => item.id))).toEqual([
     [tick.id],
@@ -168,7 +164,6 @@ test("a helper session's turn is unattended and runs in the helper's own folder"
   });
   await x.alice.sendMessage(x.dm.id, "Parent work");
   const turns = await x.claim();
-  // The helper's folder is free while the main folder runs, and main folders go first.
   expect(turns.map((turn) => [turn.turn.folderKey, turn.turn.kind])).toEqual([
     [`main:${x.agent.agentId}`, "interactive"],
     [`helper:${helperId}`, "unattended"],

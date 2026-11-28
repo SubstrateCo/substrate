@@ -1,4 +1,3 @@
-/** Session work must end before its native sessions and worker disappear. */
 export function createLifecycle(steps: {
   stopAgentWork(): void | Promise<void>;
   closeSessions(): void | Promise<void>;

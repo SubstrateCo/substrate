@@ -76,7 +76,6 @@ export function ConversationSidebarItem({
           title={conversationName(conversation)}
           unread={!!conversation.unreadCount}
         >
-          {/* Channels already sit under "Partner channels"; DMs and groups need the cue here. */}
           {conversation.partner && conversation.kind !== "channel" && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -100,12 +99,10 @@ export function ConversationSidebarItem({
 }
 
 function ConversationSidebarIcon({ conversation }: { conversation: Conversation }) {
-  // A DM with an agent shows that agent, as its messages do.
   const agent =
     conversation.kind === "agent_dm"
       ? conversation.members.find((member) => member.type === "agent")
       : undefined;
-  // The 20px avatar centres on the 16px icon column, so its label lines up with the others.
   if (agent)
     return <AgentAvatarView avatar={agent.avatar} size="xs" ambient="off" className="-mx-0.5" />;
   if (conversation.kind === "channel" && conversation.private)
@@ -128,7 +125,6 @@ function ConversationSidebarIcon({ conversation }: { conversation: Conversation 
   );
 }
 
-/** A mention badge, marked with @, replaces the unread count; the row stays bold either way. */
 function ConversationUnreadBadge({ conversation }: { conversation: Conversation }) {
   const { mentionCount, unreadCount } = conversation;
   const unread = `${unreadCount} unread ${unreadCount === 1 ? "message" : "messages"}`;

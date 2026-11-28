@@ -83,7 +83,6 @@ test("reconciliation skips a full read soon after a fresh one, and reads again o
     fail = true;
     await cache.reconcile();
     expect(reads).toBe(2);
-    // The failed read left the cache stale, so the next return to the window reads at once.
     fail = false;
     await cache.reconcile();
     expect(reads).toBe(3);
@@ -383,7 +382,6 @@ test("reconciliation keeps unmounted history cached but stale, so its next view 
   try {
     await cache.reconcile();
     expect(observer.getCurrentResult().data).toEqual([]);
-    // Switching back shows the cached page at once and reads it again; a denial clears it.
     expect(client.getQueryData(messages)).toEqual(["formerly accessible"]);
     expect(client.getQueryState(messages)?.isInvalidated).toBe(true);
     expect(client.getQueryData(other)).toEqual(["another workspace"]);

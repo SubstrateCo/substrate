@@ -10,9 +10,7 @@ const codeBlockVariants = cva(
   {
     variants: {
       variant: {
-        // Code and logs are inset surfaces (DESIGN.md, Type and radius).
         default: "bg-inset text-foreground",
-        // Diagnostics and generated text the reader rarely needs, such as runtime details.
         muted: "bg-inset text-muted-foreground",
       },
     },

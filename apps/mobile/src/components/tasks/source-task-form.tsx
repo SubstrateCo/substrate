@@ -15,7 +15,6 @@ import type { OnOpenRecord } from "@/features/records/types";
 import { ConfirmSheet, PickerSheet } from "@/features/records/ui/sheet";
 import { ErrorState, LoadingRows } from "@/features/records/ui/states";
 
-/** Message actions can mount this without copying message text or losing the source reference. */
 export function SourceTaskForm({
   organizationId,
   messageId,

@@ -30,7 +30,6 @@ type LocalMail = ReturnType<typeof localMailQueries>;
 type Request = RefObject<symbol | undefined>;
 type OpeningPage = OlderMailPage & { before: number };
 
-/** The checked opening page, when it holds the cached rows and has no provider issue. */
 function matchingOpening(
   checked: { isError: boolean; data: OpeningPage | undefined },
   first: MailConversation[],
@@ -54,14 +53,10 @@ function openingHistory(key: string, first: MailConversation[], opening: Opening
   };
 }
 
-/** The pages kept before an older page and the read that loads it. */
 function olderPageRead(current: History, folder: MailFolder) {
-  // An offline partial page stays at its original page number when retried.
   const shown = current.pages[current.index]!.length;
   const retryPage = !shown || (shown < mailPageSize && !!current.issue);
   const previous = retryPage ? current.pages.slice(0, -1) : current.pages;
-  // Complete pages hold every cached conversation newer than their last one. A page kept
-  // despite a provider issue may not, so the next read walks from `before` again.
   const complete = retryPage || !current.issue;
   const query: OlderMailQuery = {
     ...folder,
@@ -73,7 +68,6 @@ function olderPageRead(current: History, folder: MailFolder) {
   return { previous, query };
 }
 
-/** The opening page: cached rows, checked against the provider when they may have gaps. */
 function useFirstPage(
   local: LocalMail,
   folder: MailFolder,
@@ -84,9 +78,6 @@ function useFirstPage(
   browsing: boolean,
   requestRef: Request,
 ) {
-  // Paint local rows immediately. Even 50 cached rows can have gaps (for example,
-  // after visiting another folder). Verify the opening folder page from the newest ID.
-  // Search stays local until the user explicitly requests more results.
   const checkFirst = cached !== undefined && !folder.search.trim();
   const fill = useQuery({
     ...local.firstPage(folder, revision),
@@ -95,8 +86,6 @@ function useFirstPage(
   const first = cached ?? fill.data?.items;
   const filling =
     !browsing && (fill.isFetching || (checkFirst && syncing && cached.length < mailPageSize));
-  // An explicit Next runs the first provider search. Keep the page number if it
-  // fills any gaps; advance in the same click if the cached page was complete.
   async function check(ticket: symbol, shown: MailConversation[]) {
     requestRef.current = ticket;
     const checked = await fill.refetch();
@@ -107,7 +96,6 @@ function useFirstPage(
   return { fill, first, filling, check };
 }
 
-/** Visited pages for the current navigation key, and the reads that add older ones. */
 function usePageHistory(local: LocalMail, folder: MailFolder, key: string, requestRef: Request) {
   const [history, setHistory] = useState<History>();
   const active = history?.key === key ? history : undefined;
@@ -161,7 +149,6 @@ function usePageHistory(local: LocalMail, folder: MailFolder, key: string, reque
   };
 }
 
-/** The page on screen and its paging status. */
 function shownPage(active: History | undefined, opening: ReturnType<typeof useFirstPage>) {
   const { fill, first, filling } = opening;
   const index = active?.index ?? 0;
@@ -175,8 +162,6 @@ function shownPage(active: History | undefined, opening: ReturnType<typeof useFi
   };
 }
 
-/** Freeze visited pages so a new arrival or a Gmail retry cannot change what Previous
- * means. The verified session and connected mailbox set are part of the navigation key. */
 export function useMailPages(
   api: MailAPI,
   scope: MailScope,

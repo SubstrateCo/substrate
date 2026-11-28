@@ -14,8 +14,6 @@ export async function queryProjects(
     archived: isNotNull(projects.archivedAt),
     all: undefined,
   }[archived];
-  // Archived lists are short and offer Restore, so they carry the reader's level. The level
-  // walks up from each row, so active lists leave it out.
   const level =
     archived === "active"
       ? sql<PermissionLevel | null>`null::permission_level`

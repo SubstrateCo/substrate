@@ -58,7 +58,6 @@ describe("token draft", () => {
 
   test("a selected range does not open a reference picker in the edit composer", () => {
     const parts = partsFromBody("Ask @Ada");
-    // Both editor adapters report -1 instead of a caret for a selected range.
     expect(activeReferenceQuery(parts, -1)).toBeNull();
   });
 

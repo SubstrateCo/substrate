@@ -13,7 +13,6 @@ export function LeaveConversationDialog({
   onRestoreFocus,
 }: {
   name: string;
-  /** "Leave channel" or "Leave group": the button names what the person leaves. */
   leaveLabel: string;
   publicChannel: boolean;
   lastMember: boolean;

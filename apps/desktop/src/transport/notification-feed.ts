@@ -12,7 +12,6 @@ const feed = z.object({
       createdAt: utcTimestamp,
       readAt: utcTimestamp.nullable(),
       kind: z.enum(["message", "mention", "reply", "assignment"]),
-      // A server without notification settings alerts for every notice.
       alert: z.boolean().default(true),
       conversationId: z.uuid().nullable(),
       messageId: z.uuid().nullable(),
@@ -49,7 +48,6 @@ export async function readNotificationFeed(
 
 const preferences = z.object({ success: z.literal(true), data: accountNotificationPreferences });
 
-/** The account's alert appearance. Rules about which notices alert stay on the server. */
 export async function readAlertPreferences(options: FeedOptions): Promise<AlertPreferences> {
   const url = new URL("/api/v1/notifications/preferences", options.backend);
   const response = await options.fetchAPI(url.href, { method: "GET", redirect: "error" });

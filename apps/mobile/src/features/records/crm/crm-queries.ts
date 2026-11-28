@@ -71,7 +71,6 @@ export const crmQueries = {
         recordRequests.crmGrants({ organizationId: scope.organizationId, entityId }, { signal }),
       retry: false,
     }),
-  /** Messages that reference a record, newest kept, shown oldest first. */
   relatedMessages: (scope: QueryScope, entityId: string) =>
     queryOptions({
       queryKey: [...queryKeys.detail(scope, "contacts", entityId), "related-messages"],
@@ -84,7 +83,6 @@ export const crmQueries = {
     }),
 };
 
-/** Workspace people who can be chosen for a CRM record, resolved from actor IDs to names. */
 export function useRecordPeople(scope: QueryScope) {
   const actors = useQuery(crmQueries.crmPeople(scope));
   const members = useQuery(crmQueries.organizationPeople(scope));
@@ -96,7 +94,6 @@ export function useRecordPeople(scope: QueryScope) {
   };
 }
 
-/** Owner and access changes. Access changes also change what other lists can show. */
 export function useCrmAccessWrite(scope: QueryScope) {
   const client = useQueryClient();
   return useMutation({
@@ -106,7 +103,6 @@ export function useCrmAccessWrite(scope: QueryScope) {
   });
 }
 
-/** Creates a CRM record from a message. The server saves the message as the record's source. */
 export function useCrmFromMessage(scope: QueryScope) {
   const client = useQueryClient();
   return useMutation({
@@ -119,7 +115,6 @@ export function useCrmFromMessage(scope: QueryScope) {
       messageId: string;
       requestId: string;
       draft: MessageRecordDraft;
-      /** Set only from the reader's confirmation in the UI. */
       consentToRecordAudience: true;
     }) =>
       recordRequests.crmFromMessage(
@@ -135,7 +130,6 @@ export function useCrmFromMessage(scope: QueryScope) {
   });
 }
 
-/** Publishes an approved interaction from a message to a contact's workspace-visible history. */
 export function usePublishInteraction(scope: QueryScope) {
   const client = useQueryClient();
   return useMutation({

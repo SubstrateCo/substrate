@@ -9,16 +9,11 @@ type SidebarNavItem = {
   label: string;
   icon: LucideIcon;
   link: LinkProps;
-  /** Marks the row as the open page. Leave it out to let the router decide. */
   current?: boolean;
 };
 
 type SidebarNavGroup = { label: string; items: readonly SidebarNavItem[] };
 
-/**
- * The link list of a page sidebar: a column of `h-8` rows, or a scrolling row below `md`.
- * Pass `items` for one flat list, or `groups` for titled groups.
- */
 export function SidebarNav({
   label,
   ...list
@@ -51,7 +46,6 @@ function SidebarNavList({ items }: { items: readonly SidebarNavItem[] }) {
         <li key={key} className="shrink-0">
           <Button asChild variant="sidebar" className="w-full justify-start">
             <Link {...link} aria-current={current ? "page" : undefined}>
-              {/* The icon takes the row colour: muted at rest, the selected colour when open. */}
               <Icon aria-hidden="true" />
               <span className="truncate">{label}</span>
             </Link>

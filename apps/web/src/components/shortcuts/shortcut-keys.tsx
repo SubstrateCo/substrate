@@ -4,10 +4,6 @@ import { hotkeySteps, useShortcutLabel } from "@/components/shortcuts/use-shortc
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { cn } from "cn";
 
-/**
- * A shortcut's keys, one key cap per step. Without `labelled`, screen readers skip it, so name the
- * keys on the control instead.
- */
 export function ShortcutKeys({
   hotkey,
   labelled = false,
@@ -26,7 +22,6 @@ export function ShortcutKeys({
       aria-label={labelled ? label(hotkey) : undefined}
     >
       {hotkeySteps(hotkey).map((step, index) => (
-        // oxlint-disable-next-line react/no-array-index-key -- A sequence can repeat a step.
         <Kbd key={index}>{format(step)}</Kbd>
       ))}
     </KbdGroup>

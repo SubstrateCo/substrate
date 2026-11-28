@@ -114,7 +114,6 @@ test("moving the agent ends its live turns on the old device at once", async () 
     interruptionNote("moved"),
   ]);
   const [agent] = await f.db.select().from(userAgents).where(eq(userAgents.id, x.agent.agentId));
-  // The resume note waits for the new home, not the old laptop.
   expect(await x.claim()).toEqual([]);
   expect(
     await x.claim({}, undefined, { ...x.identity, installationId, deviceId: agent!.homeDeviceId! }),
@@ -128,7 +127,6 @@ test("an expired lease after a move ends even within the grace period", async ()
     name: "Desktop",
     platform: "linux",
   });
-  // A home change outside setHomeDevice leaves the lease until it expires.
   await f.db
     .update(userAgents)
     .set({ homeDeviceId: desktop.id })

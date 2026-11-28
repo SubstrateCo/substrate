@@ -10,10 +10,6 @@ import type { Agent, ConversationMember } from "@/features/messaging/types";
 import { ErrorState, LoadingRows, MutationError } from "@/features/records/ui/states";
 import { Palette } from "lucide-react-native";
 
-/**
- * The viewer's own agents: add them here, take them out, or change how they look. Other
- * people's agents are theirs.
- */
 export function AgentsSection({
   agents,
   members,

@@ -19,12 +19,10 @@ export function StartupInstructions({
   const { organizationId } = useWorkspaceScope();
   const text = startupInstructions({
     harness,
-    // The preview reads before the agent is named, so an empty name shows a stand-in.
     name: name.trim() || "Your agent’s name",
     id: agentId ?? "Assigned when saved",
     organizationId,
   }).trimEnd();
-  // The create dialog and the instructions settings can both show this at once.
   const titleId = useId();
   return (
     <section aria-labelledby={titleId} className="grid gap-3">

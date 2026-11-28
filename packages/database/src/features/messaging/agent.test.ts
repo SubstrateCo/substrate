@@ -31,7 +31,6 @@ test("only the agent's owner sees which turn published an agent reply", async ()
   const member = await seen(bob);
   expect(member?.body).toBe("On track");
   expect(member?.originTurnId).toBeNull();
-  // The message link target is another view of the same row.
   const target = (userId: string) =>
     createContextService(f.db, { userId, organizationId: f.orgA }).messageTarget(
       channel.id,

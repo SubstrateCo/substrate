@@ -10,10 +10,6 @@ import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
-/**
- * Message bodies for the home desktop, only while the owner can see their conversation now.
- * The same rule as the owner's own reads. Other IDs are returned as inaccessible, without detail.
- */
 export async function loadSourcesForDevice(
   tx: DatabaseExecutor,
   identity: ResolvedDeviceIdentity,

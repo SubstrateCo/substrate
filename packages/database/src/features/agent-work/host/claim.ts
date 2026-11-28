@@ -19,13 +19,10 @@ import { leaseUntil } from "./lease-time";
 import { hostTurns } from "./views";
 import { and, eq, exists, inArray, isNull, lte, ne } from "drizzle-orm";
 
-/** Live turns per device and organization. Main slots go before helper slots. */
 const deviceTurnCap = 3;
-/** Items batched into one turn. */
 const turnBatchLimit = 20;
 
 export interface ClaimOptions {
-  /** Folders the host holds without a live turn, such as during native compaction. */
   busyFolders?: string[];
   deviceCap?: number;
   batchLimit?: number;
@@ -38,7 +35,6 @@ function effectiveLane(item: ItemRow, now: Date) {
   return Math.max(0, lane - Math.floor(waited / inboxLaneAgingMs));
 }
 
-/** Claim order inside a lane: requeued items first, then the longest waiting. */
 function itemOrder(a: ItemRow, b: ItemRow) {
   const front =
     Number(b.status === "confirmed_unconsumed") - Number(a.status === "confirmed_unconsumed");
@@ -50,7 +46,6 @@ function itemOrder(a: ItemRow, b: ItemRow) {
   );
 }
 
-/** The owner's enabled agents homed on this device, with their actor in the organization. */
 function homedEnabledAgents(db: DatabaseExecutor, identity: ResolvedDeviceIdentity) {
   return db
     .select({ id: userAgents.id })
@@ -68,7 +63,6 @@ function homedEnabledAgents(db: DatabaseExecutor, identity: ResolvedDeviceIdenti
     );
 }
 
-/** The owner's agents without a home that have work waiting here move to this device. */
 async function adoptHomeless(db: DatabaseExecutor, identity: ResolvedDeviceIdentity, now: Date) {
   const adopted = await db
     .update(userAgents)
@@ -98,14 +92,6 @@ async function adoptHomeless(db: DatabaseExecutor, identity: ResolvedDeviceIdent
     effectsFor(db).hint({ audience: realtimeKeys.user(identity.userId), domain: "agents" });
 }
 
-/**
- * Starts turns for this device's free slots: at most deviceCap live turns per device and
- * organization, and one live turn per folder. Each slot takes the session with the best waiting
- * item (owner, then system, then background with aging; main folders before helper folders) and
- * batches that session's available items. A session whose turn needs the owner waits. A pending
- * epoch item runs alone, as the session's handoff turn. Expired leases end first, so their work
- * can run again.
- */
 export async function claimTurns(
   db: DatabaseExecutor,
   identity: ResolvedDeviceIdentity,
@@ -133,7 +119,6 @@ export async function claimTurns(
   let free = cap - driven.length;
   if (free <= 0) return [];
   const busy = new Set([...live.map((turn) => turn.folderKey), ...(options.busyFolders ?? [])]);
-  // Claims lock the items they consider, so a concurrent claim skips them instead of waiting.
   const rows = await db
     .select({ item: agentWorkItems, session: agentSessions })
     .from(agentWorkItems)
@@ -151,7 +136,6 @@ export async function claimTurns(
     )
     .for("update", { of: agentWorkItems, skipLocked: true });
   if (!rows.length) return [];
-  // A session whose turn needs the owner waits until the owner resolves it.
   const blocked = new Set(
     (
       await db
@@ -174,7 +158,6 @@ export async function claimTurns(
   }
   const ranked = [...groups.values()].map((group) => {
     group.items.sort(itemOrder);
-    // The first of equal items wins, as the items are in claim order.
     const best = group.items.reduce((a, b) =>
       (effectiveLane(a, now) - effectiveLane(b, now) || itemOrder(a, b)) <= 0 ? a : b,
     );
@@ -193,7 +176,6 @@ export async function claimTurns(
     if (free <= 0) break;
     const folder = folderKey(group.session);
     if (busy.has(folder)) continue;
-    // A pending rotation runs alone: the turn that hands the epoch off.
     const rotation = group.items.find((item) => item.source === "epoch");
     const batch = rotation ? [rotation] : group.items.slice(0, limit);
     const interactive =
@@ -228,7 +210,6 @@ export async function claimTurns(
         leaseExpiresAt: leaseUntil(now),
         createdAt: now,
       })
-      // The live-folder index is the arbiter: a turn that another claim started first wins.
       .onConflictDoNothing()
       .returning({ id: agentTurns.id });
     busy.add(folder);

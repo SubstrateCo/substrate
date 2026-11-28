@@ -1,7 +1,6 @@
 import type { SearchInput } from "./api/context";
 import { queryKeys, type QueryScope } from "@/queries/keys";
 
-/** Every messaging query is private to the signed-in user and scoped to one workspace. */
 export const messagingKeys = {
   all: (scope: QueryScope) => queryKeys.domain(scope, "messaging"),
   conversations: (scope: QueryScope, selectedId?: string) =>

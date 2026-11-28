@@ -36,7 +36,6 @@ describe("reference query", () => {
   test.each([
     ["@Alex Smith", "all", "Alex Smith"],
     ["@task:Launch plan", "task", "Launch plan"],
-    // A trailing space stays in the replaced range but not in the search.
     ["hello @alex ", "all", "alex"],
   ] as const)("keeps %s open across single spaces", (draft, kind, query) => {
     expect(referenceQuery(draft, draft.length)).toMatchObject({

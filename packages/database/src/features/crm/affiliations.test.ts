@@ -209,7 +209,6 @@ test("concurrent primary selections leave one primary", async () => {
     a.crm.setAffiliation(input),
     a.crm.setAffiliation({ ...input, accountEntityId: other.entityId }),
   ]);
-  // The loser conflicts, or applies cleanly after the winner. Its writes never half-apply.
   const applied = results.filter((result) => result.status === "fulfilled").length;
   expect(applied).toBeGreaterThanOrEqual(1);
   for (const result of results)

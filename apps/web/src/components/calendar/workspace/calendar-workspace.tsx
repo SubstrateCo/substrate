@@ -31,13 +31,28 @@ import { readCalendarView, saveCalendarView } from "@/lib/calendar/view-preferen
 import { formatDateOnly, formatDateRange, formatMonthYear } from "@/lib/format/date";
 import { calendarEventsOptions, calendarSettingsOptions } from "@/queries/calendar/options";
 
+function useWritePreferredViewToUrl(
+  requestedView: CalendarViewMode | undefined,
+  preferredView: CalendarViewMode,
+) {
+  const navigate = useNavigate({ from: "/calendar/" });
+  useEffect(() => {
+    if (!requestedView)
+      void navigate({
+        to: "/calendar",
+        search: (previous) => ({ ...previous, view: preferredView }),
+        replace: true,
+        resetScroll: false,
+      });
+  }, [navigate, requestedView, preferredView]);
+}
+
 export function CalendarWorkspace({
   view: requestedView,
   date,
   eventId,
 }: {
   view?: CalendarViewMode;
-  /** YYYY-MM-DD of the day the view is anchored to. Today when absent. */
   date?: string;
   eventId?: string;
 }) {
@@ -46,16 +61,7 @@ export function CalendarWorkspace({
   const dismiss = usePanelReturn();
   const [preferredView] = useState(readCalendarView);
   const view = requestedView ?? preferredView;
-  // Freeze this visit's resolved preference in its URL before it can change on another visit.
-  useEffect(() => {
-    if (!requestedView)
-      void navigate({
-        to: "/calendar",
-        search: (previous) => ({ ...previous, view }),
-        replace: true,
-        resetScroll: false,
-      });
-  }, [navigate, requestedView, view]);
+  useWritePreferredViewToUrl(requestedView, preferredView);
   const now = useNow(true, 60_000);
   const anchor = viewAnchor(date, new Date(now));
   const days = visibleDays(view, anchor);
@@ -67,7 +73,6 @@ export function CalendarWorkspace({
   });
   const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
   const calendarGroups = settings.data ? groupCalendarsByAccount(settings.data) : [];
-  // A missing calendar grant reads as a reconnect banner over an empty calendar, not an error.
   const accessRequired = isCalendarAccessRequired(events.error);
   const needsReconnect =
     accessRequired ||
@@ -90,7 +95,6 @@ export function CalendarWorkspace({
       search: (previous) => ({ ...previous, ...next }),
       resetScroll: false,
     });
-  // The open event lives in the URL, so the pane is linkable and Back closes it.
   const eventLink = (event: CalendarEventSummary) =>
     linkOptions({
       to: "/calendar",
@@ -159,14 +163,12 @@ export function CalendarWorkspace({
   );
 }
 
-/** The week, month, or agenda of the visible events. */
 function CalendarBody({
   view,
   today,
   ...grid
 }: ComponentProps<typeof CalendarWeek> & {
   view: CalendarViewMode;
-  /** Today, when the visible days include it. */
   today: Date | undefined;
 }) {
   if (view === "week") return <CalendarWeek {...grid} />;

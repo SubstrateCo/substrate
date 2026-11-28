@@ -8,7 +8,6 @@ export class WritePermissionRequired extends Error {}
 export type GmailRequest = (url: URL, init: RequestInit) => Promise<Response>;
 export const gmailBase = "https://gmail.googleapis.com/gmail/v1/users/me/";
 
-/** A POST is sent once. If the response is lost, read back the target; never replay blind. */
 export async function changeGmailLabels(
   action: MailMessageAction,
   target: { kind: "messages" | "threads"; id: string },

@@ -3,10 +3,6 @@ import { CodeBlock, CodeBlockContent } from "@/components/ui/code-block";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronRight } from "lucide-react";
 
-/**
- * What the runtime reported when work stopped. It is a diagnostic, not product copy, so it stays
- * behind a labelled disclosure, wraps, and is never the explanation of the failure.
- */
 export function TechnicalDetails({ children }: { children: string }) {
   return (
     <Collapsible className="group/details min-w-0">

@@ -45,7 +45,6 @@ async function tools() {
   return { ...fixture, call, contact, account, interaction };
 }
 
-// The contact detail lists, as get_crm_record returns them.
 const contactDetails = z.object({
   identifiers: z.array(z.object({ id: z.string(), value: z.string() })),
   urls: z.array(z.object({ url: z.string() })),
@@ -72,7 +71,6 @@ test("contact details are added, updated and removed, and contacts are found by 
   expect(withAddress.urls.map((row) => row.url)).toEqual(["https://northwind.test/ada"]);
   expect(withAddress.addresses.map((row) => row.city)).toEqual(["Lisbon"]);
 
-  // Find by the exact address; a different address finds nobody.
   expect(
     (await call("find_crm_contacts", { type: "email", value: "ada@northwind.test" })).items,
   ).toEqual([{ entityId: ada, displayName: "Ada Park" }]);
@@ -124,7 +122,6 @@ test("affiliations link a contact to an account and show on both records", async
   });
   expect(unlinked.record.affiliations).toEqual([]);
 
-  // An account the owner cannot edit cannot gain people.
   const hidden = await f.forActor(f.bob).crm.createAccount({ name: "Bob's account" });
   await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));
   expect(
@@ -152,7 +149,6 @@ test("interactions are read by account, searched by period and words, read and c
   const other = await interaction(ben, "Pricing question", "2026-11-03T10:00:00Z");
   await interaction(ada, "Kickoff", "2026-09-01T10:00:00Z");
 
-  // An account's history covers its affiliated contacts only.
   const accountHistory = await call("list_crm_interactions", { entityId: northwind });
   expect(accountHistory.items.map((row) => row.summary)).toEqual([
     "Intro call about renewal",
@@ -250,7 +246,6 @@ test("records are archived and restored, and the archive names the record's kind
   expect((await archive("contact", ada, true)).record).toMatchObject({
     archivedAt: expect.any(String),
   });
-  // An account is not a deal; the archive refuses another kind's record.
   expect(await rejection(archive("deal", northwind, true))).toBeInstanceOf(AccessDeniedError);
 });
 
@@ -267,7 +262,6 @@ test("an interaction is deleted on approval, only when the owner could delete it
   const remove = (entityId: string) =>
     pending("delete_crm_interaction", { requestId: crypto.randomUUID(), entityId }, dmTurn(dm.id));
   const proposalId = await remove(own);
-  // The interaction stays until the owner approves.
   expect(await call("get_crm_interaction", { entityId: own })).toMatchObject({
     interaction: { entityId: own },
   });
@@ -281,7 +275,6 @@ test("an interaction is deleted on approval, only when the owner could delete it
   expect(await rejection(call("get_crm_interaction", { entityId: own }))).toBeInstanceOf(
     AccessDeniedError,
   );
-  // Without the admin role, Alice deletes only her own interactions.
   await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));
   expect(await rejection(remove(bobs.entityId))).toBeInstanceOf(AccessDeniedError);
 });
@@ -302,7 +295,6 @@ test("responsibility moves to a person from the owner the agent read, and sharin
       accessDecision: "keep_restricted",
     });
   expect(await assign(f.bob, owner)).toEqual({ entityId: northwind, ownerActorEntityId: f.bob });
-  // The owner the agent read is stale now.
   expect(await rejection(assign(f.alice, owner))).toBeInstanceOf(ConflictError);
   expect(await rejection(assign(agent.actorId, f.bob))).toBeInstanceOf(ValidationError);
 
@@ -327,7 +319,6 @@ test("responsibility moves to a person from the owner the agent read, and sharin
   expect(await rejection(share(contoso.entityId))).toBeInstanceOf(AccessDeniedError);
 });
 
-// CRM writes no longer wait, but proposals stored before that change can still be approved.
 test("an approved stored CRM write runs as the agent", async () => {
   const { dm, owner, propose, agent } = await tools();
   const proposalId = await propose(

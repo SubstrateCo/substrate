@@ -21,7 +21,6 @@ export interface AcpToolServer {
   close(): Promise<void>;
 }
 
-/** One MCP-over-ACP server for one native session's lease. */
 export function acpToolServer(endpoint: McpToolEndpoint): AcpToolServer {
   const adapted = fromMcpServer(() => {
     const { name, version, instructions } = endpoint.server;

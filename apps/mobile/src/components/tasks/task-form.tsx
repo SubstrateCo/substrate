@@ -45,7 +45,6 @@ export function TaskForm({
     setDraft((current) => ({ ...current, [key]: value }));
   const dirty = JSON.stringify({ ...draft, dueDate: due || null }) !== JSON.stringify(initial);
   const title = draft.title.trim();
-  // A current assignee stays selectable even when they can no longer be assigned.
   const assignees = assignableActors({ actors }, initial.assigneeActorEntityId);
   let formTitle = "New task";
   if (task) formTitle = "Edit task";

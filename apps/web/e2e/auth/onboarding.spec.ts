@@ -139,7 +139,6 @@ test("public downloads preserve a safe destination and do not forward it to the 
     "href",
     "substrate-dev://open/accept-invitation/invite-1",
   );
-  // The server's installer redirect is unit-tested; the page must not pass the destination on.
   await expect(
     page.getByRole("link", { name: "Download for Windows", exact: true }),
   ).toHaveAttribute("href", "/desktop/download?platform=windows");

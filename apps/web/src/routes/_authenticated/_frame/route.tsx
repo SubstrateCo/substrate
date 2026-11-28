@@ -4,8 +4,6 @@ import { ComposerDraftProvider } from "@/components/messaging/composer/composer-
 import { OrganizationAppsProvider } from "@/components/workspace/organization-apps";
 import { WorkspaceFrame } from "@/components/workspace/workspace-frame";
 
-// The workspace and user settings share one frame, so it stays mounted between them. User
-// settings also work without an active organization.
 export const Route = createFileRoute("/_authenticated/_frame")({
   component: FrameLayout,
 });

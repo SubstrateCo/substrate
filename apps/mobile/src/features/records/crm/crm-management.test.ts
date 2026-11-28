@@ -79,7 +79,6 @@ test("publication sources drop deleted messages and repeated references", () => 
 });
 
 test("a record from a message records consent and sends only the kind's own fields", () => {
-  // The extra key stands for unrelated form state that must not reach the server.
   const formState = { title: "Renewal", stageId, extra: "form state" };
   const input = messageRecordInput(
     organizationId,

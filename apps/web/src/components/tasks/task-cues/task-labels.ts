@@ -8,7 +8,6 @@ export const taskPriorityLabels: Record<TaskPriority, string> = {
   urgent: "Urgent",
 };
 
-/** Most urgent first. Menus and priority sorting use this order. */
 export const taskPriorityOrder: readonly TaskPriority[] = [
   "urgent",
   "high",

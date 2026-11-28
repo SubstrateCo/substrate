@@ -18,8 +18,6 @@ export function createRealtimeAuthenticator(
   }) => Promise<RealtimeReceiver | null>,
 ) {
   return async (headers: Headers, organizationId: string | null) => {
-    // Never trust a cached cookie snapshot for revocation or active-workspace scope.
-    // A socket cannot deliver renewed cookies. Only HTTP requests should renew the session.
     const session = await api.getSession({
       headers,
       query: { disableCookieCache: true, disableRefresh: true },

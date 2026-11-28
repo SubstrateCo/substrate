@@ -12,22 +12,15 @@ interface FileUploadProps {
   disabled?: boolean;
   label?: string;
   description?: string;
-  /** Shown at the start of the drop area, such as the current picture. */
   preview?: ReactNode;
   actions?: ReactNode;
-  /** An error from the caller, such as an image that could not be opened. */
   error?: string | null;
-  /** True while the caller's mutation checks the chosen files. */
   pending?: boolean;
   chooseButtonRef?: Ref<HTMLButtonElement>;
   framed?: boolean;
   onFiles: (files: File[]) => void;
 }
 
-/**
- * A bounded drop area with a Choose button. Only the error text turns red: the button stays a
- * normal action because it is how people recover.
- */
 export function FileUpload({
   accept,
   maxSize,

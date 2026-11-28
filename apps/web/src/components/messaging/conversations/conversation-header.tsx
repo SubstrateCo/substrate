@@ -20,19 +20,15 @@ export type HeaderMember = {
   userId: string | null;
   name: string;
   image?: string | null;
-  /** Set exactly for an agent. */
   avatar?: AgentAvatarCode | null;
   type: "human" | "agent";
-  /** Present only for an agent owned by the viewer. */
   agentId?: string | null;
   external?: boolean;
   organizationId: string;
 };
 
-/** Marks the members button, so focus can return to it after the member list closes. */
 export const membersButtonSelector = "[data-conversation-members]";
 
-/** Who can read here: a count that opens the member list. */
 function MembersButton({
   members,
   organizations,
@@ -109,7 +105,6 @@ function MembersButton({
   );
 }
 
-/** The header's Add people button. The container pairs it with the dialog it opens. */
 export function AddPeopleButton({ expanded, onClick }: { expanded: boolean; onClick: () => void }) {
   return (
     <Tooltip>
@@ -140,12 +135,10 @@ export function ConversationHeader({
   renderMemberAction,
 }: {
   title: ReactNode;
-  /** Omitted while the conversation is unavailable. */
   visibility?: ConversationVisibility;
   viewerId?: string;
   members?: HeaderMember[];
   organizations?: ChannelOrganization[];
-  /** The Add people control, when the viewer can add people here. */
   addMembers?: ReactNode;
   actions?: ReactNode;
   renderMemberAction?: (member: HeaderMember) => ReactNode;
@@ -192,12 +185,10 @@ export function ConversationHeader({
   );
 }
 
-/** A task discussion's header: the link that opens its task. */
 export function TaskDiscussionHeader({ taskLink }: { taskLink: ReactNode }) {
   return <PageHeader variant="pane" title={taskLink} icon={<ListTodo aria-hidden="true" />} />;
 }
 
-/** Under the header: the record the conversation was opened from, linked to open it. */
 export function ConversationSourceBar({
   icon,
   label,

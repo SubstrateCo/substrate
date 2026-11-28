@@ -24,12 +24,9 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIde
   const replyCount = sql<number>`(select count(*)::int ${replies()})`;
   const lastReplyAt = sql<string | null>`(select max(r.created_at)::text ${replies()})`;
   return {
-    // New messages move a conversation to the top while the agent pages. Pages continue from the
-    // last conversation's position, so a move cannot repeat or skip the others.
     async listConversations(input: McpInput<"list_conversations">) {
       const p = newestFirstPagination(scope, "list_conversations", input);
       const lastActivity = sql<Date | null>`(select max(m.created_at) from ${messagingMessages} m where m.conversation_id = ${messagingConversations.id})`;
-      // A conversation without messages is as active as its creation.
       const activeAt = newest(sql`coalesce(${lastActivity}, ${messagingConversations.createdAt})`);
       const rows = await db
         .select({
@@ -77,7 +74,6 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIde
           ),
         );
       if (!conversation) throw new AccessDeniedError();
-      // A reply moves its root to the top; pages continue from the last root's position.
       const p = newestFirstPagination(scope, "read_conversation", input);
       const bounds = (column: SQL) =>
         sql.join(
@@ -92,7 +88,6 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIde
       const replyInWindow = sql<
         string | null
       >`(select max(r.created_at) ${replies(windowed ? sql`and ${bounds(sql`r.created_at`)}` : sql``)})`;
-      // A root is shown when it was posted in the window or its thread got a reply in the window.
       const activity = newest(
         windowed
           ? sql`greatest(case when ${posted} then ${messagingMessages.createdAt} end, ${replyInWindow}::timestamptz)`
@@ -147,7 +142,6 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIde
     async readThread(input: McpInput<"read_thread">): Promise<McpOutput<"read_thread">> {
       const { message } = await requireMessage(db, identity, input.messageId);
       const rootId = message.threadId ?? message.id;
-      // A reply and its root open the same thread, so either one continues the same cursor.
       const thread = { ...input, messageId: rootId };
       const p = pagination(scope, "read_thread", thread);
       const columns = {

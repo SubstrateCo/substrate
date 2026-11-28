@@ -54,22 +54,14 @@ const localMethodSchema = z.enum(localHarnessMethods);
 const signInMethodSchema = z.enum(signInHarnessMethods);
 const interruptReceiptSchema = z.object({ stillQueuedInputIds: z.array(z.string()).optional() });
 
-/** A native command failed after authorization passed. Other sessions keep running. */
 class CommandFailure extends Error {}
 
-/** The chosen working folder cannot be used. The message names the reason, never the path. */
 class WorkspaceRejected extends Error {
   constructor(message = "This folder can't be used as a working folder.") {
     super(message);
   }
 }
 
-/**
- * A main-only session command failed. code is a fixed harness error code such as
- * "resume-failed", "turn-active", "steer-unsupported", "not-connected", "no-live-turn"
- * (interrupt of a turn that is not live), "timeout" (the command took too long; the worker keeps
- * running) or "worker-stopped"; never native output.
- */
 export class HarnessCommandError extends Error {
   readonly code: HarnessErrorCode;
   constructor(code: HarnessErrorCode, message = "Harness command failed.") {
@@ -84,18 +76,14 @@ type HarnessResult<M extends HarnessMethod> = Awaited<ReturnType<HarnessAPI[M]>>
 
 const ignore = () => {};
 
-/** Main-only authority. Never accepts an account path or a catalog from IPC. */
 export function createHarnessController(options: {
   backend: string;
   accountsDirectory: string;
   fetchAPI: (url: string, init: RequestInit) => Promise<Response>;
   authority: DesktopSessionAuthority;
   localToolHandler?: LocalToolProxy;
-  /** The account's local storage of user-added MCP servers. */
   mcpServers: LocalMcpServers;
-  /** The account's local storage of agents' working folders. */
   workspaces: LocalWorkspaces;
-  /** Asks the owner for a folder in a native dialog. Null when they cancel. */
   pickWorkspace: () => Promise<string | null>;
   onResult?: Parameters<typeof createMcpApiProxy>[0]["onResult"];
   approval?: Parameters<typeof createMcpApiProxy>[0]["approval"];
@@ -128,10 +116,6 @@ export function createHarnessController(options: {
     identity = undefined;
   }
 
-  /**
-   * The current generation. assertCurrent throws once it changed, or, given an identity, once
-   * the worker serves another account.
-   */
   function capture() {
     const current = generation;
     return {
@@ -143,7 +127,6 @@ export function createHarnessController(options: {
     };
   }
 
-  /** Session commands verify once per generation, and again after refreshAuthority(). */
   function authorized(): Promise<Authorization> {
     const session = capture();
     return authority.verify().then((auth) => {
@@ -163,15 +146,10 @@ export function createHarnessController(options: {
     };
   }
 
-  /** An agent of the verified organization's catalog that is homed on this desktop. */
   async function requireAgent(agentId: string) {
     requireHomedHere(await authority.catalog(), agentId);
   }
 
-  /**
-   * Skills live in the agent folder, which the worker serves. MCP servers live in main's local
-   * storage, and the worker receives them with each open command.
-   */
   async function runLocal(
     target: HarnessWorker,
     method: z.infer<typeof localMethodSchema>,
@@ -256,10 +234,6 @@ export function createHarnessController(options: {
     }
   }
 
-  /**
-   * Sign-in is per native agent on this desktop, not per organization. The agent keeps the
-   * credentials; main relays only the method ID, status, terminal text, and input lines.
-   */
   async function runSignIn(
     target: HarnessWorker,
     method: z.infer<typeof signInMethodSchema>,
@@ -300,8 +274,6 @@ export function createHarnessController(options: {
         const sync = capture();
         const { agents } = await authority.catalog();
         const { enabledApps } = await authority.appSettings();
-        // Renderer organization switches do not bump the generation; reread only the session.
-        // Membership was verified for this organization before the catalog request.
         await authority.confirm(auth);
         sync.assertCurrent();
         worker ??= options.createWorker(
@@ -356,14 +328,11 @@ export function createHarnessController(options: {
         harnesses: z.array(harnessInspectionSchema).parse(result),
       };
     } catch (error) {
-      // Do not reveal account IDs, backend errors, or local file paths to the renderer.
       if (error instanceof CommandFailure) throw new Error("Harness command failed.");
       if (error instanceof AgentNotHomedHere)
         throw new HarnessCommandError("agent-not-home", error.message);
       if (error instanceof WorkspaceRejected)
         throw new HarnessCommandError("invalid-workspace", error.message);
-      // Only lost access, another account or a stopped worker ends the worker. Network,
-      // backend and command failures leave it and its live sessions running.
       if (
         error instanceof HarnessAccessDenied ||
         (error instanceof HarnessWorkerError && error.code === "worker-stopped")
@@ -428,7 +397,6 @@ export function createHarnessController(options: {
   async function request<T>(target: Awaited<ReturnType<typeof connected>>, run: () => Promise<T>) {
     const result = await run().catch((cause: unknown) => {
       const code = cause instanceof HarnessWorkerError ? cause.code : "harness-error";
-      // A stopped worker cannot recover; the next synchronization starts a new one.
       if (code === "worker-stopped" && target.worker === worker) disconnect();
       throw new HarnessCommandError(code);
     });
@@ -444,7 +412,6 @@ export function createHarnessController(options: {
       const auth = await authority.verify();
       await worker.request("closeOrganization", auth.organizationId);
     },
-    /** The renderer IPC allowlist. Renderer values are parsed again in perform(). */
     run<M extends HarnessMethod>(method: M, value?: IpcValue): Promise<HarnessResult<M>> {
       const parsed = methodSchema.safeParse(method);
       if (
@@ -452,14 +419,12 @@ export function createHarnessController(options: {
         ((parsed.data === "status" || parsed.data === "synchronize") && value !== undefined)
       )
         return Promise.reject(new Error("Invalid harness operation."));
-      // Several renderer views synchronize at once; they share one verified round trip.
       if (parsed.data === "synchronize" && syncing) {
         // SAFETY: M is "synchronize", and syncing holds the result of a synchronize run.
         return syncing as Promise<HarnessResult<M>>;
       }
       // SAFETY: perform() returns the contract's output shape for each method; the bridge parses it again.
       const result = queue.then(() => perform(parsed.data, value)) as Promise<HarnessResult<M>>;
-      // Model discovery and sign-in can take minutes; other renderer work does not wait for them.
       if (parsed.data !== "listModels" && !signInMethodSchema.safeParse(parsed.data).success)
         queue = result.then(ignore, ignore);
       if (parsed.data === "synchronize") {
@@ -472,15 +437,10 @@ export function createHarnessController(options: {
       }
       return result;
     },
-    /**
-     * Main-only session commands for agent work. Not exposed to the renderer. They do not wait
-     * in the renderer queue, so interrupt and respond reach a live turn while other work runs.
-     */
     async execute<C extends HarnessCommand>(command: C): Promise<HarnessCommandResult<C>> {
       let parsed: HarnessCommand;
       try {
         parsed = commandSchema.parse(command);
-        // The worker's tool provider binds the server turn context; main rejects others first.
         if (parsed.type === "turn") turnContextSchema.parse(parsed.context);
       } catch {
         throw new HarnessCommandError("invalid-command");
@@ -498,17 +458,11 @@ export function createHarnessController(options: {
       // SAFETY: every other command resolves to void.
       return undefined as HarnessCommandResult<C>;
     },
-    /**
-     * Main-only. Interrupts and closes every native session of the organization, also after
-     * the verified session moved to another organization of the same account. Agent work calls
-     * it when it retires that organization's runtime. Without a worker nothing is open.
-     */
     async closeOrganization(organizationId: string): Promise<void> {
       const id = harnessIdSchema.parse(organizationId);
       const target = await connected();
       await request(target, () => target.worker.request("closeOrganization", id));
     },
-    /** Verify the session again before the next command. Call on session or access hints. */
     refreshAuthority() {
       authority.invalidate();
     },

@@ -54,14 +54,12 @@ test("an access recheck keeps the history page shown as placeholder until a deni
     expect(observer.getCurrentResult().data).toEqual(["private history"]);
     const reset = cache.receive(access());
     await advanceTimersAsync(0);
-    // The unmounted page left the cache, but the view keeps it until the recheck answers.
     expect(client.getQueryData(olderKey)).toBeUndefined();
     expect(observer.getCurrentResult().data).toEqual(["private history"]);
     reads.at(-1)!.reject(forbidden());
     await reset;
     expect(observer.getCurrentResult().data).toBeUndefined();
     expect(observer.getCurrentResult().status).toBe("error");
-    // The read that the recheck replaced cannot bring the old page back.
     reads[0]!.resolve(["obsolete private history"]);
     await advanceTimersAsync(0);
     expect(observer.getCurrentResult().data).toBeUndefined();
@@ -97,7 +95,6 @@ test("an access recheck keeps a message context placeholder until a denial clear
   });
   try {
     await observer.refetch();
-    // A new message changes the key; the visible page stays as placeholder data.
     observer.setOptions({
       ...messagePageOptions("org", "conversation", ["one", "two"]),
       queryFn: () => {

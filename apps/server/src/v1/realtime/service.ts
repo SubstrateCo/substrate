@@ -14,7 +14,6 @@ export function createRealtimeService({
 }: {
   db: Database;
   auth: Auth;
-  /** Sees every batch that any server published, before its receivers do. */
   onChanges?: (changes: Change[]) => void;
 }) {
   let failures = 0;

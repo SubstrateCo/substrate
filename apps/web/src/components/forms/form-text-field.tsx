@@ -4,7 +4,6 @@ import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-/** The parts of a TanStack Form string field that a text input needs. */
 type TextFieldApi = {
   state: {
     value: string;
@@ -20,10 +19,6 @@ type ControlProps = Omit<
   "id" | "value" | "onChange" | "onBlur" | "aria-invalid" | "aria-describedby"
 >;
 
-/**
- * A labelled text input or textarea bound to a TanStack Form field. After a field shows an
- * error, each change validates it again so the error clears as soon as the value is valid.
- */
 export function FormTextField({
   field,
   id,
@@ -41,7 +36,6 @@ export function FormTextField({
   fieldClassName?: string;
 }) {
   const invalid = !field.state.meta.isValid;
-  // The error replaces the description so the two never stack.
   const hint = invalid ? undefined : description;
   const describedBy = [hint && `${id}-description`, invalid && `${id}-error`]
     .filter(Boolean)

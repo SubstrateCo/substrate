@@ -18,6 +18,7 @@ export const inboxTools = {
     description:
       "Find individual Gmail Inbox messages in your owner's connected mailboxes, only in a private DM with your owner. Search for words or leave query empty for recent mail. Each page samples mailboxes and orders matches by date. Follow nextCursor to cover the remaining mail; cached coverage is partial.",
     readOnly: true,
+    outputPolicy: "turn-only",
     input: z.strictObject({
       query: z.string().trim().max(200).default(""),
       mailboxId: id.optional(),
@@ -44,6 +45,7 @@ export const inboxTools = {
     description:
       "Read a plain-text excerpt of one email returned by search_inbox. Does not mark it read. Pass nextOffset for the next excerpt. Workspace message IDs belong to read_thread instead.",
     readOnly: true,
+    outputPolicy: "turn-only",
     input: z.strictObject({ messageId: id, offset: z.int().nonnegative().default(0) }),
     output: mailHeader.extend({
       to: z.string(),
@@ -53,4 +55,4 @@ export const inboxTools = {
       coverage,
     }),
   },
-};
+} as const;

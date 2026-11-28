@@ -30,7 +30,6 @@ export function turnRunView(row: TurnRunRow): AgentTurnRunView {
   };
 }
 
-/** The attempts of server turns that this host ran, with what it sent the harness. */
 export function turnRunRepository(run: RunTransaction) {
   return {
     /** Records an attempt before it runs. A retried start of the same attempt replaces its input. */
@@ -54,7 +53,6 @@ export function turnRunRepository(run: RunTransaction) {
           .orderBy(asc(turnRuns.attempt))
           .all(),
       ),
-    /** The latest attempt that ran in the session. */
     latestInSession: (organizationId: string, sessionId: string) =>
       run((tx) =>
         tx

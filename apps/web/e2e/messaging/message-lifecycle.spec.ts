@@ -82,7 +82,6 @@ test("editing a message inserts a workspace reference from the picker", async ({
   await page.getByRole("menuitem", { name: "Edit message", exact: true }).click();
   const field = article.getByRole("textbox", { name: "Edit message", exact: true });
   await expect(field).toBeFocused();
-  // The existing reference renders as its chip, not as a raw token.
   await expect(field).toContainText(actors.sender.name);
   await expect(field).not.toContainText(senderActorId);
   await field.pressSequentially(` @${actors.member.name.split(" ")[0]}`);

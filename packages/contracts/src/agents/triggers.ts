@@ -4,7 +4,6 @@ import { z } from "zod";
 export const agentTriggerKinds = ["direct_message", "mention", "thread_reply"] as const;
 export type AgentTriggerKind = (typeof agentTriggerKinds)[number];
 
-/** Accepts the kinds only when every trigger kind is in them. */
 function everyKind<const T extends readonly AgentTriggerKind[]>(
   kinds: T & ([Exclude<AgentTriggerKind, T[number]>] extends [never] ? unknown : never),
 ) {

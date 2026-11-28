@@ -19,13 +19,6 @@ function add<T>(map: Map<string, T[]>, id: string, value: T) {
   else map.set(id, [value]);
 }
 
-/**
- * The message a turn's work shows under, in one conversation, or null when it has no place
- * there (it shows only in the Agents app). In order: the latest message the turn posted here;
- * the anchor of the request an answer or approval turn continues; the place of the turn a
- * recovery turn resumes; the newest source message here. A turn in a hidden place has none of
- * these, so it has no place.
- */
 function turnAnchor(
   turn: AgentWorkTurnView,
   conversationId: string,
@@ -56,11 +49,6 @@ function turnAnchor(
   return source?.messageId ?? null;
 }
 
-/**
- * The conversation a turn's work shows in, in the order `turnAnchor` uses: where it posted last,
- * then where the turn it resumes shows, then its newest source. A request anchor names only a
- * message, so it adds no conversation. Undefined when the turn shows only in the Agents app.
- */
 export function turnConversation(
   turn: AgentWorkTurnView,
   turns: ReadonlyMap<string, AgentWorkTurnView>,
@@ -76,7 +64,6 @@ export function turnConversation(
   return newest(turn.sourceMessages)?.conversationId;
 }
 
-/** Turns grouped under the message they show under, oldest first. */
 export function turnPlacements(turns: readonly AgentWorkTurnView[], conversationId: string) {
   const byId = new Map(turns.map((turn) => [turn.id, turn]));
   const placements = new Map<string, AgentWorkTurnView[]>();
@@ -91,10 +78,6 @@ export function turnPlacements(turns: readonly AgentWorkTurnView[], conversation
   return { placements, anchors };
 }
 
-/**
- * Owner messages that wait, steer, or need attention, under the message they came from. Items
- * that started a turn are shown by that turn instead. Items in a hidden place have no source.
- */
 export function itemPlacements(
   items: readonly AgentWorkItemView[],
   turns: readonly AgentWorkTurnView[],
@@ -111,21 +94,12 @@ export function itemPlacements(
   return placements;
 }
 
-/**
- * The waiting owner messages that show the agent's queued reply row: the newest of each
- * session, because the session's next turn shows under its newest source. Older waiting
- * messages of the session show nothing of their own.
- */
 export function queuedReplyItems(items: readonly AgentWorkItemView[]) {
   const bySession = new Map<string, AgentWorkItemView[]>();
   for (const item of items) if (waits(item)) add(bySession, item.sessionId, item);
   return new Set([...bySession.values()].flatMap((list) => newest(list)?.id ?? []));
 }
 
-/**
- * Request cards under their anchor message, else under their turn's place. Executed proposals
- * also show a backlink under the message they created.
- */
 export function requestPlacements(
   requests: readonly AgentRequestView[],
   turnAnchors: ReadonlyMap<string, string>,

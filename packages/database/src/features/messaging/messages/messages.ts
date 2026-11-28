@@ -30,7 +30,6 @@ import { messagingConversations, messagingMessages, messagingReactions } from ".
 import { and, desc, eq, exists, inArray, isNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
-// selectMessages joins account, agent and viewer-organization membership once per author.
 function messageAuthorColumns() {
   return {
     authorName: joinedActorName(),
@@ -48,7 +47,6 @@ async function messageSummaries(
   rows: { id: string; threadId: string | null; deletedAt: Date | null }[],
 ) {
   const roots = rows.flatMap((row) => (row.threadId ? [] : [row.id]));
-  // A reaction can land on a message deleted at the same instant. Deleted messages show none.
   const live = rows.flatMap((row) => (row.deletedAt ? [] : [row.id]));
   const [allReactions, replies] = await Promise.all([
     live.length
@@ -96,7 +94,6 @@ async function messageSummaries(
   );
 }
 
-// The client view of a message. A request ID is private to the message's author.
 function messageView(message: typeof messagingMessages.$inferSelect, viewerActorEntityId: string) {
   return {
     id: message.id,
@@ -112,7 +109,6 @@ function messageView(message: typeof messagingMessages.$inferSelect, viewerActor
   };
 }
 
-// Messages with their author. Callers add the filters that authorize each message.
 export function selectMessages(db: DatabaseExecutor, scope: SessionIdentity) {
   return joinActorProfile(
     db
@@ -128,7 +124,6 @@ export function selectMessages(db: DatabaseExecutor, scope: SessionIdentity) {
   );
 }
 
-// Adds attachments, reactions and reply counts to authorized messages of the given conversations.
 export async function messageViews(
   db: DatabaseExecutor,
   scope: SessionIdentity,
@@ -156,14 +151,12 @@ export async function messageViews(
     attachments: message.deletedAt
       ? []
       : attachments.filter((item) => item.messageId === message.id),
-    // Which agent turn published a reply is private to the agent's owner.
     originTurnId: authorOwnerUserId === scope.userId ? message.originTurnId : null,
     ...author,
     ...summaries.get(message.id)!,
   }));
 }
 
-// Trusted callers pass the context and author already resolved by workspaceContext.
 export async function sendMessageAs(
   ctx: RepositoryContext,
   scope: SessionIdentity,
@@ -242,8 +235,6 @@ export async function sendMessageAs(
   }
   if (threadId) await requireThreadRoot(tx, conversationId, threadId);
   let joined = false;
-  // Posting rejoins a public channel the person left. Private conversations are not visible after
-  // leaving, so the access check fails first.
   const self = { ...actor, organizationId: scope.organizationId };
   if (actor.type === "agent") await writeMembers(tx, conversationId, [self], "author");
   else joined = (await writeMembers(tx, conversationId, [self], "join")).length > 0;
@@ -258,7 +249,6 @@ export async function sendMessageAs(
       requestId,
       originTurnId,
     })
-    // A concurrent send with this request waits for the first to commit, then replays it.
     .onConflictDoNothing({
       target: [messagingMessages.authorActorEntityId, messagingMessages.requestId],
     })
@@ -268,7 +258,6 @@ export async function sendMessageAs(
     if (!existing) throw new ConflictError("This request is being retried. Try again.");
     return replay(existing);
   }
-  // Publish only for a new message, so a replayed request does not publish its files again.
   await publishFiles(ctx, conversation, fileIds);
   const attachments = await insertMessageAttachments(
     tx,
@@ -280,7 +269,6 @@ export async function sendMessageAs(
     },
     fileIds,
   );
-  // Before notifying, so people already looking at this timeline or thread get no alert.
   const seenBy = await readForViewers(tx, created);
   const effects = await applyMessageEffects(ctx, scope, created, conversation, { seenBy });
   const wakeHints = conversation.taskEntityId
@@ -310,7 +298,6 @@ export async function sendMessageAs(
   };
 }
 
-// Reading, posting and reacting. Scope comes from the authenticated session.
 export function messageOperations(
   db: DatabaseExecutor,
   scope: Readonly<SessionIdentity>,
@@ -381,8 +368,6 @@ export function messageOperations(
           .limit(50),
       );
       const reply = alias(messagingMessages, "page_reply");
-      // Aggregate each relationship independently, after limiting the page. Joining the raw
-      // attachments, reactions and replies would multiply both rows and summary counts.
       const query = db
         .with(anchor, conversation, page)
         .select({
@@ -425,7 +410,6 @@ export function messageOperations(
                   ),
                 )})`,
         })
-        // Keep one row for an authorized empty page, including invalid thread/cursor flags.
         .from(conversation)
         .leftJoin(page, sql`true`)
         .leftJoin(messagingMessages, eq(messagingMessages.id, page.id))
@@ -528,9 +512,6 @@ export function messageOperations(
         );
         const removed = await tx.delete(messagingReactions).where(key).returning();
         if (removed.length) return { active: false };
-        // The insert adds the reaction only while the message is live. A deletion at the same
-        // instant can still leave the row; reads hide the reactions of deleted messages.
-        // If a concurrent toggle added this reaction, this toggle removes it.
         const added = await tx
           .insert(messagingReactions)
           .select(

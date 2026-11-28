@@ -1,4 +1,3 @@
-/** Cuts list text so one page cannot fill an agent's context. */
 export function excerpt(body: string, maximum = 1000) {
   return body.length > maximum
     ? { text: body.slice(0, maximum), truncated: true }

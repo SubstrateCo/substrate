@@ -21,7 +21,6 @@ export type EventScope = "turn" | "session";
 
 export interface AdapterContext {
   model?: HarnessAgent["model"];
-  /** The session's working directory. */
   directory: string;
   /**
    * The session's own folder, with its instructions file and skills, when the session works in
@@ -34,7 +33,6 @@ export interface AdapterContext {
    * outside a turn fail.
    */
   lease?: McpLease;
-  /** The host MCP server's name and tool titles, for tool call labels. */
   hostTools?: HostTools;
   /** The agent's user-added MCP servers. The adapter passes them on every session setup. */
   mcpServers?: HarnessMcpServer[];

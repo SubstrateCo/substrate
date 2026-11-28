@@ -16,7 +16,6 @@ export const silentLabel = "Checked · nothing to report";
 export const steeredLabel = "Added to current work";
 export const noDesktopLabel = "No desktop runs this agent";
 
-/** Where to see a transcript, which only the desktop that ran the work stores. */
 export const transcriptNotice = (deviceName?: string) =>
   deviceName
     ? `Open Substrate on ${deviceName} to see this transcript.`
@@ -26,12 +25,10 @@ export const stoppedNeedsYouLabel = "Stopped · needs you";
 
 const offline = (device: string) => `Waiting for ${device} · offline`;
 
-/** The label for an open request, which comes before every other state of its turn. */
 function requestLabel(request: Pick<AgentRequestView, "kind">) {
   return request.kind === "question" ? "Needs your answer" : "Needs your approval";
 }
 
-/** One turn's tone. It does not depend on the clock. */
 export function turnTone(
   turn: AgentWorkTurnView,
   openRequest?: Pick<AgentRequestView, "kind">,
@@ -55,16 +52,10 @@ export function turnTone(
   }
 }
 
-/** The mood of the agent's own avatar while its work is live. */
 export type WorkMood = Extract<Mood, "thinking" | "working" | "listening" | "waiting">;
 
-/** Queued work waits calmly for its turn. */
 export const queuedMood: WorkMood = "waiting";
 
-/**
- * The avatar's mood for a live turn, or null when the work has ended: thinking while it starts,
- * working while it runs, listening while it waits for the owner, and waiting while it stops.
- */
 export function turnMood(
   turn: AgentWorkTurnView,
   openRequest?: Pick<AgentRequestView, "kind">,
@@ -87,7 +78,6 @@ export function turnMood(
   }
 }
 
-/** One turn as one short line, such as "Working · 1m 05s". */
 export function turnLabel(
   turn: AgentWorkTurnView,
   now: number,
@@ -118,7 +108,6 @@ export function turnLabel(
   }
 }
 
-// Every contract reason needs its own text.
 const attentionReasons = {
   unfinished_tool: () =>
     "The work stopped while a tool was still running, so it may have finished only part of a change.",
@@ -129,41 +118,29 @@ const attentionReasons = {
 } satisfies Record<TurnAttentionReason, (agentName: string) => string>;
 export const attentionFallback = "The work stopped and needs you to decide what happens next.";
 
-/** Why a turn needs the owner, for the needs-attention card. */
 export function attentionReasonText(reason: TurnAttentionReason | null, agentName: string) {
   return reason ? attentionReasons[reason](agentName) : attentionFallback;
 }
 
-/** Reviewed copy for work that failed. The runtime's own message is a diagnostic, shown apart. */
 export const failedWorkNote = "The work didn’t finish. Open the transcript to see what happened.";
 
-/** What the inbox receipt under an owner message needs to know about the agent. */
 export interface ItemContext {
   agentName: string;
-  /** Owner items of other sessions that wait ahead of this one. */
   ahead: number;
-  /** The agent has live work in another session. */
   busy: boolean;
-  /** Undefined while the agent's status is unknown. */
   device?: AgentStatusView["device"];
 }
 
-/** sendNow offers Send now. uncertain offers Resend and Discard. */
 export type ItemStatus = WorkStatus & { sendNow: boolean; uncertain: boolean };
 
 const uncertainItemLabel = (agentName: string) =>
   `We couldn’t confirm ${agentName} received this message`;
 
-/** An owner message that waits for its session's next turn, which Send now cannot hurry. */
 export const waits = (item: AgentWorkItemView) =>
   item.lane === "owner" &&
   !item.held &&
   (item.status === "pending" || item.status === "confirmed_unconsumed");
 
-/**
- * How many other sessions of the same agent wait ahead of this item's session. The claim loop
- * takes the session with the oldest waiting owner item first. Pass the items of one agent.
- */
 export function queueAhead(item: AgentWorkItemView, items: readonly AgentWorkItemView[]) {
   const oldest = new Map<string, number>();
   for (const entry of items) {
@@ -178,7 +155,6 @@ export function queueAhead(item: AgentWorkItemView, items: readonly AgentWorkIte
   return ahead;
 }
 
-/** An owner message that has not finished in a turn yet. */
 export function itemStatus(item: AgentWorkItemView, context: ItemContext): ItemStatus {
   const status = (tone: WorkTone, label: string, sendNow = false) => ({
     tone,
@@ -200,10 +176,6 @@ export function itemStatus(item: AgentWorkItemView, context: ItemContext): ItemS
   return status("idle", "Queued");
 }
 
-/**
- * The agent's status as the server derives it. It has no per-message detail, so it describes
- * the agent as a whole.
- */
 export function agentStatus(status: AgentStatusView): WorkStatus {
   const { device } = status;
   if (status.state === "needs_you") return { tone: "attention", label: "Needs you" };
@@ -227,18 +199,11 @@ export function agentStatus(status: AgentStatusView): WorkStatus {
   return { tone: "idle", label: "Idle" };
 }
 
-/** The agent page header's status. The timeline shows the activity, so this has none. */
 export type AgentHeaderStatus = WorkStatus & {
   mood: WorkMood | null;
-  /** The conversation of the live work, when it is not the page's own conversation. */
   elsewhereConversationId: string | null;
 };
 
-/**
- * What the agent does as a whole, for its page header, or null while it is idle. Live work in
- * another conversation names that conversation; the server sends its ID only while the owner can
- * open it.
- */
 export function agentHeaderStatus(
   status: AgentStatusView,
   homeConversationId: string | undefined,

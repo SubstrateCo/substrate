@@ -14,7 +14,6 @@ export const Route = createFileRoute("/_public/_guest")({
   component: GuestLayout,
 });
 
-// In the desktop app, login and signup both continue in the browser.
 function GuestLayout() {
   const { redirect } = Route.useSearch();
   if (isDesktop()) return <DesktopSignIn redirect={redirect} />;

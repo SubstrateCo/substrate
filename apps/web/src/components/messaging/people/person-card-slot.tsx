@@ -2,7 +2,6 @@ import { useContext, type ReactElement, type ReactNode } from "react";
 
 import { PersonCardContext, type PersonCardRenderer } from "./person-card-context";
 
-// Connected containers supply the card. Views mark the names that may open it.
 export function PersonCardProvider({
   render,
   children,

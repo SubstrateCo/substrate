@@ -20,7 +20,6 @@ export type MemberRowData = {
 
 const column = createAppColumnHelper<MemberRowData>();
 
-/** The columns of the members table. Role changes go through `onRoleChange` for a confirm. */
 export function memberColumns({
   disabled,
   onRoleChange,

@@ -9,7 +9,6 @@ import type { CustomHotkeys, Hotkey } from "@tanstack/react-hotkeys";
 
 const same = (left: Shortcut, right: Shortcut) => JSON.stringify(left) === JSON.stringify(right);
 
-/** The saved shortcuts that differ from the defaults, the shape `HotkeysProvider` takes. */
 export function customFromSaved(saved: ShortcutSettings): CustomHotkeys {
   const custom: CustomHotkeys = {};
   for (const id of shortcutIds) {
@@ -20,7 +19,6 @@ export function customFromSaved(saved: ShortcutSettings): CustomHotkeys {
   return custom;
 }
 
-/** Every shortcut, ready to save: the person's keys, or the default for the rest. */
 export function savedFromCustom(custom: CustomHotkeys): ShortcutSettings {
   // SAFETY: the loop below sets every shortcut ID.
   const saved = {} as ShortcutSettings;

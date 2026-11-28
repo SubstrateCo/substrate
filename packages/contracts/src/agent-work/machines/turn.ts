@@ -23,7 +23,6 @@ export const turnMachine = defineMachine({
     retry: { from: ["needs_attention"], to: "assigned" },
     /** The owner ends a needs-attention turn without running it again. */
     dismiss: { from: ["needs_attention"], to: "cancelled" },
-    // The owner resent or discarded every uncertain item: the turn ends as it would have.
     settleCompleted: { from: ["needs_attention"], to: "completed" },
     settleCancelled: { from: ["needs_attention"], to: "cancelled" },
     settleInterrupted: { from: ["needs_attention"], to: "interrupted" },

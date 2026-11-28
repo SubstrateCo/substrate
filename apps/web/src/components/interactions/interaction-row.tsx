@@ -6,10 +6,6 @@ import { interactionTypes } from "./interaction-types";
 import { Timestamp } from "@/components/time/timestamp";
 import { Item, ItemContent, ItemMedia } from "@/components/ui/item";
 
-/**
- * One interaction in a list or record section: a top line (contact, kind, time, row actions),
- * the summary, optional details, and the meeting it came from. Inside `recordRows`.
- */
 export function InteractionRow({
   kind,
   occurredAt,
@@ -22,17 +18,11 @@ export function InteractionRow({
 }: {
   kind: InteractionKind;
   occurredAt: string;
-  /** The summary text, or a link that opens the interaction. */
   summary: ReactNode;
-  /** A link to the contact, first on the top line. */
   contact?: ReactNode;
-  /** Shows the kind as a colored icon tile, as in the timeline. */
   icon?: boolean;
-  /** Muted details after the summary, separated by dots. */
   details?: ReactNode[];
-  /** `RowAction`s in `RowActions`, at the end of the top line. */
   actions?: ReactNode;
-  /** A `MeetingSourceLink`. */
   source?: ReactNode;
 }) {
   const { icon: Icon, label, textClass } = interactionTypes[kind];
@@ -59,7 +49,6 @@ export function InteractionRow({
           {details.length > 0 && (
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
               {details.map((detail, index) => (
-                // oxlint-disable-next-line react/no-array-index-key -- The details are a fixed, ordered list.
                 <Fragment key={index}>
                   {index > 0 && <span aria-hidden>·</span>}
                   {detail}

@@ -10,7 +10,6 @@ import { Text } from "@/components/ui/text";
 import type { Conversation, ConversationMember } from "@/features/messaging/types";
 import { UserMinus } from "lucide-react-native";
 
-/** Members grouped by organization, the viewer's first. */
 export function MembersSection({
   conversation,
   viewerId,

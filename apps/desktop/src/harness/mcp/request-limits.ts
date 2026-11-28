@@ -5,12 +5,6 @@
  * worker.
  */
 export const approvalWaitMs = 45_000;
-/** How often a waiting call reads the decision. */
 export const approvalPollMs = 1_500;
-/** Room for a slow server call or decision read after the approval wait ends. */
 const apiAnswerAllowanceMs = 15_000;
-/**
- * How long the worker waits for main to answer one workspace api request. Main answers within
- * approvalWaitMs plus one server round trip, so the worker never gives up first.
- */
 export const workspaceRequestTimeoutMs = approvalWaitMs + apiAnswerAllowanceMs;

@@ -8,17 +8,12 @@ import { createScreenNotificationCenter } from "./screen-notification-center.ts"
 import { ipcMain, powerMonitor } from "electron";
 import { join } from "node:path";
 
-/**
- * The overlay window, its card center, and the overlay's only IPC channel. Producers post to the
- * center; only the overlay's main frame may call this channel.
- */
 export function setupScreenNotifications(options: {
   rendererURL: string;
   partition: string;
   preload: string;
   production: boolean;
   userData: string;
-  /** The machine woke or the screen unlocked. */
   onWake(): void;
 }) {
   const overlay = createOverlayWindow(options);
@@ -39,9 +34,7 @@ export function setupScreenNotifications(options: {
   return {
     center,
     store,
-    /** Creates the hidden overlay after sign-in. */
     activate: () => overlay.ensure(),
-    /** Destroys the overlay on sign-out and quit. */
     deactivate: () => overlay.destroy(),
   };
 }

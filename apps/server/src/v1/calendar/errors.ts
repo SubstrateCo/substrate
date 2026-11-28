@@ -1,8 +1,3 @@
-/**
- * Calendar provider failures. Every error that leaves a provider adapter or the registry is one of
- * these: adapters map their integration's errors at their boundary and keep the original as
- * `cause`. `errorCode` is stored on the calendar and shown to its owner.
- */
 export class CalendarProviderError extends Error {
   constructor(
     public readonly errorCode: string,
@@ -14,7 +9,6 @@ export class CalendarProviderError extends Error {
   }
 }
 
-/** The provider has an adapter, but this server has no credentials for it. */
 export class ProviderNotConfigured extends CalendarProviderError {
   constructor(options?: ErrorOptions) {
     super(
@@ -31,11 +25,8 @@ export class ProviderNotImplemented extends CalendarProviderError {
   }
 }
 
-/** The grant was revoked or lacks calendar access. The owner must link the account again. */
 export class CalendarAccessRequired extends CalendarProviderError {}
 
-/** The sync cursor expired. The calendar must sync again without it. */
 export class CalendarCursorExpired extends CalendarProviderError {}
 
-/** Any other provider failure, such as an outage or a rate limit. A later attempt may succeed. */
 export class CalendarProviderFailure extends CalendarProviderError {}

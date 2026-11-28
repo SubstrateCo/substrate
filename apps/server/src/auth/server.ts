@@ -92,7 +92,6 @@ export function createAuth(deps: {
       // Calendar refresh tokens are encrypted with BETTER_AUTH_SECRET; getAccessToken decrypts them.
       encryptOAuthTokens: true,
       accountLinking: {
-        // A signed-in user links calendars from another address, such as a work account.
         allowDifferentEmails: true,
         // An OAuth sign-in never attaches a provider account to a user by matching email.
         disableImplicitLinking: true,

@@ -34,32 +34,17 @@ import { z } from "zod";
 
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 
-/**
- * Harness failures that pass: the worker or the connection is gone for now, a command timed
- * out, the session closes after its live turn (session-closing), or the worker does not have the
- * organization's configuration yet (it lives in memory and arrives with synchronize). Work
- * waits and runs again.
- */
 const transientHarnessCodes = harnessCodesWithClassification("transient");
-/** Work that waits retries after this long first, doubling up to the maximum. */
 const outageBackoffMs = 5_000;
 const outageBackoffMaxMs = 5 * 60_000;
-/**
- * A failure without a known outage code, such as an unexpected response, is retried this many
- * times or for this long. Then the turn needs the owner. Known outages wait without a limit.
- */
 const unknownFailureRetries = 6;
 const unknownFailureWindowMs = 30 * 60_000;
-/** Activity and usage reports of a live turn are sent at most this often. */
 const reportDelayMs = 2_000;
-/** A stopping turn without a terminal event this long is closed natively and ended. */
 const stopTimeoutMs = 20_000;
-/** Server codes that mean this device no longer runs the turn. */
 const releasedCodes = new Set(["CONFLICT", "NOT_FOUND", "FORBIDDEN"]);
 
 const codedError = z.object({ code: z.string() });
 
-/** The fixed code of a harness or server error, if it has one. */
 export function errorCode(cause: unknown) {
   return codedError.safeParse(cause).data?.code;
 }
@@ -75,12 +60,10 @@ function outage(cause: unknown) {
   return cause instanceof TypeError;
 }
 
-/** A failure that is worth retrying later: an outage, or a failure without any code. */
 function transient(cause: unknown) {
   return errorCode(cause) === undefined || outage(cause);
 }
 
-/** The status of a turn that ended for a recorded reason: the owner's stop cancels it. */
 function endedStatus(interruption: TurnInterruption | null) {
   return interruption === "stop" ? "cancelled" : "interrupted";
 }
@@ -90,7 +73,6 @@ function folderOf(session: HostTurn["session"]): HarnessFolder {
 }
 
 type InterruptResult = "sent" | "gone" | "failed";
-/** A claimed turn, before or after it runs here. */
 type TurnRef = Pick<LiveTurn, "turnId" | "attempt" | "sessionId" | "userAgentId" | "handoff">;
 
 const refOf = (turn: HostTurn["turn"]): TurnRef => ({
@@ -108,36 +90,20 @@ interface PendingReport {
   consumed: Set<string>;
 }
 
-/**
- * Runs claimed server turns against the harness host. Every canonical event is recorded in the
- * local transcript before anything else sees it; the server learns each turn's progress and end
- * through the host API.
- */
 export function createTurnExecutor(
   context: RuntimeContext,
   deps: { requests: RequestBridge; epochs: Epochs },
 ) {
   const live = new Map<string, LiveTurn>();
-  /** Turns whose start runs, with the attempt it runs. */
   const starting = new Map<string, number>();
-  /** Turns that the server moved to a newer attempt while an older one was still starting. */
   const newerAttempt = new Set<string>();
-  /** Turns that left the live map but whose end the server has not taken yet. */
   const ending = new Set<string>();
-  /** Folders held without a live turn, such as while native compaction runs. */
   const heldFolders = new Set<string>();
-  /** Failed starts per session since the last good one, and kept turns that wait to start. */
   const backoff = new Map<string, { attempts: number; since: number }>();
   const waitUntil = new Map<string, number>();
-  /** Stops the server reported for turns that are still starting. */
   const stopRequests = new Map<string, TurnInterruption>();
-  /** Turn ends the server could not take during an outage. They are sent again. */
   const unreported = new Map<string, { attempt: number; input: HostFinish }>();
   const reports = new Map<string, PendingReport>();
-  /**
-   * The worker has the current agent folders. Agent changes, a failed start and a lost native
-   * session clear it: the next start synchronizes, which also starts a worker that is gone.
-   */
   let synchronized = false;
   const org = context.organizationId;
 
@@ -150,7 +116,6 @@ export function createTurnExecutor(
       .catch(() => {});
   }
 
-  /** A progress call. A stop the server reports runs the cycle, which reads the stop's reason. */
   async function progress(state: Pick<TurnRef, "turnId" | "attempt">, input: HostProgress) {
     try {
       const status = await context.host.progress(org, state.turnId, input);
@@ -160,7 +125,6 @@ export function createTurnExecutor(
     }
   }
 
-  /** Sends what waits to be reported for the live turn now. */
   async function flush(state: LiveTurn) {
     const pending = reports.get(state.turnId);
     if (!pending) return;
@@ -172,7 +136,6 @@ export function createTurnExecutor(
     await progress(state, input);
   }
 
-  /** Reports activity, usage and read steered items soon, in one call. */
   function report(
     state: LiveTurn,
     fields: { activity?: string; usage?: Usage; consumed?: string },
@@ -192,10 +155,6 @@ export function createTurnExecutor(
     if (fields.consumed) pending.consumed.add(fields.consumed);
   }
 
-  /**
-   * Reports a turn's end. During an outage the end waits and is sent again; a server that no
-   * longer gives this device the turn ends it itself.
-   */
   async function reportEnd(turn: Pick<TurnRef, "turnId" | "attempt">, input: HostFinish) {
     try {
       const result = await context.host.finish(org, turn.turnId, input);
@@ -213,7 +172,6 @@ export function createTurnExecutor(
     live.delete(turn.turnId);
     await deps.requests.closeTurn(turn.turnId);
     if (turn.handoff) {
-      // A handoff that cannot run still ends its epoch; it never needs the owner.
       await closeNative(turn.sessionId);
       await reportEnd(turn, { attempt: turn.attempt, status: "failed", error });
       await context.store.nativeSessions.rotate(org, turn.sessionId, context.now());
@@ -227,10 +185,6 @@ export function createTurnExecutor(
     context.changed({ userAgentId: turn.userAgentId, turnId: turn.turnId });
   }
 
-  /**
-   * A turn that never reached the harness ends for a reason the server recorded, such as the
-   * owner's stop.
-   */
   async function endUnstarted(turn: TurnRef, interruption: TurnInterruption) {
     stopRequests.delete(turn.turnId);
     await reportEnd(turn, {
@@ -241,12 +195,6 @@ export function createTurnExecutor(
     context.changed({ userAgentId: turn.userAgentId, turnId: turn.turnId });
   }
 
-  /**
-   * A passing failure before the harness runs the turn: the server keeps its work and the turn
-   * runs again after a backoff. A failure that is not a known outage stops retrying after a
-   * while and needs the owner. A turn that the harness already runs lost its native turn, so it
-   * follows the recovery rules.
-   */
   async function retryLater(turn: TurnRef, cause: unknown) {
     const state = live.get(turn.turnId);
     if (state) return lostNative(state, { close: true });
@@ -272,7 +220,6 @@ export function createTurnExecutor(
     context.changed({ userAgentId: turn.userAgentId });
   }
 
-  /** What earlier attempts of a turn already did, from the local transcript. */
   async function resumeNote(turnId: string, previousAttempt: number): Promise<EnvelopeResumeNote> {
     const events = await context.store.events.ofKinds(org, turnId, [
       "tool_started",
@@ -291,10 +238,6 @@ export function createTurnExecutor(
     return { turnId, previousAttempt, completedTools: completed, outputs };
   }
 
-  /**
-   * The session's prefix for this epoch. Built once, so it stays byte-stable. A handoff turn
-   * runs in the old epoch, so it keeps the old prefix even when the policy changed.
-   */
   async function prefix(native: NativeSessionRow, agent: CatalogAgent, handoff: boolean) {
     if (native.prefix && (handoff || native.policyVersion === POLICY_VERSION))
       return {
@@ -309,7 +252,6 @@ export function createTurnExecutor(
       organizationId: org,
       enabledApps: enabledApps && agentApps(enabledApps, agent),
     });
-    // The epoch keeps the working folder it started with; a new epoch takes the current one.
     const workspace = native.prefix
       ? native.workspace
       : await context.store.workspaces.get(org, native.userAgentId);
@@ -336,11 +278,6 @@ export function createTurnExecutor(
     ];
   }
 
-  /**
-   * The local native session of the turn's server session, in the epoch the turn runs in. A
-   * reset by the owner starts a fresh epoch. So does a rotation whose handoff never ran: the
-   * server runs a pending handoff before any other turn of the session.
-   */
   async function nativeSession(hostTurn: HostTurn, harness: NativeSessionRow["harness"]) {
     const { turn, session } = hostTurn;
     const now = context.now();
@@ -358,7 +295,6 @@ export function createTurnExecutor(
     return (await context.store.nativeSessions.get(org, session.id))!;
   }
 
-  /** The turn's input: its visible batch, with the thread's recent messages for thread work. */
   async function input(hostTurn: HostTurn) {
     const { turn, session } = hostTurn;
     const batch = hostTurn.items.filter((item) => !item.steered && item.status === "submitted");
@@ -370,7 +306,6 @@ export function createTurnExecutor(
       const rendered = envelopeItem(item, { sessionKind: session.kind, messages });
       return rendered ? [rendered] : [];
     });
-    // Thread traffic since the last turn is context for this turn, never a new request.
     if (session.kind === "thread" && !turn.handoff && session.origin?.threadId) {
       const { conversationId, threadId } = session.origin;
       const page = await context.server.threadMessages(org, conversationId, threadId);
@@ -403,12 +338,10 @@ export function createTurnExecutor(
     try {
       agent = await context.agents.get(turn.userAgentId);
       if (!agent?.enabled) {
-        // The server claims only enabled agents: the cached catalog may be older.
         context.agents.invalidate();
         agent = await context.agents.get(turn.userAgentId);
       }
     } catch (error) {
-      // The catalog is unreachable: the agent is not known to be gone.
       return retryLater(ref, error);
     }
     if (!agent?.enabled)
@@ -455,7 +388,6 @@ export function createTurnExecutor(
     }
     if (status === "stopping") return endUnstarted(ref, turn.interruption ?? "stop");
     if (status !== "running" && status !== "waiting") {
-      // Nothing visible was left to run, or the turn ended meanwhile.
       context.changed({ userAgentId: turn.userAgentId, turnId: turn.id });
       return;
     }
@@ -480,10 +412,10 @@ export function createTurnExecutor(
     }));
     if (sourceMessages.length)
       await progress(ref, { attempt: turn.attempt, sourceMessages, consumedItemIds: [] });
-    // Resume failures on later epochs, handoffs, and recovery paths need more than a silent restart.
+    const laterEpoch = native.epoch > 0;
+    const recovery = turn.attempt > 1 || turn.resumesTurnId !== null;
     const requireResume =
-      Boolean(native.nativeSessionId) &&
-      (native.epoch > 0 || turn.handoff || turn.attempt > 1 || turn.resumesTurnId !== null);
+      Boolean(native.nativeSessionId) && (laterEpoch || turn.handoff || recovery);
     const open: Extract<HarnessCommand, { type: "open" }> = {
       type: "open",
       organizationId: org,
@@ -581,19 +513,16 @@ export function createTurnExecutor(
         generation: turn.generation,
         mode: turn.kind,
         input: { inputIds: loaded.remaining.map((item) => item.id), text: envelope },
-        // The server derives everything else from its turn and session rows.
         context: { turnId: turn.id, attempt: turn.attempt },
       });
     } catch (error) {
       if (live.get(turn.id) !== state) return;
-      // Events the host sent before the failure, such as turn.started, are recorded first.
       await state.chain;
       if (live.get(turn.id) !== state) return;
       if (transient(error)) return lostNative(state, { close: true });
       return needsAttention(ref, "failed", "The agent's turn could not start.");
     }
     backoff.delete(session.id);
-    // Stopped while the turn command was on its way: stop the native turn too.
     const late = stopRequests.get(turn.id);
     if (late) {
       stopRequests.delete(turn.id);
@@ -602,11 +531,6 @@ export function createTurnExecutor(
     context.changed({ userAgentId: turn.userAgentId, turnId: turn.id });
   }
 
-  /**
-   * The status of a turn's end. A turn that the owner or the runtime asked to end may fail
-   * instead of reporting an interrupt, such as when its native session closes under it: the
-   * recorded intent decides then.
-   */
   function finishedStatus(state: LiveTurn, result: TurnResult): HostFinish["status"] {
     if (result.status === "completed") return "completed";
     if (result.status === "failed" && !state.stopping)
@@ -614,10 +538,6 @@ export function createTurnExecutor(
     return endedStatus(state.stopping);
   }
 
-  /**
-   * Reports a live turn's end once. A handoff closes its native session and the epoch rotates
-   * after it. A completed turn holds its folder until native compaction, if any, finished.
-   */
   async function finish(state: LiveTurn, result: TurnResult, options: { resume?: string } = {}) {
     if (live.get(state.turnId) !== state) return;
     live.delete(state.turnId);
@@ -674,10 +594,6 @@ export function createTurnExecutor(
     context.changed({ userAgentId: state.userAgentId, turnId: state.turnId });
   }
 
-  /**
-   * The harness process of a turn died, as the server last saw it running here: the server
-   * decides with this host's evidence. Blocking requests lost their native callbacks.
-   */
   async function recover(turn: Pick<TurnRef, "turnId" | "attempt" | "userAgentId">) {
     await deps.requests
       .closeOrphans(turn)
@@ -686,18 +602,10 @@ export function createTurnExecutor(
     try {
       await context.host.recover(org, turn.turnId, { attempt: turn.attempt, unfinishedTool });
     } catch {
-      // The next sync still sees the turn here and recovers it again.
       context.log("Could not recover an agent turn.");
     }
   }
 
-  /**
-   * A live turn lost its native turn: the native session closed under it, such as when the
-   * worker exited, or the turn command failed after the turn started. A turn that was asked to
-   * end ends for that reason. Any other follows the server's recovery rules: it continues once
-   * when that is safe. close ends a native turn whose state is unknown first, so that a continue
-   * never finds it still running.
-   */
   async function lostNative(state: LiveTurn, options: { close?: boolean } = {}) {
     if (live.get(state.turnId) !== state) return;
     live.delete(state.turnId);
@@ -714,15 +622,9 @@ export function createTurnExecutor(
     } finally {
       ending.delete(state.turnId);
     }
-    // A continued turn starts its next attempt in the next cycle.
     context.changed({ userAgentId: state.userAgentId, turnId: state.turnId });
   }
 
-  /**
-   * An owner's message always gets a reply, and only reply shows text to the owner. A turn that
-   * wrote text and ended without publishing most likely wrote its answer as plain text. The host
-   * asks it once to send that answer; the turn then ends as it ends.
-   */
   async function nudgeUnsentAnswer(state: LiveTurn, result: TurnResult) {
     const unsent =
       result.status === "completed" &&
@@ -749,7 +651,6 @@ export function createTurnExecutor(
       });
       return true;
     } catch {
-      // The session cannot take another prompt: the turn ends as the agent left it.
       return false;
     }
   }
@@ -791,7 +692,6 @@ export function createTurnExecutor(
       case "input.consumed":
         state.consumed.add(event.inputId);
         await append(state, [{ kind: "input_consumed", data: { inputId: event.inputId } }]);
-        // Batch items are settled when the turn ends; steered items are evidence at once.
         if (state.steered.has(event.inputId)) report(state, { consumed: event.inputId });
         context.progressed({ userAgentId: state.userAgentId, turnId: state.turnId });
         return;
@@ -818,7 +718,6 @@ export function createTurnExecutor(
     }
   }
 
-  /** Native output between our turns belongs to no turn: a note on the session's latest turn. */
   async function noteOutside(event: Extract<HarnessEvent, { type: "text" }>) {
     if (!event.text) return;
     const latest = await context.store.turnRuns.latestInSession(org, event.sessionId);
@@ -829,10 +728,6 @@ export function createTurnExecutor(
 
   let outside = Promise.resolve();
 
-  /**
-   * Interrupts a live turn. The worker's turn.completed event ends it. "gone" means the worker
-   * has no live turn for it: the turn already stopped.
-   */
   async function interrupt(turnId: string): Promise<InterruptResult> {
     const state = live.get(turnId);
     if (!state) return "gone";
@@ -850,37 +745,34 @@ export function createTurnExecutor(
     }
   }
 
-  /** Ends a live turn without a worker result, such as when the worker is gone. */
   async function abandon(turnId: string, result: TurnResult) {
     const state = live.get(turnId);
     if (state) await finish(state, result);
   }
 
-  /**
-   * Ends live turns for a reason. It records the reason first, unless a turn already stops, so
-   * that the close ends each turn as cancelled or interrupted. Then it ends the native turns,
-   * handles the events the host sent before, and ends each turn that the host did not end. By
-   * default it closes each session; interrupt interrupts each turn first, and close replaces the
-   * session closes, such as with a close of every session of the organization.
-   */
+  async function closeSessions(states: LiveTurn[]) {
+    for (const state of states) await closeNative(state.sessionId);
+  }
+
+  async function interruptAndCloseSessions(states: LiveTurn[]) {
+    for (const state of states) {
+      await interrupt(state.turnId);
+      await closeNative(state.sessionId);
+    }
+  }
+
   async function end(
     turnIds: string[],
     interruption: TurnInterruption,
-    native: { interrupt?: boolean; close?: () => Promise<void> } = {},
+    stopNative: (states: LiveTurn[]) => Promise<void> = closeSessions,
   ) {
     const states = turnIds.flatMap((turnId) => {
       const state = live.get(turnId);
       return state ? [state] : [];
     });
     for (const state of states) state.stopping ??= interruption;
-    if (native.close) await native.close();
-    else
-      for (const state of states) {
-        if (native.interrupt) await interrupt(state.turnId);
-        await closeNative(state.sessionId);
-      }
+    await stopNative(states);
     for (const state of states) {
-      // The host's turn.completed arrives before the close answers; it is handled first.
       await state.chain;
       await finish(state, { status: "interrupted" }).catch(() =>
         context.log("Could not end an agent turn."),
@@ -888,11 +780,6 @@ export function createTurnExecutor(
     }
   }
 
-  /**
-   * Asks a live turn to end for a reason, once. The turn ends with the worker's terminal event,
-   * or its native session closes after a timeout. A turn that is still starting ends before it
-   * runs.
-   */
   async function requestStop(turnId: string, interruption: TurnInterruption) {
     const state = live.get(turnId);
     if (!state) {
@@ -901,7 +788,6 @@ export function createTurnExecutor(
     }
     if (state.stopping) return;
     state.stopping = interruption;
-    // The timeout also covers an interrupt command that never answers.
     const cancel = context.later(() => {
       if (live.get(turnId) === state)
         void end([turnId], interruption).catch(() =>
@@ -922,7 +808,6 @@ export function createTurnExecutor(
       .finally(() => {
         starting.delete(id);
         stopRequests.delete(id);
-        // Its recovery continued it as a newer attempt: the next cycle starts that one.
         if (newerAttempt.delete(id)) context.changed({});
       });
   }
@@ -931,11 +816,9 @@ export function createTurnExecutor(
     live,
     heldFolders,
     closeNative,
-    /** Agent settings changed: the next start writes the agent folders again. */
     unsynchronize() {
       synchronized = false;
     },
-    /** Starts claimed turns that this process does not run yet. */
     startClaimed(turns: HostTurn[]) {
       for (const hostTurn of turns) {
         const id = hostTurn.turn.id;
@@ -943,22 +826,15 @@ export function createTurnExecutor(
         launch(hostTurn);
       }
     },
-    /**
-     * Applies the server's view of this device's live turns. A turn the server no longer gives
-     * this device, such as after a home move, ends here without a report. A stop reaches its
-     * live turn. Turns that are not running here start, or recover when their harness process
-     * died with an earlier run of the app.
-     */
     async reconcile(turns: HostTurn[]) {
       const now = context.now();
       const byId = new Map(turns.map((entry) => [entry.turn.id, entry.turn]));
-      // Native commands may hang; the host cycle does not wait for them.
       const failed = () => context.log("Could not end an agent turn.");
       for (const state of live.values()) {
         const turn = byId.get(state.turnId);
         if (!turn || turn.attempt !== state.attempt) {
           state.released = true;
-          void end([state.turnId], "moved", { interrupt: true }).catch(failed);
+          void end([state.turnId], "moved", interruptAndCloseSessions).catch(failed);
         } else if (turn.status === "stopping")
           void requestStop(state.turnId, turn.interruption ?? "stop").catch(failed);
       }
@@ -974,7 +850,6 @@ export function createTurnExecutor(
         const kept = waitUntil.get(turn.id);
         if (kept !== undefined && kept > now) continue;
         waitUntil.delete(turn.id);
-        // A kept turn never reached the harness here: it starts again, it does not recover.
         if (turn.status === "assigned" || kept !== undefined) launch(hostTurn);
         else {
           ending.add(turn.id);
@@ -983,12 +858,10 @@ export function createTurnExecutor(
         }
       }
     },
-    /** Sends turn ends that an outage held back. */
     async reportEnds() {
       for (const [turnId, { attempt, input }] of unreported)
         await reportEnd({ turnId, attempt }, input);
     },
-    /** Events are recorded in arrival order per turn. Stale generations are ignored. */
     onEvent(event: HarnessEvent) {
       let state: LiveTurn | undefined;
       if (event.turnId) state = live.get(event.turnId);

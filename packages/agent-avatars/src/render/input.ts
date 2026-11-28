@@ -23,10 +23,8 @@ interface InputOptions {
   reducedMotion: boolean;
 }
 
-/** Turns component props into controller input. Every renderer uses it, so they behave alike. */
 export function controllerInput(options: InputOptions): ControllerInput {
   return {
-    // Reduced motion holds the waiting pose whatever the mood.
     mood: !options.reducedMotion && MOODS.includes(options.mood) ? options.mood : "waiting",
     body: options.body,
     eyes: options.eyes,

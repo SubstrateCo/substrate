@@ -1,15 +1,10 @@
 import { sql } from "drizzle-orm";
 import { check, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-/**
- * MCP servers that the owner added to an agent. The desktop passes them to the harness at each
- * session setup. Configuration only: credentials stay in each native harness. Times are epoch ms.
- */
 export const agentMcpServers = sqliteTable(
   "agent_mcp_servers",
   {
     organizationId: text("organization_id").notNull(),
-    /** The harness agent ID, which also names the agent folder. */
     agentId: text("agent_id").notNull(),
     id: text("id").notNull(),
     name: text("name").notNull(),

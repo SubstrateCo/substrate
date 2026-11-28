@@ -23,7 +23,6 @@ export function TaskDiscussion({
   taskEntityId: string;
   visible: boolean;
   conversationId: string | null;
-  /** An archived task keeps its discussion but cannot start one. */
   archived?: boolean;
 }) {
   const { organizationId } = useWorkspaceScope();
@@ -63,10 +62,6 @@ export function TaskDiscussion({
   );
 }
 
-/**
- * Opens the task's conversation. A task without one starts it on the first click, unless the
- * task is archived.
- */
 function TaskDiscussionLink({
   link,
   archived,

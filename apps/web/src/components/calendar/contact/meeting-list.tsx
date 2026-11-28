@@ -21,7 +21,6 @@ import {
 import { eventTitle, eventWhenLabel } from "@/lib/calendar/days";
 import { listPhase } from "@/lib/resource-state";
 
-/** The viewer's meetings with one contact, newest first. Each row opens the event. */
 export function MeetingList({
   meetings,
   error,

@@ -48,10 +48,6 @@ const f = setupDatabase();
 type CallIdentity = Omit<Parameters<typeof executeRawTool>[1], "installationId">;
 const served = new WeakMap<TurnSpec, Map<string, Promise<TurnContext>>>();
 
-/**
- * The live server turn of a test turn, for the agent behind the identity's actor, leased by the
- * agent's home desktop. A reused spec is the same turn.
- */
 function contextFor(identity: CallIdentity, spec: TurnSpec) {
   const byActor = served.get(spec) ?? new Map<string, Promise<TurnContext>>();
   served.set(spec, byActor);
@@ -85,7 +81,6 @@ function contextFor(identity: CallIdentity, spec: TurnSpec) {
   return context;
 }
 
-/** Calls a tool in the spec's server turn, from the spec's installation. */
 async function executeRaw<K extends ServerToolName>(
   db: DatabaseExecutor,
   identity: CallIdentity,
@@ -102,7 +97,6 @@ async function executeRaw<K extends ServerToolName>(
   );
 }
 
-// A call these tests expect to run, not to wait for approval, with its committed effects.
 async function executeCommittedTool<K extends ServerToolName>(
   ...args: [DatabaseExecutor, CallIdentity, K, WorkspaceApiRequest["input"], TurnSpec]
 ) {
@@ -112,7 +106,6 @@ async function executeCommittedTool<K extends ServerToolName>(
   return { ...committed, result };
 }
 
-// Tests that inspect only the payload still use the production commit boundary.
 async function executeAgentTool<K extends ServerToolName>(
   db: DatabaseExecutor,
   identity: CallIdentity,
@@ -146,8 +139,6 @@ function trackedTransactions(failAfterWork = false) {
   return { db: track(f.db), count: () => count, failure };
 }
 
-// An interactive turn without a source place on the agent's home desktop: every tool may run,
-// and reply needs a `to`.
 const homeInstallation: string = crypto.randomUUID();
 const turn = {
   key: sessionKeys.routine(crypto.randomUUID()),
@@ -182,7 +173,6 @@ async function fixture() {
   const identity = { organizationId: f.orgA, userId: "alice", actorEntityId: actor.entityId };
   const human = createMessagingService(f.db, { organizationId: f.orgA, userId: "alice" });
   const project = await f.forActor(f.alice).projects.create({ name: "Work" });
-  // Each call parses its result with the tool's own output schema, as the MCP server does.
   const call = async <K extends ServerToolName>(tool: K, input: WorkspaceApiRequest["input"]) =>
     // SAFETY: the result was parsed with the output schema registered for tool K.
     mcpTools[tool].output.parse(
@@ -193,7 +183,6 @@ async function fixture() {
   return { actor, agentId: agent!.id, identity, human, project, call, createTask };
 }
 
-/** Bob's desktop, on the installation the test turn's calls come from. */
 const bobDesktop = () =>
   registerDevice(f.db, "bob", {
     installationId: turn.installationId,
@@ -698,7 +687,6 @@ test("CRM follow-up replay rebuilds the current task projection after a project 
   };
   const created = await call("create_crm_follow_up", input);
   expect(created.project.id).toBe(original.entityId);
-  // Simulate a committed structural move: task parent and access container change together.
   await f.db.execute(sql`with moved as (
     update ${entities} set access_entity_id = ${project.entityId} where entity_id = ${created.id} returning entity_id
   ) update ${tasks} set project_entity_id = ${project.entityId} where entity_id in (select entity_id from moved)`);
@@ -1467,7 +1455,6 @@ test("conversation pages never repeat a conversation or a thread that moves up",
   const [first] = channels;
   const listed = await call("list_conversations", { limit: 1 });
   expect(listed.items.map((item) => item.name)).toEqual(["third"]);
-  // Activity in the oldest conversation moves it above the cursor while the agent pages.
   await human.sendMessage(first!.channel.id, "new activity");
   const rest = await call("list_conversations", { limit: 1, cursor: listed.nextCursor });
   expect(rest.items.map((item) => item.name)).toEqual(["second"]);
@@ -1558,7 +1545,6 @@ test("reply resolves the agent once and does not re-authenticate inside messagin
   ).toBe("agent");
   const identityReads = () => queries.filter((query) => query.includes('from "user"'));
   expect(identityReads()).toHaveLength(1);
-  // The send builds its hints in the transaction; a replay still refreshes the same timeline.
   const conversationHint: RealtimeHint = {
     audience: realtimeKeys.conversation(channel.id),
     domain: "messaging",

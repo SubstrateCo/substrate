@@ -40,10 +40,6 @@ function Place({ place }: { place: AgentRequestPlace }) {
   );
 }
 
-/**
- * The place of stopped work. The server sends no names, so the viewer's own conversation list
- * names it; a place the server or that list hides stays a placeholder.
- */
 function WorkPlace({ place }: { place: AgentWorkPlace }) {
   const { organizationId } = useWorkspaceScope();
   const conversations = useQuery(conversationsQueryOptions(organizationId));
@@ -57,7 +53,6 @@ function WorkPlace({ place }: { place: AgentWorkPlace }) {
   );
 }
 
-/** A message the home desktop couldn't confirm the agent received, outside a listed turn. */
 function UncertainItem({ item }: { item: AgentUncertainItemView }) {
   const { userId, organizationId } = useWorkspaceScope();
   const resend = useResendItem(userId, organizationId);
@@ -84,7 +79,6 @@ function UncertainItem({ item }: { item: AgentUncertainItemView }) {
   );
 }
 
-/** Everything that waits for the owner, from the server, so it works on every device. */
 export function NeedsYou() {
   const { userId, organizationId } = useWorkspaceScope();
   const needsYou = useQuery(needsYouOptions(userId, organizationId));
@@ -119,7 +113,6 @@ export function NeedsYou() {
       body: <UncertainItem item={item} />,
       agentLink: agentLink(organizationId, item.userAgentId, { view: "work" }),
     })),
-    // Agents that need the owner with nothing listed above.
     ...agents.map((status) => ({
       key: `agent:${status.userAgentId}`,
       agentName: status.agent.name,

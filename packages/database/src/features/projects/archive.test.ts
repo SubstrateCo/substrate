@@ -18,12 +18,10 @@ async function archivedState(projectEntityId: string) {
 test("project owners and organization admins archive and restore; editors and outsiders cannot", async () => {
   const alice = f.forActor(f.alice);
   const bob = f.forActor(f.bob);
-  // Bob owns his project; Alice is an organization owner without a grant on it.
   const owned = await bob.projects.create({ name: "Bob's" });
   await alice.projects.archive(owned.entityId);
   expect(await archivedState(owned.entityId)).toMatchObject({ by: f.alice });
   expect((await archivedState(owned.entityId)).at).toBeInstanceOf(Date);
-  // A repeated archive keeps the first archive's record.
   await bob.projects.archive(owned.entityId);
   expect((await archivedState(owned.entityId)).by).toBe(f.alice);
   await bob.projects.restore(owned.entityId);
@@ -72,7 +70,6 @@ test("archived projects are listed apart, with the reader's level", async () => 
     { entityId: archived.entityId, level: "view" },
   ]);
   expect((await alice.projects.list("all")).map((row) => row.name)).toEqual(["Active", "Archived"]);
-  // A deep link still opens it, with its archive state.
   expect((await bob.projects.getDetail(archived.entityId)).project.archivedAt).toBeInstanceOf(Date);
   expect(await f.forActor(f.outsider, f.orgB).projects.list("archived")).toEqual([]);
 });
@@ -103,7 +100,6 @@ test("an archived project and its tasks are readable but take no changes until r
       constructor: ValidationError,
       message: "Restore the project first.",
     });
-  // A reader without access learns nothing about the archive.
   expect(await rejection(bob.tasks.update(task.entityId, { title: "Nope" }))).toBeInstanceOf(
     AccessDeniedError,
   );
@@ -146,14 +142,12 @@ test("archived task discussions and linked messages are read-only", async () => 
   for (const write of writes)
     expect(await rejection(write())).toMatchObject({ message: "Restore the project first." });
 
-  // Existing comments and the discussion stay readable.
   expect(await alice.tasks.ensureDiscussion(task.entityId)).toBe(id);
   expect((await f.messaging("alice").listMessages(id)).map((row) => row.body)).toEqual([
     "Before archive",
   ]);
   const conversations = await f.messaging("alice").listConversations(id);
   expect(conversations.find((row) => row.id === id)).toMatchObject({ canPost: false });
-  // Search still finds archived work, but not as a target for changes.
   expect(
     (await f.context("alice").search({ kind: "task", query: "Talk" })).map((row) => row.id),
   ).toEqual([task.entityId]);

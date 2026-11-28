@@ -107,7 +107,6 @@ export function InteractionTable({
   fetching,
 }: {
   rows: InteractionRow[];
-  /** The meetings that calendar interactions came from, by interaction. */
   sources?: InteractionSources;
   pagination: AppTablePagination;
   fetching: boolean;

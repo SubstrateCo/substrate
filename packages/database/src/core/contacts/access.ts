@@ -8,11 +8,6 @@ import { contactInteractions } from "./interactions/interactions.schema";
 import { and, eq, inArray, isNull, sql, type SQLWrapper } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
-// Contacts belong to the whole organization (see contactEntityRules in contracts), so
-// requireAccess and readable give every member edit access. Authors delete their own
-// interactions, and admins delete any. An agent acts as its owner.
-
-/** The live interaction and its live contact, with the actor's level on both. */
 export async function requireInteraction(ctx: RepositoryContext, id: string) {
   const access = await ctx.requireAccess(id, "edit", { type: "contact_interaction" });
   const contact = alias(entities, "interaction_contact");
@@ -41,7 +36,6 @@ export async function requireInteraction(ctx: RepositoryContext, id: string) {
   };
 }
 
-/** Whether the actor may delete interactions written by the author in `authorEntityId`. */
 export function deletableAuthorCondition(ctx: RepositoryContext, authorEntityId: SQLWrapper) {
   const { scope } = ctx;
   return sql`(${organizationAdminCondition(scope)} OR ${permissionActorEntityId(scope)} = ${permissionActorEntityId(
@@ -49,7 +43,6 @@ export function deletableAuthorCondition(ctx: RepositoryContext, authorEntityId:
   )})`;
 }
 
-/** The authors, among `authorIds`, whose interactions the actor may delete. */
 export async function deletableAuthors(ctx: RepositoryContext, authorIds: string[]) {
   const ids = [...new Set(authorIds)];
   if (!ids.length) return new Set<string>();

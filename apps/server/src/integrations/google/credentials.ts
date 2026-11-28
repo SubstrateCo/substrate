@@ -4,12 +4,10 @@ import { GoogleReauthRequired, GoogleScopeMissing, GoogleUnavailable } from "./e
 import { APIError } from "better-auth/api";
 import { z } from "zod";
 
-/** The getAccessToken error codes that change the outcome. Everything else is OTHER. */
 const betterAuthCode = z
   .enum(["ACCOUNT_NOT_FOUND", "FAILED_TO_GET_ACCESS_TOKEN", "PROVIDER_NOT_SUPPORTED", "OTHER"])
   .catch("OTHER");
 
-/** The part of Better Auth that loads provider tokens. Pass the Better Auth instance. */
 export interface GoogleTokenSource {
   api: {
     getAccessToken(input: {
@@ -18,14 +16,9 @@ export interface GoogleTokenSource {
   };
 }
 
-/**
- * A current access token for one of the user's linked Google accounts, refreshed when needed.
- * Throws GoogleScopeMissing when the grant lacks the product's scopes.
- */
 export async function googleAccessToken(input: {
   auth: GoogleTokenSource;
   userId: string;
-  /** The Better Auth `account.id`, not Google's subject. */
   accountId: string;
   product: GoogleProduct;
 }): Promise<string> {

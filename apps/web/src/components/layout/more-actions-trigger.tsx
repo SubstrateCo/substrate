@@ -5,7 +5,6 @@ import { DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Ellipsis } from "lucide-react";
 
-/** The icon button that opens a More actions menu. Place it first inside a `DropdownMenu`. */
 export function MoreActionsTrigger({ triggerRef }: { triggerRef?: Ref<HTMLButtonElement> }) {
   return (
     <Tooltip>

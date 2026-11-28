@@ -35,7 +35,6 @@ test("deleting a channel warns about linked work and removes the channel for eve
   await dialog.getByRole("button", { name: "Delete channel", exact: true }).click();
 
   await expect(dialog).toHaveCount(0);
-  // Messages may open the sender's next conversation, never the deleted channel.
   await expect
     .poll(() => new URL(sender.page.url()).searchParams.get("conversationId"))
     .not.toBe(channel.id);
@@ -64,7 +63,6 @@ test("members browse public channels in search and join from the list or the cha
   const member = await client(actors.member);
   await visit(member);
   const { page } = member;
-  // Public channels the member never joined stay out of the sidebar.
   await expect(page.getByText(listed.name, { exact: true })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Browse channels", exact: true }).first().click();
@@ -105,7 +103,6 @@ test("a member leaves a private channel and loses access to it", async ({ actors
     .getByRole("dialog", { name: `Leave ${channel.name}?` })
     .getByRole("button", { name: "Leave channel", exact: true })
     .click();
-  // Messages may open the member's next conversation, never the channel they left.
   await expect
     .poll(() => new URL(member.page.url()).searchParams.get("conversationId"))
     .not.toBe(channel.id);

@@ -44,9 +44,6 @@ export function messageMutationOperations(
         validateBody(body, attachments.length);
         if (body === message.body) return { id: messageId };
       }
-      // The write checks the author and the lifecycle itself, so an edit can never follow a
-      // deletion. It comes first: mutations of one message then run one at a time, and each
-      // reads the references the previous one committed.
       const [updated] = await tx
         .update(messagingMessages)
         .set(deleting ? { body: "", deletedAt: new Date() } : { body, editedAt: new Date() })
@@ -59,8 +56,6 @@ export function messageMutationOperations(
         )
         .returning();
       if (!updated) throw new AccessDeniedError();
-      // Related lists of every referenced record show this message's body. Read the references
-      // before the edit replaces its mentions.
       const references = await tx
         .select({
           entityId: messageEntityReferences.entityId,
@@ -79,7 +74,6 @@ export function messageMutationOperations(
         entityId,
         projectEntityId: containerId,
       }));
-      // Explicit associations and source relationships are provenance, not parsed body content.
       await tx
         .delete(messageEntityReferences)
         .where(
@@ -89,8 +83,6 @@ export function messageMutationOperations(
           ),
         );
       if (deleting) {
-        // Detaching blocks both metadata and content reads. Existing orphan-file retention
-        // handles storage cleanup; do not remove files that another record still references.
         await tx.delete(messageAttachments).where(eq(messageAttachments.messageId, messageId));
         await tx.delete(messagingReactions).where(eq(messagingReactions.messageId, messageId));
         const removed = await tx
@@ -111,15 +103,12 @@ export function messageMutationOperations(
         });
         referenced.push(...work);
       }
-      // A full messaging hint refreshes previews and active search, not just timeline pages. The
-      // identifiers keep the refresh to this message's thread and context pages.
       context.effects.hint({
         audience: realtimeKeys.conversation(conversation.id),
         domain: "messaging",
         messageId,
         threadId: message.threadId,
       });
-      // The messaging hint already refreshes this message's context pages.
       for (const hint of referenceChangeHints(conversation.organizationId, referenced))
         context.effects.hint(hint);
       return { id: messageId };

@@ -5,7 +5,6 @@ export type Message = {
   body: string;
   authorName: string;
   authorImage?: string | null;
-  /** The author's look when the author is an agent. */
   authorAvatar?: AgentAvatarCode | null;
   authorActorEntityId?: string | null;
   authorType?: "human" | "agent";

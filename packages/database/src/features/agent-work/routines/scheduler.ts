@@ -6,16 +6,8 @@ import { agentRoutines } from "../routines.schema";
 import { dueOccurrence } from "./schedule";
 import { and, eq, isNotNull, isNull, lte, sql } from "drizzle-orm";
 
-/** Routines fired in one scheduler pass. The rest fire in the next pass. */
 const routineFireLimit = 100;
 
-/**
- * Queues one routine item for each due routine: enabled, approved at its current revision, of an
- * enabled agent, and past its next fire time. Missed ticks collapse into the latest occurrence,
- * and admission supersedes the routine's older ticks that no turn took yet. Routines fire whether
- * or not the agent's host is online; the work waits in the queue. A concurrent pass skips the
- * routines this one claimed.
- */
 export async function fireDueRoutines(
   db: DatabaseExecutor,
   now = new Date(),

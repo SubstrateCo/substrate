@@ -9,7 +9,6 @@ import { referenceTokenPattern } from "@/lib/messaging/reference-token";
 import { messageLink, workLink } from "@/lib/navigation/record-links";
 import { recordLabelsOptions } from "@/queries/context/links";
 
-/** The label read takes at most this many IDs. */
 const labelLimit = 50;
 
 const labelTypes: Record<ReferenceKind, RecordLabel["type"]> = {
@@ -31,11 +30,6 @@ function referenceLink(organizationId: string, kind: ReferenceKind, label: Recor
   return undefined;
 }
 
-/**
- * The references in a message body, resolved by name outside its conversation, such as in a
- * record's discussions. The server names only records the viewer can open; the rest stay
- * unavailable.
- */
 export function useRecordReferences(body: string) {
   const { organizationId } = useWorkspaceScope();
   const tokens = [...body.matchAll(referenceTokenPattern)].flatMap((match) => {

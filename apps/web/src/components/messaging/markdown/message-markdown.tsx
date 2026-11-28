@@ -12,7 +12,6 @@ const MessageReferences = createContext<{
   loading: boolean;
 }>({ loading: false });
 
-/** Reads the references from context, so the component stays the same when they change. */
 function ReferenceSpan({ node, children }: ExtraProps & { children?: ReactNode }) {
   const { references, loading } = useContext(MessageReferences);
   return (

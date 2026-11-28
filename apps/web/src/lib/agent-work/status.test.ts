@@ -203,7 +203,6 @@ describe("agent page header status", () => {
       elsewhereConversationId: null,
     });
     expect(working("channel")?.elsewhereConversationId).toBe("channel");
-    // The server leaves out places the owner can no longer open.
     expect(working(null)?.elsewhereConversationId).toBeNull();
   });
 });

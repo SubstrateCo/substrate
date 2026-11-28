@@ -25,7 +25,6 @@ export type ActivityEvent = {
   } | null;
 };
 
-// Known server actions read as a verb phrase after the actor's name.
 const phrasing = new Map([
   ["Task created", { icon: CircleDot, verb: "created the task" }],
   ["Created from a discussion", { icon: MessageSquare, verb: "created this from" }],

@@ -25,17 +25,13 @@ test.each([
 });
 
 test.each([
-  // A one-letter part.
   "mary-jane_o@x.com",
   "j.smith@x.com",
-  // Digits.
   "quill907@mail.test",
-  // More than three parts, or empty parts.
   "aa.bb.cc.dd@x.com",
   "john..smith@x.com",
   ".john@x.com",
   "+cal@x.com",
-  // Role mailboxes.
   "info@x.com",
   "Team@x.com",
   "hello@x.com",

@@ -1,6 +1,7 @@
 import type { KeyboardEventHandler, ReactNode } from "react";
 
 import { FormMessage } from "./form-message";
+import { keepFocusOnPointerDown } from "./keep-focus";
 import { modalDialogProps } from "./modal-dialog";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { NativeValidationScope } from "@/components/forms/native-form";
@@ -28,11 +29,6 @@ export type FormDialogEditor = {
   onKeyDown?: KeyboardEventHandler<HTMLFormElement>;
 };
 
-/**
- * The shell of every modal form. With `nativeValidation`, `NativeField` children validate with
- * the browser's constraints and show product copy inline; otherwise the caller validates
- * (TanStack Form) and the form is `noValidate`.
- */
 export function FormDialog({
   title,
   saveLabel,
@@ -115,8 +111,7 @@ export function FormDialog({
                 type="button"
                 variant="outline"
                 disabled={pending}
-                // Blur validation must not move Cancel between pointer-down and click.
-                onPointerDown={(event) => event.preventDefault()}
+                onPointerDown={keepFocusOnPointerDown}
                 onClick={onClose}
               >
                 Cancel

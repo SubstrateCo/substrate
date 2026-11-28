@@ -1,6 +1,5 @@
 import type { z } from "zod";
 
-/** The parts of a native input that decide its validation message. */
 export type NativeFieldState = {
   validity: Pick<
     ValidityState,
@@ -20,22 +19,14 @@ export type NativeFieldState = {
   maxLength?: number;
   min?: string;
   max?: string;
-  /** The visible label, such as "Workspace name". */
   label?: string;
-  /** The input's title, which describes its pattern. */
   title?: string;
-  /** A field-specific message for an empty required field, such as "Enter your name." */
   missingMessage?: string;
-  /** Product copy the page set with `setCustomValidity`, such as a cross-field check. */
   customMessage?: string;
 };
 
 const lower = (label: string) => label.charAt(0).toLowerCase() + label.slice(1);
 
-/**
- * Product copy for a native constraint failure. The browser's own text, such as "Please fill
- * out this field.", is never shown.
- */
 export function nativeValidationMessage(field: NativeFieldState): string {
   const { validity, type, label = "" } = field;
   const name = label.trim() ? lower(label.trim()) : "a value";
@@ -63,11 +54,6 @@ export function nativeValidationMessage(field: NativeFieldState): string {
   return field.customMessage || `Check the ${name}.`;
 }
 
-/**
- * Fallback copy for schema issues that have no message of their own. Schemas should still give
- * field-specific messages; this keeps library text such as "Too small: expected string to have
- * >=1 characters" out of the interface.
- */
 export function schemaIssueMessage(issue: z.core.$ZodRawIssue): string | undefined {
   switch (issue.code) {
     case "too_small":
@@ -91,7 +77,6 @@ export function schemaIssueMessage(issue: z.core.$ZodRawIssue): string | undefin
         : "Check this field.";
     case "invalid_value":
       return "Choose one of the options.";
-    // Custom issues carry their own message; structural issues are not field copy.
     case "custom":
     case "invalid_element":
     case "invalid_key":

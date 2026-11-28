@@ -16,16 +16,10 @@ type CrmResourceViews = {
   onRetry: () => void;
   loading?: ReactNode;
   record?: boolean;
-  /** In a card, sheet section, or dialog, not the only content of a page. */
   compact?: boolean;
-  /** What a section failed to load, in lower case, such as "follow-ups". */
   noun?: string;
 };
 
-/**
- * Loaded CRM data, or the loading, error, or unavailable view in its place. After a failed
- * refresh, the loaded data stays under a notice.
- */
 export function CrmResourceBoundary<T>({
   state,
   children,
@@ -55,7 +49,6 @@ export function CrmResourceBoundary<T>({
   );
 }
 
-/** The loading or error view of CRM data that has not loaded. */
 export function CrmResourceFallback({
   pending,
   error,

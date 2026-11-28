@@ -136,7 +136,6 @@ test("connecting again updates the calendar; reconnecting a disconnected one res
     timeZone: "Europe/London",
     isPrimary: false,
     credentialAccountId: otherAccount,
-    // Reconnecting keeps the owner's interaction setting.
     recordsInteractions: false,
     syncStatus: "pending",
   });
@@ -210,7 +209,6 @@ test("only the owner reads or manages a calendar, even against an organization a
   const alice = await session("alice");
   const bob = await session("bob");
 
-  // Alice is the organization owner, Bob a member. Each sees only their own calendar.
   expect((await alice.calendar.events(range)).map((event) => event.calendarEntityId)).toEqual([
     aliceCalendar.entityId,
   ]);
@@ -346,22 +344,15 @@ test("events hide a Gmail copy of an invite the owner can read within 15 minutes
     kind: "from_gmail" as const,
   });
   await syncCalendarEvents(f.db, calendar.entityId, [
-    // Day 2: the invite is on the same calendar and starts 15 minutes later.
     gmail("gmail-same", 2),
     event("invite-same", 2, 15),
-    // Day 3: the invite is on the owner's other calendar.
     gmail("gmail-other-calendar", 3),
-    // Day 4: no counterpart.
     gmail("gmail-unique", 4),
-    // Day 5: the invite starts 20 minutes later.
     gmail("gmail-far", 5),
     event("invite-far", 5, 20),
-    // Day 6: the counterpart is cancelled.
     gmail("gmail-cancelled", 6),
     { ...event("invite-cancelled", 6), status: "cancelled" },
-    // Day 7: the counterpart is in another member's calendar.
     gmail("gmail-bob", 7),
-    // Day 8: two Gmail copies of the same booking hide nothing.
     gmail("gmail-pair-a", 8),
     gmail("gmail-pair-b", 8),
   ]);
@@ -383,7 +374,6 @@ test("events hide a Gmail copy of an invite the owner can read within 15 minutes
   ];
   for (const id of hidden) expect([id, listed.has(await eventId(id))]).toEqual([id, false]);
   for (const id of shown) expect([id, listed.has(await eventId(id))]).toEqual([id, true]);
-  // The hidden copy is still stored and opens by its ID.
   const detail = await alice.calendar.event(await eventId("gmail-same"));
   expect(detail).toMatchObject({ kind: "from_gmail", startsAt: at(2) });
 });
@@ -473,7 +463,6 @@ test("event detail derives attendee roles and matches the oldest readable contac
     ["BOB@example.com", "member", null],
     ["declined@else.com", "declined", null],
     ["JANE@customer.com", "contact", { entityId: older.entityId, displayName: "Jane Older" }],
-    // A verified user of another organization is not a member here.
     ["outside@example.com", "new_contact", null],
     ["room@example.com", "resource", null],
   ]);
@@ -542,7 +531,6 @@ test("event outcome follows qualification, then the recorded interactions", asyn
       startsAt: "2026-01-01T10:00:00.000Z",
     },
   });
-  // Bob reads the interaction, but not the meeting behind it.
   expect(
     await (await session("bob")).calendar.interactionSourceEvents([interaction.entityId]),
   ).toEqual({});

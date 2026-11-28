@@ -88,7 +88,6 @@ export async function requireUnassignedProjectActor(
         eq(tasks.organizationId, scope.organizationId),
         eq(tasks.projectEntityId, projectEntityId),
         liveTask(),
-        // A missing target or one without a user compares NULL, which matches no agent.
         or(eq(actors.entityId, actorEntityId), eq(userAgents.userId, sql`(${targetUserId})`)),
       ),
     )

@@ -21,7 +21,6 @@ import { ArrowUpRight, CircleAlert, Hand, Lightbulb } from "lucide-react";
 
 export type RequestLink = { link: RecordLink; label: string };
 
-/** Which answer is being sent, so only that button says so. */
 export type RequestPending =
   | { kind: "approve" }
   | { kind: "decline" }
@@ -30,7 +29,6 @@ export type RequestPending =
 
 const hiddenRequestTitle = "A request you can’t open";
 
-/** How a request ended, with a forward link to what an approved proposal created. */
 export function RequestResult({
   request,
   link,
@@ -66,7 +64,6 @@ function Deadline({ deadline }: { deadline: number }) {
   return remaining > 0 ? <>Expires in {formatDuration(remaining)}</> : <>Expired</>;
 }
 
-/** A failed answer, inside the card it belongs to. The draft stays so the owner can try again. */
 function RequestError({ message }: { message?: string }) {
   if (!message) return null;
   return (
@@ -77,10 +74,6 @@ function RequestError({ message }: { message?: string }) {
   );
 }
 
-/**
- * An open request from the agent. Questions and proposals wait until the owner answers, from
- * any device. Blocking requests show the deadline the desktop enforces.
- */
 export function RequestCardView({
   request,
   pending,
@@ -93,11 +86,8 @@ export function RequestCardView({
 }: {
   request: AgentRequestView;
   pending?: RequestPending;
-  /** Reviewed copy for the last failed answer. */
   error?: string;
-  /** The request arrived while the owner watched, so it fades in. */
   arriving?: boolean;
-  /** The records the proposal names, resolved for the viewer. Null for other requests. */
   target: ProposalTarget | null;
   onRespond: (response: AgentRequestResponse) => void;
   onApprove: () => void;
@@ -106,7 +96,6 @@ export function RequestCardView({
   const deadline = requestDeadline(request);
   const { payload } = request;
   const busy = !!pending;
-  // The server leaves out what a request says when its conversation is hidden from the viewer.
   if (!payload)
     return (
       <MessageCard icon={Hand} tone="attention" title={hiddenRequestTitle} arriving={arriving}>

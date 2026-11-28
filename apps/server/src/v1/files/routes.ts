@@ -8,7 +8,6 @@ import type { FileService } from "./service";
 import { Hono } from "hono";
 
 export function createFilesRoutes(service: FileService, scopes: Scopes) {
-  // Uploads do not accept an expected workspace; storage uses the active session workspace.
   return new Hono<ScopeEnv<UserScope>>()
     .post("/uploads", v("json", createUploadInput), scopes.user(), async (c) =>
       respond(c, await service.createUpload(c.var.scope, c.req.valid("json"))),

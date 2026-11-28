@@ -6,7 +6,6 @@ import type { gmailReader } from "./gmail/gmail-reader.ts";
 import { ReconnectRequired } from "./provider.ts";
 
 type OlderReader = Pick<ReturnType<typeof gmailReader>, "olderIds" | "olderMessages">;
-/** The fewest message IDs one Gmail read asks for. */
 const minimumOlderBatch = 10;
 type SourceRead = (
   mailbox: string,
@@ -34,7 +33,6 @@ export async function readOlderSource(
   if (!page) throw new Error("Gmail page unavailable.");
   const dates = await cachedDates(page.ids);
   const missing = page.ids.filter((id) => !dates.has(id));
-  // A timeout halfway through a page should not make a retry download those bodies again.
   for (let i = 0; i < missing.length; i += 8) {
     const messages = await reader.olderMessages(missing.slice(i, i + 8));
     await save(messages);
@@ -48,8 +46,6 @@ export async function readOlderSource(
   };
 }
 
-/** Fill one displayed page, not one raw Gmail response. Several messages can belong
- * to one thread, and a quiet mailbox need not use its share of a unified page. */
 export async function nextMailPage(
   q: OlderMailQuery,
   boxes: Pick<Mailbox, "id" | "status">[],
@@ -81,15 +77,11 @@ export async function nextMailPage(
     const page = result();
     const remaining = mailPageSize - page.items.length;
     if (!pending().length || !remaining) return page;
-    // Once the cache has 50 candidates, only the sources that could change their
-    // order need to advance. An exhausted source never receives another request.
     const floor =
       cached.items.length === mailPageSize ? cached.items[mailPageSize - 1]!.timestamp : 0;
     const need = pending()
       .filter((b) => boundary(b.id) >= floor)
       .slice(0, mailPageSize);
-    // Fetched IDs can belong to threads already shown, so a few free slots still read a batch;
-    // extra messages land in the cache for the next page.
     const limit = Math.max(minimumOlderBatch, Math.ceil(remaining / need.length));
     let issue: OlderMailPage["issue"];
     await Promise.all(

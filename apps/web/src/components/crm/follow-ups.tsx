@@ -21,7 +21,6 @@ import { Plus } from "lucide-react";
 
 export function FollowUps({ entityId, canCreate }: { entityId: string; canCreate: boolean }) {
   const apps = useOrganizationApps();
-  // Follow-ups are CRM tasks: the server reads and creates them only with both apps on.
   if (!apps.enabled("crm") || !apps.enabled("tasks")) return null;
   return <EnabledFollowUps entityId={entityId} canCreate={canCreate} />;
 }

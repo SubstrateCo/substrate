@@ -13,10 +13,6 @@ import { useProject } from "@/queries/tasks/use-project";
 
 export type TaskRecord = { projectEntityId: string; taskEntityId: string };
 
-/**
- * A task opened over another app, outside its project page. It loads the task's project; another
- * task chosen in it opens in Tasks.
- */
 export function TaskRecordSheet({
   open,
   task,

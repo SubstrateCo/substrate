@@ -11,10 +11,6 @@ import { ensureHumanActor, type Database } from "@substrate/database/trusted";
 import { createHash } from "node:crypto";
 import sharp from "sharp";
 
-/**
- * A calendar date this many days from today, as YYYY-MM-DD. Today is the owner's local day, the
- * day the desktop tells the agent, so that "overdue" means the same to the seed and the agent.
- */
 export function day(offset: number) {
   const value = new Date();
   value.setDate(value.getDate() + offset);
@@ -30,11 +26,6 @@ const people = {
 } as const;
 export type PersonKey = keyof typeof people;
 
-/**
- * A small company workspace with overlapping records: projects and tasks, CRM accounts, contacts
- * and deals, and channels with history. Every run gets its own organization
- * and users, so runs do not see each other.
- */
 export async function seedWorld(db: Database) {
   const run = crypto.randomUUID().slice(0, 8);
   const organizationId = `eval-${run}`;
@@ -44,7 +35,6 @@ export async function seedWorld(db: Database) {
   await db
     .insert(organizationApps)
     .values((["tasks", "crm"] as const).map((appId) => ({ organizationId, appId, enabled: true })));
-  /** One value for each person, made in a fixed order. */
   const forPeople = async <T>(make: (key: PersonKey) => Promise<T>) => ({
     priya: await make("priya"),
     marcus: await make("marcus"),
@@ -77,7 +67,6 @@ export async function seedWorld(db: Database) {
       (await ensureHumanActor(db, { organizationId, userId: users[key].userId })).entityId,
   );
 
-  // Projects and tasks.
   const projects: Record<string, string> = {};
   const tasks: Record<string, string> = {};
   const project = async (key: string, name: string, description: string) => {
@@ -232,7 +221,6 @@ export async function seedWorld(db: Database) {
   ]);
   await owner.projects.archive(oldSite);
 
-  // CRM.
   const { result: pipeline } = await owner.crm.ensurePipeline();
   await owner.crm.configureStages(
     ["Lead", "Qualified", "Proposal", "Negotiation"].map((name, index) => ({
@@ -463,7 +451,6 @@ export async function seedWorld(db: Database) {
     "Intro call with Nora. Team of 14. Wants to try it on one project first.",
   );
 
-  // Conversations.
   const others = (["marcus", "dana", "tom"] as const).map((key) => users[key].email);
   const conversations: Record<string, string> = {};
   const messages: Record<string, string> = {};
@@ -562,7 +549,6 @@ export async function seedWorld(db: Database) {
     "sales",
     "New inbound lead: Jordan Ames, Director of Operations at Pinecrest Clinics, asked for a demo. 8 clinics, about 120 front desk staff, scheduling is all spreadsheets today. Lakeview Pediatrics referred them. Email is jordan.ames@pinecrestclinics.example, direct line 617-555-0142. No budget discussed yet.",
   );
-  // Files. The facts the scenarios ask for are only in the files, not in the message text.
   const files = new Map<string, Uint8Array>();
   const attachments: Record<string, string> = {};
   const attach = async (
@@ -692,9 +678,7 @@ export async function seedWorld(db: Database) {
     deals,
     conversations,
     messages,
-    /** Stored bytes by object key, for the agent file tools. */
     files,
-    /** Attachment IDs of the seeded files, by the key of their message. */
     attachments,
   };
 }

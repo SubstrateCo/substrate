@@ -25,7 +25,6 @@ export function useDirectMessage(organizationId: string) {
         const existing = agentDirectMessage(conversations ?? [], input.agentIds[0]!);
         if (existing) return { id: existing.id };
       }
-      // The server returns an existing DM with the same person instead of creating another one.
       return createConversation({
         data: {
           ...input,

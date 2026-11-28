@@ -11,7 +11,6 @@ import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
 
-/** Alice's agent with a claimed DM turn. */
 async function claimedTurn() {
   const x = await hostFixture(f);
   await x.alice.sendMessage(x.dm.id, "Start");
@@ -53,7 +52,6 @@ test("disabling the agent puts a turn that never started back; its work waits", 
   expect((await x.turnRow(x.claimed.turn.id)).status).toBe("cancelled");
   const [item] = await x.items();
   expect(item).toMatchObject({ status: "pending", turnId: null });
-  // A disabled agent is not claimed.
   expect(await x.claim()).toEqual([]);
 });
 

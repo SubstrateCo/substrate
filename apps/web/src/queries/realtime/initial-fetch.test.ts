@@ -9,7 +9,6 @@ import { afterEach, beforeEach, expect, vi, test } from "bun:test";
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
-// A value read before the load that opened the socket: the first ready reads it again.
 const loadedEarlier = () => Date.now() - 60_000;
 
 for (const observed of [false, true]) {
@@ -243,7 +242,6 @@ test("ready waits for the reads of this load without repeating them, and reads e
   try {
     const ready = cache.receive({ version: 1, type: "ready" });
     await advanceTimersAsync(0);
-    // The cache is fresh only once the read on screen has loaded.
     expect(health).toEqual(["syncing"]);
     loading.resolve(["first read"]);
     await ready;

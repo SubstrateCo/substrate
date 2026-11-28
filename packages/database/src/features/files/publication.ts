@@ -7,7 +7,6 @@ import { AccessDeniedError, ValidationError } from "../../errors";
 import type { Conversation } from "../messaging/access";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
-// The checked destination proves access. The conditional write arbitrates publication and deletion.
 export async function publishFiles(
   ctx: RepositoryContext,
   _destination: Authorized<unknown, "edit"> | Conversation,
@@ -16,7 +15,6 @@ export async function publishFiles(
   if (!attachmentFileIds.safeParse(ids).success)
     throw new ValidationError("Select up to 10 distinct files.");
   if (!ids.length) return;
-  // A missing or non-human actor yields NULL, which matches no file.
   const uploader = ctx.db
     .select({ userId: actors.userId })
     .from(actors)

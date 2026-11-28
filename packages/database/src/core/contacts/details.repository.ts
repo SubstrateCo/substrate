@@ -21,7 +21,6 @@ import { contactDetailRows, readContactProfile } from "./profile";
 import { contactIdentifiers, contacts } from "./schema";
 import { and, asc, eq, ne, sql } from "drizzle-orm";
 
-// A unique index allows one primary value. A change that races another primary change loses here.
 function primaryChanged(error: Error): never {
   if (violatedConstraint(error)?.endsWith("_primary_unique"))
     throw new ConflictError("This contact changed. Try again.");
@@ -40,8 +39,6 @@ function duplicateUrl(error: Error): never {
   return primaryChanged(error);
 }
 
-/** `checked` is the caller's requireContact in this transaction; edits to that contact reuse it
- * instead of checking again. */
 export function contactDetailsRepository(
   context: RepositoryContext,
   checked?: AuthorizedAccess<"edit">,
@@ -75,8 +72,6 @@ export function contactDetailsRepository(
     });
   }
 
-  /** Clears the other primary values. `keepId` is the row the caller makes primary next, so it is
-   * written once, not cleared and then set again. */
   async function clearPrimary(
     ctx: RepositoryContext,
     table: typeof contactIdentifiers | typeof contactAddresses | typeof contactUrls,
@@ -167,7 +162,6 @@ export function contactDetailsRepository(
           .where(target(contactIdentifiers, contactId, id));
         if (!existing) throw new AccessDeniedError();
         const isPrimary = value.isPrimary ?? existing.isPrimary;
-        // The unique index allows one primary per type, so an unchanged primary has no competitor.
         if (isPrimary && !(existing.isPrimary && existing.type === value.type))
           await clearPrimary(ctx, contactIdentifiers, contactId, id, value.type);
         const [row] = await ctx.db
@@ -176,7 +170,6 @@ export function contactDetailsRepository(
             ...value,
             extension: value.extension ?? null,
             label: value.label ?? null,
-            // An unset flag stays as stored, so a concurrent primary change is not undone.
             isPrimary: value.isPrimary,
             updatedAt: new Date(),
           })

@@ -19,7 +19,6 @@ export interface AgentAvatarHandle {
   poke(): void;
 }
 
-/** The props every renderer reads the same way. */
 export interface AvatarModelProps extends Partial<AvatarConfig> {
   mood?: Mood;
   world?: World;
@@ -31,10 +30,6 @@ export interface AvatarModelProps extends Partial<AvatarConfig> {
   level?: number;
 }
 
-/**
- * Resolves the look, its palette and the controller input, with the shared defaults, as every
- * renderer must.
- */
 export function useAvatarModel(props: AvatarModelProps, reducedMotion: boolean) {
   const { body, color, secondaryColor, fill, eyes, eyeColor, level } = props;
   const { mood = "waiting", world = "floor", ambient = "lively", animated = true } = props;
@@ -76,10 +71,6 @@ export function useAvatarModel(props: AvatarModelProps, reducedMotion: boolean) 
   return { palette, input, id, live: animated && !reducedMotion };
 }
 
-/**
- * Sends new input to the controller, redraws with `refresh`, and exposes the gesture handle.
- * The refs belong to the renderer, which creates the controller when it mounts.
- */
 export function useControllerSync(
   ref: Ref<AgentAvatarHandle> | undefined,
   controller: RefObject<AvatarController | null>,

@@ -9,11 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { MessageSquare } from "lucide-react";
 
-/**
- * Floats across the message's top edge on hover or focus, half above the row, so it reserves no
- * space in the timeline and covers little of the text. On devices without hover it stays visible
- * below the message.
- */
 export function MessageToolbar({
   message,
   onReact,
@@ -85,7 +80,6 @@ export function MessageToolbar({
   );
 }
 
-/** Reactions and the reply count. Renders nothing when there are neither. */
 export function MessageReactions({
   message,
   onReact,
@@ -98,7 +92,6 @@ export function MessageReactions({
   onReact?: (emoji: string) => void;
   pending: boolean;
   onThread?: (id: string) => void;
-  /** Replies the viewer has not read, marked so they can go straight to the thread. */
   unreadReplies?: number;
   renderReaction?: (reaction: Message["reactions"][number]) => ReactNode;
 }) {

@@ -16,7 +16,6 @@ export function DesktopInstall({
   heading,
 }: {
   destination: string;
-  /** Where "Continue in browser" goes. */
   browserLink: LinkProps;
   heading?: boolean;
 }) {

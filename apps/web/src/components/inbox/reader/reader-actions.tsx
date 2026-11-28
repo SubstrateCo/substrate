@@ -24,7 +24,6 @@ export type ReaderActions = {
   onManage: () => void;
   focusList: () => void;
 };
-/** Why a change Gmail answered did not take effect. */
 const resultErrors: Partial<Record<MailActionResult, string>> = {
   reconnect: "Reconnect this mailbox to change messages in Gmail.",
   retry: "Gmail hasn’t confirmed the change. Try again.",

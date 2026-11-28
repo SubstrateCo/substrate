@@ -29,7 +29,6 @@ function requestDetail(request: typeof agentRequests.$inferSelect): AgentWakeReq
   };
 }
 
-/** The decided requests that answer and approval_result items name, of the items' own agents. */
 async function requestsOf(db: DatabaseExecutor, items: ItemRow[]) {
   const ids = items.flatMap((item) =>
     item.sourceRef.source === "answer" || item.sourceRef.source === "approval_result"
@@ -41,7 +40,6 @@ async function requestsOf(db: DatabaseExecutor, items: ItemRow[]) {
   return new Map(rows.map((row) => [row.id, row]));
 }
 
-/** Items as the host runs them, with the decided request of answer and approval items. */
 export async function hostItems(db: DatabaseExecutor, items: ItemRow[]): Promise<HostItem[]> {
   const requests = await requestsOf(db, items);
   return items.map((item) => {
@@ -102,7 +100,6 @@ function hostTurnSummary(turn: TurnRow): HostTurn["turn"] {
   };
 }
 
-/** The turns with their sessions and the items they run that are not settled yet. */
 export async function hostTurns(db: DatabaseExecutor, turnIds: string[]): Promise<HostTurn[]> {
   if (!turnIds.length) return [];
   const rows = await db

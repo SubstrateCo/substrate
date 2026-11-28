@@ -6,7 +6,6 @@ import { serviceResult } from "../../shared/service-result";
 
 export function exportProject(scope: WorkspaceScope, input: ProjectExport) {
   return serviceResult(async () => {
-    // Read access and the first page inside serviceResult, before streaming.
     const { project, firstPage } = await scope.repositories.projects.exportStart(
       input.projectEntityId,
     );

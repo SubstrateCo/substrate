@@ -10,23 +10,16 @@ import { approvalPendingCode, type ProposalOutcome } from "@substrate/contracts/
 
 import { approvalPollMs, approvalWaitMs } from "./request-limits.ts";
 
-/** A held call that the owner decided within the wait. Its result is the final one. */
 export interface DecidedInTurn {
   requestId: string;
 }
 
 export interface ApprovalWaiter {
-  /** The request's status and outcome, from the device route. */
   status(
     organizationId: string,
     requestId: string,
   ): Promise<{ status: string; outcome: ProposalOutcome | null }>;
-  /**
-   * The call starts to wait on requestId. The returned function ends the wait. Null when the
-   * call's turn is not a live interactive turn: nobody watches, so the call does not wait.
-   */
   waiting(request: WorkspaceApiRequest, requestId: string): (() => void) | null;
-  /** Test seams. */
   sleep?: (milliseconds: number) => Promise<void>;
   now?: () => number;
 }
@@ -44,7 +37,6 @@ const unreadable: WorkspaceApiResult = {
   },
 };
 
-/** The final result for a decided request, or null while it is undecided. */
 function decidedResult(
   request: WorkspaceApiRequest,
   state: { status: string; outcome: ProposalOutcome | null },
@@ -59,10 +51,8 @@ function decidedResult(
   return { success: true, data: outcome.result };
 }
 
-/** Statuses after which the request is never decided. */
 const closedStatuses = new Set(["cancelled", "expired"]);
 
-/** The final result, "closed" when the request is never decided, or null while undecided. */
 async function readDecision(
   approval: ApprovalWaiter,
   request: WorkspaceApiRequest,
@@ -74,12 +64,6 @@ async function readDecision(
   return decidedResult(request, state);
 }
 
-/**
- * The owner's decision on requestId. It is read at once, because a retried call that was
- * already decided returns APPROVAL_PENDING again. With wait, it is read again every
- * approvalPollMs until approvalWaitMs after startedAt. Null when it ends undecided: on time-out,
- * a cancelled or expired request, or once the proxy is inactive.
- */
 async function awaitDecision(
   approval: ApprovalWaiter,
   request: WorkspaceApiRequest,
@@ -92,7 +76,6 @@ async function awaitDecision(
   const sleep =
     approval.sleep ??
     ((milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
-  // The server call counts against the wait, so the whole call stays within the worker's limit.
   const deadline = startedAt + approvalWaitMs;
   for (;;) {
     const decision = await readDecision(approval, request, requestId);
@@ -106,12 +89,9 @@ async function awaitDecision(
 
 export function createMcpApiProxy(options: {
   backend: string;
-  /** False once main disconnects this worker generation, such as on sign-out or session change. */
   isActive: () => boolean;
   fetchAPI: (url: string, init: RequestInit) => Promise<Response>;
-  /** Reads the owner's decision while an interactive call waits for approval. */
   approval?: ApprovalWaiter;
-  /** decided is set when a held call got the owner's decision in the same call. */
   onResult?: (
     request: Parameters<WorkspaceApiProxy>[0],
     result: Awaited<ReturnType<WorkspaceApiProxy>>,
@@ -130,11 +110,8 @@ export function createMcpApiProxy(options: {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(request),
     };
-    // The server validates the session, the membership and the active workspace in this request.
     const response = await options.fetchAPI(url.href, init);
     const result = workspaceApiResult.parse(await response.json());
-    // The call's organization is no longer the active one. The server's wording asks a person to
-    // reload; the agent gets a denial it can act on.
     if (!result.success && result.error.code === "WORKSPACE_CHANGED")
       return {
         success: false,
@@ -149,7 +126,6 @@ export function createMcpApiProxy(options: {
       await options.onResult?.(request, result);
       return result;
     }
-    // Unattended turns have no owner watching, so they only read a decision that already exists.
     const release = options.approval.waiting(request, requestId);
     const wait = release !== null;
     try {
@@ -161,7 +137,6 @@ export function createMcpApiProxy(options: {
         wait,
         startedAt,
       );
-      // Reported before the agent sees the result, so the server consumes its approval_result item.
       if (decided) await options.onResult?.(request, decided, { requestId });
       else await options.onResult?.(request, result);
       return decided ?? result;

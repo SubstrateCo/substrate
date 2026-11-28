@@ -11,7 +11,6 @@ import { toast } from "sonner";
 
 type ActiveSignIn = { harness: HarnessKind; method: HarnessAuthMethod; loginId?: string };
 
-/** One sign-in at a time on this desktop: start, follow its output, answer, and cancel it. */
 export function useHarnessSignIn(userId: string, org: string, desktop: boolean) {
   const client = useQueryClient();
   const { start, send, cancel, signOut, refreshCatalogs } = useHarnessSignInMutations(userId, org);
@@ -23,7 +22,6 @@ export function useHarnessSignIn(userId: string, org: string, desktop: boolean) 
   const status = progress.data?.status;
   const activeLabel = active ? harnessLabel(active.harness) : "";
 
-  // A finished sign-in closes its dialog; the catalogs and the toast follow the agent's answer.
   const open = !!active && status !== "succeeded";
   useEffect(() => {
     if (status !== "succeeded") return;
@@ -52,7 +50,6 @@ export function useHarnessSignIn(userId: string, org: string, desktop: boolean) 
     start.reset();
   }
 
-  // A finished sign-in keeps `active` until the next one starts, but has no dialog.
   const dialogState: SignInDialogState | undefined =
     active && open
       ? {

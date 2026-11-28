@@ -17,10 +17,6 @@ import {
 } from "@/queries/agents/local-configuration";
 import { useAgentMutations } from "@/queries/agents/mutations";
 
-/**
- * The agent's Substrate guide and apps save to the server. Its working folder lives on its home
- * desktop, so only that desktop shows and changes it.
- */
 export function AgentAdvancedSettings({
   agent,
   homeDevice,
@@ -40,7 +36,6 @@ export function AgentAdvancedSettings({
   );
   const configuration = useQuery(localConfigurationOptions(userId, local));
   const { chooseWorkspace, clearWorkspace } = useAgentConfigurationMutations(local);
-  // Show a switch's new state while it saves; the catalog refresh then confirms it.
   const shown = save.isPending && save.variables.id === agent.id ? save.variables : agent;
   const disabledApps = shown.disabledApps ?? [];
   const folder: WorkingFolder = local

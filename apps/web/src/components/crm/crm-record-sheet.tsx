@@ -6,7 +6,6 @@ export type CrmSheetRecord = { kind: "deal" | "account"; entityId: string };
 
 const labels = { deal: "Deal", account: "Account" } as const;
 
-/** A deal or account in a sheet over the page. Keep it mounted so exit motion can finish. */
 export function CrmRecordSheet({
   record,
   onClose,

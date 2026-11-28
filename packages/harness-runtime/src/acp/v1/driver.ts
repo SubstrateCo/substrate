@@ -236,7 +236,6 @@ async function initialize(
     .onRequest("session/request_permission", ({ params, signal: request }) =>
       handlers.request(permissionRequestV1(params), request),
     )
-    // Only form mode is advertised; anything else gets the no-ask answer.
     .onRequest("elicitation/create", ({ params, signal: request }) =>
       params.mode === "form"
         ? handlers.request(elicitationRequestV1(params), request)

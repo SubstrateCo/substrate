@@ -1,7 +1,6 @@
 import { appOrigin } from "./environment";
 import { expect, type APIRequestContext } from "@playwright/test";
 
-/** A signed-in request context with its active workspace. */
 export type WorkspaceAccount = {
   request: APIRequestContext;
   organizationId: string;

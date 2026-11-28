@@ -24,7 +24,6 @@ export const actors = pgTable(
     type: actorType("type").notNull(),
     userId: text("user_id").references(() => user.id),
     userAgentId: uuid("user_agent_id").references(() => userAgents.id),
-    // Names come from the user or the user agent: see actorDisplayName.
     disabledAt: timestamp("disabled_at", { withTimezone: true }),
   },
   (table) => [
@@ -40,13 +39,11 @@ export const actors = pgTable(
     ),
     unique("actors_organization_user_unique").on(table.organizationId, table.userId),
     unique("actors_organization_user_agent_unique").on(table.organizationId, table.userAgentId),
-    // Lets agent-work rows bind their actor to the user agent it represents.
     unique("actors_organization_entity_user_agent_unique").on(
       table.organizationId,
       table.entityId,
       table.userAgentId,
     ),
-    // Lets rows, such as calendar rows, bind a person's actor to that person.
     unique("actors_organization_entity_user_unique").on(
       table.organizationId,
       table.entityId,

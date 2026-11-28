@@ -22,7 +22,6 @@ export function createDeviceWorkRepository(db: DatabaseExecutor, identity: Resol
       committedWrite(closeRequestForDevice)(db, identity, requestId, status),
     requestAnswers: () => requestAnswersForDevice(db, identity),
     requestStatus: (requestId: string) => requestStatusForDevice(db, identity, requestId),
-    /** Whether the owner can see the place. Turns that post there check it again. */
     canUsePlace: async (place: { conversationId: string; threadId: string | null }) => {
       try {
         await requirePlace(db, identity, place);

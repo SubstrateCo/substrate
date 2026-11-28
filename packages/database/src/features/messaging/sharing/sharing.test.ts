@@ -382,7 +382,6 @@ test("concurrent acceptance leaves one participant and one approval event", asyn
     sharing("outsider", f.orgB).accept(invite.id, true),
     sharing("outsider", f.orgB).accept(invite.id, true),
   ]);
-  // One call accepts. The other replays it, or loses the conversation claim and can retry.
   const accepted = results.filter((result) => result.status === "fulfilled");
   expect(accepted.length).toBeGreaterThanOrEqual(1);
   for (const result of results)

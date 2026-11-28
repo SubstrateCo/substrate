@@ -11,11 +11,8 @@ const toggleVariants = cva(
   {
     variants: {
       variant: {
-        // One option of a SegmentedControl: the chosen option is a raised chip on a muted track.
         segmented:
           "text-muted-foreground hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-surface dark:data-[state=on]:bg-foreground/12",
-        // One visual choice in a grid of tiles, such as an avatar shape or colour. The chosen tile
-        // is a selected icon tile with a primary edge.
         tile: "hover:bg-row-hover data-[state=on]:bg-row-selected data-[state=on]:text-row-selected-foreground data-[state=on]:inset-ring data-[state=on]:inset-ring-primary/40",
       },
       size: {
@@ -83,7 +80,6 @@ function ToggleGroup({
       style={{ gap: `calc(var(--spacing) * ${spacing})`, ...style }}
       className={cn(
         "group/toggle-group flex w-fit flex-row items-center rounded-lg data-[size=sm]:rounded-md data-vertical:flex-col data-vertical:items-stretch",
-        // A segmented control: options sit on a muted track.
         "data-[variant=segmented]:rounded-lg data-[variant=segmented]:bg-muted data-[variant=segmented]:p-0.5",
         className,
       )}

@@ -1,5 +1,6 @@
 import { approvalPendingCode } from "../agent-work/proposals.ts";
-import type { ToolProvider } from "../harness-runtime/tools.ts";
+import { substrateMcpServerId } from "../harness-runtime/local.ts";
+import type { ToolCallResult, ToolProvider } from "../harness-runtime/tools.ts";
 import type { LocalToolProxy, WorkspaceApiProxy, WorkspaceApiResult } from "./mcp.ts";
 import {
   mcpTools,
@@ -8,9 +9,10 @@ import {
   type ToolDefinition,
 } from "./tools/index.ts";
 import { turnContextSchema, type TurnContext } from "./turn-context.ts";
+import type { z } from "zod";
 
 const server = {
-  name: "substrate",
+  name: substrateMcpServerId,
   version: "1.0.0",
   instructions:
     "Substrate connects workspace search, messages, and the workspace apps that are enabled. Apps are optional, and each one adds its own tools. " +
@@ -20,7 +22,6 @@ const server = {
     "discovery does not grant record access or permission to write.",
 };
 
-/** What an agent should do next for each workspace API error code. */
 // oxlint-disable-next-line deslop/prefer-literal-union -- Workspace errors use an open string code; unknown codes need the default hint.
 function errorHint(code: string) {
   switch (code) {
@@ -56,6 +57,27 @@ function isToolName(name: string): name is McpToolName {
 
 function isLocalTool(name: McpToolName): name is LocalToolName {
   return mcpTools[name].scope === "local";
+}
+
+function downloadToSessionFolder(
+  data: z.output<typeof mcpTools.download_file.output>,
+): ToolCallResult {
+  const { data: base64, ...file } = data;
+  return {
+    success: true,
+    data: file,
+    download: { id: file.file.attachmentId, filename: file.filename, base64 },
+  };
+}
+
+function imageBlock(read: z.output<typeof mcpTools.read_file.output>): ToolCallResult | undefined {
+  if (read.content.kind !== "image") return undefined;
+  const { data: image, mimeType } = read.content;
+  return {
+    success: true,
+    data: { ...read, content: { kind: "image", mimeType } },
+    image: { data: image, mimeType },
+  };
 }
 
 export interface AgentToolHandlers {
@@ -99,33 +121,16 @@ export function agentToolProvider(handlers: AgentToolHandlers = {}): ToolProvide
       }
       if (!result.success) return { success: false, error: result.error };
       const data = mcpTools[tool].output.parse(result.data);
-      // Downloaded bytes go to the session folder instead of the model's context.
-      if (tool === "download_file") {
-        const { data: base64, ...file } = mcpTools.download_file.output.parse(data);
-        return {
-          success: true,
-          data: file,
-          download: { id: file.file.attachmentId, filename: file.filename, base64 },
-        };
-      }
-      // An image becomes an image block the model can see; data describes it without the bytes.
-      if (tool === "read_file") {
-        const read = mcpTools.read_file.output.parse(data);
-        if (read.content.kind === "image") {
-          const { data: image, mimeType } = read.content;
-          return {
-            success: true,
-            data: { ...read, content: { kind: "image", mimeType } },
-            image: { data: image, mimeType },
-          };
-        }
-      }
+      if (tool === "download_file")
+        return downloadToSessionFolder(mcpTools.download_file.output.parse(data));
+      if (tool === "read_file")
+        return imageBlock(mcpTools.read_file.output.parse(data)) ?? { success: true, data };
       return { success: true, data };
     },
-    outputPolicy(tool) {
-      // Inbox excerpts are private to the bound owner turn; never persist them to the agent folder.
-      if (tool === "search_inbox" || tool === "read_inbox_message") return "turn-only";
-      return "offload";
+    outputPolicy(name) {
+      if (!isToolName(name)) return "offload";
+      const tool: ToolDefinition = mcpTools[name];
+      return tool.outputPolicy ?? "offload";
     },
     errorHint,
   };

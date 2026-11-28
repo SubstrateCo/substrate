@@ -16,9 +16,6 @@ import { crmActivityEvents } from "../activity.schema";
 import { crmActorView, joinCrmActorPerson } from "./actor-views";
 import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 
-// Call only inside a domain-authorized mutation transaction. Never expose an append API.
-// `access` must come from requireAccess for input.entityId in this transaction; that entity is
-// then not looked up again.
 export async function recordCrmActivity(
   ctx: RepositoryContext,
   input: CrmActivityInput,
@@ -28,7 +25,6 @@ export async function recordCrmActivity(
   return event!;
 }
 
-// Same rules as recordCrmActivity, with one access lookup and one insert for all inputs.
 export async function recordCrmActivities(
   ctx: RepositoryContext,
   inputs: CrmActivityInput[],

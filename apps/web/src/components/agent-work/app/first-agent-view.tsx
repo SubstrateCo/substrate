@@ -20,7 +20,6 @@ const steps: { icon: LucideIcon; title: string; description: string }[] = [
   },
 ];
 
-/** The Agents app before the owner has any agent: what an agent does and how to start. */
 export function FirstAgentView({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6">

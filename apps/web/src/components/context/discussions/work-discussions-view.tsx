@@ -22,7 +22,6 @@ export type WorkDiscussionsProps = {
   children?: ReactNode;
 };
 
-/** Each message once per purpose, so a message linked and referenced shows once for each. */
 function discussionPhase({ items, loading, error }: WorkDiscussionsProps) {
   const seen = new Set<string>();
   const uniqueRows = items.filter((item) => {
@@ -56,7 +55,6 @@ function DiscussionsBody({
   );
 }
 
-/** Messages that link or reference a record, as a page's list with a full empty state. */
 export function PageDiscussions(props: WorkDiscussionsProps) {
   const { label = "Related discussions", onRetry, children } = props;
   return (
@@ -77,15 +75,10 @@ export function PageDiscussions(props: WorkDiscussionsProps) {
   );
 }
 
-/**
- * Messages that link or reference a record, as an inspector's section. With nothing to read it is
- * one line.
- */
 export function InspectorDiscussions({
   emptyTitle = "No linked discussions",
   ...props
 }: WorkDiscussionsProps & {
-  /** The inline empty line, such as "No source messages". */
   emptyTitle?: string;
 }) {
   const { label = "Related discussions", onRetry, children } = props;
@@ -97,7 +90,6 @@ export function InspectorDiscussions({
         <ContentNotice variant="inline" title={emptyTitle} />
       </RecordSection>
     );
-  // Loading, failed, and loaded sections open on their own.
   const expanded = open ?? true;
   return (
     <Collapsible asChild open={expanded} onOpenChange={setOpen}>

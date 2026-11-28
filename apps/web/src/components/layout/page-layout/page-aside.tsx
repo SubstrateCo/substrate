@@ -5,7 +5,6 @@ import { readPaneWidth } from "./pane-width";
 import { ResizableHandle, ResizablePanel } from "@/components/ui/resizable";
 import { cn } from "cn";
 
-// Trailing pane, such as a thread. Below `lg` it covers the content instead of sitting beside it.
 const width = { default: "40%", min: 300, max: "65%" };
 
 export function PageAside({
@@ -53,7 +52,6 @@ export function PageAside({
           data-slot="page-aside"
           aria-label={label}
           className={cn(
-            // The pane's content eases in from the right; the pane's width itself does not animate.
             "absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col bg-surface shadow-raised lg:static lg:flex-1 lg:shadow-none",
             animate &&
               "duration-200 ease-out motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-right-2",

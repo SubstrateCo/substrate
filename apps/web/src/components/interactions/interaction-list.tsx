@@ -15,7 +15,6 @@ export function InteractionList({
   sources = emptySources,
 }: {
   rows: Row[];
-  /** The meetings that calendar interactions came from, by interaction. */
   sources?: InteractionSources;
 }) {
   return (

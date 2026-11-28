@@ -63,7 +63,6 @@ test("a tool call of the attempt without its completion is unfinished", async ()
     1,
   );
   expect(await store.events.unfinishedTool("org-1", run)).toBe(false);
-  // A later attempt has its own evidence.
   await store.turnRuns.begin("org-1", { ...run, attempt: 2 }, 2);
   expect(await store.events.unfinishedTool("org-1", { ...run, attempt: 2 })).toBe(false);
 });

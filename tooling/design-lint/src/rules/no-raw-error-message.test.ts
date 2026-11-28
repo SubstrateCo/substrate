@@ -5,10 +5,8 @@ ruleTester.run("no-raw-error-message", noRawErrorMessage, {
   valid: [
     'export const a = <p>{actionErrorMessage(error, "We couldn\'t delete the agent.")}</p>;',
     'export const a = <FormMessage error={error} errorDescription="We couldn\'t save." />;',
-    // Reading the text for logic or logging is fine; only showing it is reported.
     'if (error.message === "Not found") redirect();',
     "console.error(error.message);",
-    // Messages that are not errors.
     "export const a = <p>{message.body}</p>;",
     "export const a = <p>{target.data?.message}</p>;",
   ],

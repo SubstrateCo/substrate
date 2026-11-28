@@ -32,22 +32,14 @@ interface OpenRequest {
   timer: () => void;
 }
 
-/** The answer for a request that nobody answered: deny, or empty answers for questions. */
 function fallbackResponse(payload: AgentRequestPayload): AgentRequestResponse {
   return denyResponse(payload) ?? { type: "questions", answers: {} };
 }
 
-/**
- * Native blocking prompts. The desktop holds the native callback while the owner answers on any
- * device. Interactive turns open a server request; unattended turns never ask, so anything that
- * reaches here is denied. Requests expire after ten minutes and are denied.
- */
 export function createRequestBridge(
   context: RuntimeContext,
   turns: {
-    /** The turn waits for the owner, or runs again. */
     report(live: LiveTurn, state: "waiting" | "running"): void;
-    /** The live turn is still running in this process. */
     isLive(live: LiveTurn): boolean;
   },
 ) {
@@ -104,7 +96,6 @@ export function createRequestBridge(
       const data = acpRequestData.parse(event.data);
       const payload = normalizeAcpRequest(event.kind, data);
       if (!payload) {
-        // Nobody can answer it: decline now, so the agent goes on instead of waiting.
         await context.harness
           .execute({
             type: "respond",
@@ -144,7 +135,6 @@ export function createRequestBridge(
         timer: () => {},
       };
       if (live.kind === "unattended") {
-        // The no-ask profile should have denied it natively. Deny it here as well.
         await respond(request, fallbackResponse(payload)).catch(() => {});
         await append(live, [
           { kind: "note", data: { text: "Denied a prompt: background work cannot ask." } },
@@ -173,7 +163,6 @@ export function createRequestBridge(
         if (live.threadId) input.threadId = live.threadId;
         opened = await context.server.openRequest(input);
       } catch {
-        // Nobody can answer a request the owner cannot see: deny it now, not in ten minutes.
         if (open.get(entry) === request) {
           open.delete(entry);
           request.timer();
@@ -189,7 +178,6 @@ export function createRequestBridge(
         return;
       }
       if (open.get(entry) !== request || !turns.isLive(live)) {
-        // The turn ended or the request expired while the server opened it.
         if (open.get(entry) === request) {
           open.delete(entry);
           request.timer();
@@ -212,7 +200,6 @@ export function createRequestBridge(
       turns.report(live, "waiting");
       context.progressed({ userAgentId: live.userAgentId, turnId: live.turnId });
     },
-    /** Delivers answers the owner gave on any device. Answers for gone callbacks are orphaned. */
     async deliver() {
       const answers = await context.server.requestAnswers(context.organizationId);
       for (const answer of answers) {
@@ -224,10 +211,6 @@ export function createRequestBridge(
             .catch(() => {});
       }
     },
-    /**
-     * The agent withdrew a request, or it timed out natively: the owner can no longer answer it.
-     * A request the server is still opening is cancelled once it opens.
-     */
     async withdrawn(live: LiveTurn, nativeRequestId: string) {
       const entry = key(live.turnId, nativeRequestId);
       const request = open.get(entry);
@@ -245,7 +228,6 @@ export function createRequestBridge(
       if (!stillWaits(request.turnId)) turns.report(live, "running");
       context.progressed({ userAgentId: request.userAgentId, turnId: request.turnId });
     },
-    /** The turn ended: its native callbacks are gone. Interrupted turns orphan their requests. */
     async closeTurn(turnId: string, status: "cancelled" | "orphaned" = "cancelled") {
       for (const [entry, request] of open) {
         if (request.turnId !== turnId) continue;
@@ -260,10 +242,6 @@ export function createRequestBridge(
         ]).catch(() => {});
       }
     },
-    /**
-     * Blocking requests of a turn whose harness process died have no native callback anymore.
-     * Their server requests are closed as orphaned.
-     */
     async closeOrphans(turn: TurnRef) {
       const events = await context.store.events.ofKinds(context.organizationId, turn.turnId, [
         "request",
@@ -292,7 +270,6 @@ export function createRequestBridge(
         ]);
       }
     },
-    /** Whether a native callback waits for the owner's answer. */
     waiting() {
       return open.size > 0;
     },

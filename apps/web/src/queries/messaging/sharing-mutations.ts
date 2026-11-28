@@ -35,9 +35,6 @@ export function useSharingAction(organizationId: string, conversationId: string)
       }
     },
     onSuccess: (_, input) => {
-      // Every action except remove sends an access hint to this organization, and that hint
-      // resets the same queries. Remove reaches only the host organization and the members, so a
-      // partner organization's manager may not get one.
       if (input.kind !== "remove") return;
       return Promise.all([
         client.invalidateQueries({ queryKey: queryKeys.organization(organizationId) }),
@@ -47,12 +44,9 @@ export function useSharingAction(organizationId: string, conversationId: string)
   });
 }
 
-// The screen uses the decision result immediately. Committed access hints refresh the
-// invitation query through the authenticated layout, including approval by another user.
 function sharingDecisionOptions<TResult>(invitationId: string, mutationFn: () => Promise<TResult>) {
   return mutationOptions({
     mutationFn,
-    // Do not send competing decisions for the same invitation concurrently from this client.
     scope: { id: `sharing-invitation:${invitationId}` },
     gcTime: 0,
   });

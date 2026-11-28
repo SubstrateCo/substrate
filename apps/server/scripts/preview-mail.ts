@@ -8,7 +8,6 @@ import { chromium, expect } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
-// Render the real outgoing messages with fake credentials. Never send preview mail.
 const origins = { webURL: "https://app.example.com", apiURL: "https://api.example.com" };
 const output = resolve(import.meta.dir, "../../../.runtime/mail-previews");
 const invitation = { id: "preview-invitation", organizationName: "Acme Studio" };

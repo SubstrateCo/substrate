@@ -14,7 +14,6 @@ test("requires a live verified session with exact organization scope without ren
   const authenticate = createRealtimeAuthenticator(
     {
       async getSession({ headers, query }) {
-        // A stale cookie snapshot must not be used for authorization.
         queries.push(query);
         if (headers.get("cookie") !== "session") throw new Error("Fresh session lookup required");
         return current;

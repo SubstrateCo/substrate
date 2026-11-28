@@ -41,7 +41,6 @@ export default defineConfig({
     { name: "expo-web-preview-light", use: { colorScheme: "light" } },
     { name: "expo-web-preview-dark", use: { colorScheme: "dark" } },
   ],
-  // Root scripts own process startup. Never silently attach capture to a developer's API.
   webServer: services(),
 });
 

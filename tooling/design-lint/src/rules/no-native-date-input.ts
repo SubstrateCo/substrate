@@ -12,7 +12,6 @@ export const noNativeDateInput: Rule = {
   create(context) {
     return {
       JSXOpeningElement(node) {
-        // A raw <input type="date"> is reported by no-native-element.
         if (attributeString(node, "type") !== "date") return;
         const imported = elementImport(context, node);
         if (!imported) return;

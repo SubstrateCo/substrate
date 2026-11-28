@@ -23,7 +23,6 @@ import { authClient } from "@/api/auth-client";
 import { queryKeys, type QueryScope } from "@/queries/keys";
 
 const pageLimit = 100;
-/** The first page of a cursor list, typed as the cursor later pages use. */
 const noCursor = <T>(): T | undefined => undefined;
 type Archive = "active" | "archived";
 type ListRead<Row> = (
@@ -31,7 +30,6 @@ type ListRead<Row> = (
   options: { signal: AbortSignal },
 ) => Promise<Row[]>;
 
-/** A searchable record list, read in pages after the last entity of the page before. */
 function searchPages<Row, Key extends QueryKey>(
   scope: QueryScope,
   queryKey: Key,
@@ -53,7 +51,6 @@ function searchPages<Row, Key extends QueryKey>(
   });
 }
 
-/** The account and workspace every record query is keyed by. */
 export function useRecordScope(organizationId: string): QueryScope {
   const { data } = authClient.useSession();
   return { userId: data?.user.id ?? "", organizationId };
@@ -78,7 +75,6 @@ export const recordQueries = {
         recordRequests.projects({ organizationId: scope.organizationId, archived }, { signal }),
       retry: false,
     }),
-  // Without a project, nothing is read. The placeholder stays only in the key.
   project: (scope: QueryScope, projectEntityId: string | undefined) =>
     queryOptions({
       queryKey: queryKeys.detail(scope, "tasks", projectEntityId ?? ""),
@@ -132,7 +128,6 @@ export const recordQueries = {
         recordRequests.account({ organizationId: scope.organizationId, entityId }, { signal }),
       retry: false,
     }),
-  /** Deals by search. Closed deals are included, so the list can show won and lost ones. */
   deals: (scope: QueryScope, search: string, archived: Archive = "active") =>
     searchPages(
       scope,
@@ -148,7 +143,6 @@ export const recordQueries = {
         recordRequests.deal({ organizationId: scope.organizationId, entityId }, { signal }),
       retry: false,
     }),
-  /** Every open deal for the pipeline board, up to 1000, read in pages of 100. */
   pipelineDeals: (scope: QueryScope) =>
     queryOptions({
       queryKey: queryKeys.list(scope, "crm", { view: "pipeline-deals" }),
@@ -216,7 +210,6 @@ export const recordQueries = {
         ),
       retry: false,
     }),
-  /** Every readable interaction, newest first, optionally filtered by kind or text. */
   interactionTimeline: (
     scope: QueryScope,
     filters: {
@@ -315,7 +308,6 @@ export function useInteractionWrite(scope: QueryScope) {
 
 export type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
-/** Creates one kind of record and resolves to its ID. */
 function useCreate<Data>(
   scope: QueryScope,
   create: (organizationId: string, data: Data) => Promise<string>,

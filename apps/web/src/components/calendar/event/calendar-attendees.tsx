@@ -22,13 +22,11 @@ import { personLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";
 import { MapPin } from "lucide-react";
 
-/** The event's guests, each with what Substrate knows about them. */
 export function CalendarAttendees({
   attendees,
   outcome,
 }: {
   attendees: readonly CalendarAttendeeView[];
-  /** What the meeting does to interactions, which decides whether outside guests become contacts. */
   outcome: MeetingOutcome["state"];
 }) {
   const { organizationId } = useWorkspaceScope();

@@ -30,7 +30,6 @@ test("returning to a connected window after five minutes recovers a committed me
   const body = `Committed without a delivered hint ${channel.id}`;
   await post(actors.sender, "messaging/messages", { conversationId: channel.id, body });
   await expect(recipient.page.getByText(body, { exact: true })).toHaveCount(0);
-  // A window re-reads what it shows only when its last full read is five minutes old.
   await recipient.page.clock.fastForward("05:00");
   await recipient.page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(recipient.page.getByText(body, { exact: true })).toBeVisible();
@@ -54,14 +53,12 @@ test("reconnect resyncs messages missed while the socket was disconnected", asyn
   let connections = 0;
   let paused = false;
   await recipient.page.routeWebSocket("**/api/v1/realtime?*", async (socket) => {
-    // Forward real traffic, but hold the replacement connection until after the missed write.
     connections++;
     if (paused) await resumed;
     downstream = socket;
     upstream = socket.connectToServer();
   });
   await Promise.all([visit(sender, channel.id), visit(recipient, channel.id)]);
-  // Ready can precede the conversation's first HTTP read. Load history before missing a write.
   await expect(recipient.page.getByText(initial, { exact: true })).toBeVisible();
   await expect(sender.page.getByText(initial, { exact: true })).toBeVisible();
   const readyBefore = recipient.events.filter((event) => event.type === "ready").length;

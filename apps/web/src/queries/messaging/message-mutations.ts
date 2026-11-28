@@ -11,7 +11,6 @@ export function invalidateChangedMessage(
 ) {
   return invalidateTargets(client, [
     ...domainTargets("messaging", organizationId, conversationId),
-    // Edits can change references, and deletion can remove linked discussions and alerts.
     { queryKey: queryKeys.context(organizationId) },
   ]);
 }

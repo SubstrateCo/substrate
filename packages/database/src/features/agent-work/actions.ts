@@ -12,7 +12,6 @@ import { resolveActor } from "./actor-alias";
 
 type Agent = { entityId: string; name: string; type: "human" | "agent" };
 
-/** Writes an agent makes as its own actor with its owner's access. */
 export function agentActions(ctx: RepositoryContext, identity: SessionIdentity, agent: Agent) {
   const { db: tx } = ctx;
   const tasks = taskRepository(ctx);
@@ -45,7 +44,6 @@ export function agentActions(ctx: RepositoryContext, identity: SessionIdentity, 
         assigneeActorEntityId: await resolveActor(ctx, identity, changes.assigneeActorId),
       });
     },
-    /** Moves the task from the project it is in now. A move that commits first fails this one. */
     async moveTask({ taskId, projectId, parentTaskId }: Omit<McpInput<"move_task">, "requestId">) {
       const task = await tasks.get(taskId);
       await tasks.move(taskId, task.projectEntityId, projectId, parentTaskId);

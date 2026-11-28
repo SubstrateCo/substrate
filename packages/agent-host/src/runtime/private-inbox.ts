@@ -4,10 +4,6 @@ import { mcpTools } from "@substrate/contracts/agent-tools/tools";
 import { InboxToolError } from "../tools/inbox-error.ts";
 import type { LiveTurn, RuntimeContext } from "./context.ts";
 
-/**
- * The owner's mail is only for the owner's own live interactive turn in their DM with the agent.
- * The checks use the server turn and session this host claimed, never the call's input.
- */
 export async function runPrivateInbox(
   context: RuntimeContext,
   request: LocalToolRequest,

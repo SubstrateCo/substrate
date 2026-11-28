@@ -2,13 +2,10 @@ import { execFile } from "node:child_process";
 import { userInfo } from "node:os";
 import { win32 } from "node:path";
 
-/** What PATH repair reads. Tests replace it; nothing here starts a shell. */
 export interface ShellPathProbe {
   platform: NodeJS.Platform;
   env: Record<string, string | undefined>;
-  /** The login shell from the user database, when known. */
   userShell?: string;
-  /** Runs a program with shell:false. Returns stdout, or undefined on failure or timeout. */
   run(command: string, args: string[], timeoutMs: number): Promise<string | undefined>;
 }
 
@@ -31,7 +28,6 @@ function normalizeEntry(entry: string, platform: NodeJS.Platform): string {
   return unquoted.replace(/[\\/]+$/, "").toLowerCase();
 }
 
-/** Joins PATH values in order. The first copy of each entry wins; Windows compares without case. */
 export function mergePaths(platform: NodeJS.Platform, ...values: (string | undefined)[]): string {
   const seen = new Set<string>();
   const merged: string[] = [];
@@ -56,7 +52,6 @@ export function extractCapturedPath(output: string): string | undefined {
   return output.slice(start + captureStart.length, end).trim() || undefined;
 }
 
-/** The login shells to ask, in order: $SHELL, the user database shell, then the platform default. */
 function loginShellCandidates(probe: ShellPathProbe): string[] {
   const candidates = [probe.env.SHELL?.trim(), probe.userShell?.trim()];
   if (probe.platform === "darwin") candidates.push("/bin/zsh");
@@ -75,7 +70,6 @@ async function loginShellPath(probe: ShellPathProbe): Promise<string | undefined
   return undefined;
 }
 
-/** Expands %NAME% references in a REG_EXPAND_SZ value. Unknown names stay as written. */
 export function expandWindowsVariables(
   value: string,
   env: Record<string, string | undefined>,
@@ -87,7 +81,6 @@ export function expandWindowsVariables(
   );
 }
 
-/** The Path value in `reg.exe query <key> /v Path` output. */
 export function parseRegistryPath(output: string): string | undefined {
   return /^\s*Path\s+REG_(?:EXPAND_)?SZ\s+(.*?)\s*$/im.exec(output)?.[1] || undefined;
 }
@@ -114,7 +107,6 @@ async function registryPath(probe: ShellPathProbe): Promise<string[]> {
   return values.filter((value) => value !== undefined);
 }
 
-/** Folders where Windows package managers put user CLIs, even when PATH misses them. */
 function knownWindowsCliDirectories(env: Record<string, string | undefined>): string[] {
   const appData = env.APPDATA?.trim();
   const localAppData = env.LOCALAPPDATA?.trim();
@@ -171,7 +163,6 @@ function run(command: string, args: string[], timeoutMs: number): Promise<string
         },
         (error, stdout) => resolve(error ? undefined : stdout),
       );
-      // An interactive shell must not wait for input.
       child.stdin?.end();
     } catch {
       resolve(undefined);
@@ -189,7 +180,6 @@ function readUserShell(): string | undefined {
 
 let cached: Promise<string> | undefined;
 
-/** The search PATH of this process, computed once. Agents receive only this PATH value. */
 export function searchPath(): Promise<string> {
   cached ??= computeSearchPath({
     platform: process.platform,

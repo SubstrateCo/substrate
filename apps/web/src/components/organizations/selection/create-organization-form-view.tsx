@@ -16,7 +16,6 @@ export function CreateOrganizationForm({
   onSubmit: (form: FormData) => void;
 }) {
   const [name, setName] = useState("");
-  // The slug follows the name until the person edits it.
   const [customSlug, setCustomSlug] = useState<string>();
   const [editingSlug, setEditingSlug] = useState(false);
   const slug = customSlug ?? workspaceSlug(name);
@@ -52,7 +51,6 @@ export function CreateOrganizationForm({
         />
       ) : (
         <>
-          {/* The derived slug shows once there is one; an empty name has nothing to show. */}
           {slug && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span className="min-w-0 wrap-anywhere">Workspace slug: {slug}</span>

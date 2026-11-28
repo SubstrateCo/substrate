@@ -10,7 +10,6 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Download, FileJson, FileSpreadsheet } from "lucide-react";
 
-/** A ghost icon tool for page headers that downloads the page's records as CSV or JSON. */
 export function DownloadMenu({
   label,
   scope,

@@ -27,11 +27,6 @@ import type {
 import type { AgentRequestState, ThreadMessage } from "./server/agent-work-server.ts";
 import type { z } from "zod";
 
-/*
- * The ports of the agent host. A host process, such as the Electron desktop or a cloud sandbox,
- * implements them and passes them to `createAgentWorkRuntime`.
- */
-
 type Body<T> = Omit<T, "organizationId" | "installationId">;
 type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 
@@ -48,11 +43,6 @@ export type HostFinish = Optional<
 export type HostProgress = Optional<Body<HostProgressInput>, "consumedItemIds">;
 export type SteerReport = "delivered" | "undelivered" | "uncertain" | "inaccessible";
 
-/**
- * The server's control plane, as this host uses it. The server owns the queue and every turn's
- * lifecycle; the host claims turns, runs them and reports what happened. Each call is scoped to
- * one organization.
- */
 export interface HostApi {
   /** Claims queued work into free slots. busyFolders are held here without a live turn. */
   claim(organizationId: string, busyFolders: string[]): Promise<HostTurn[]>;
@@ -103,7 +93,6 @@ export interface CatalogAgent {
   home: boolean;
 }
 
-/** The home device's calls to the server. The session decides the user. */
 export interface AgentWorkServer {
   register(input: { name: string; platform: string }): Promise<void>;
   /** Marks this device as seen and renews the leases of its live turns. */
@@ -125,7 +114,6 @@ export interface AgentWorkServer {
     status: CloseRequestStatus,
   ): Promise<void>;
   requestAnswers(organizationId: string): Promise<AgentRequestDelivery[]>;
-  /** A request's status and outcome, such as a proposal that a held tool call waits on. */
   requestStatus(organizationId: string, requestId: string): Promise<AgentRequestState>;
 }
 
@@ -142,16 +130,11 @@ export interface HarnessPort {
   closeOrganization(organizationId: string): Promise<void>;
 }
 
-/**
- * The local execution store: native sessions and epochs, turn attempts, transcripts, handoffs,
- * MCP servers and working folders. `AgentWorkStore` from `@substrate/client-storage/agent-work` implements it.
- */
 export type HostStore = Pick<
   AgentWorkStore,
   "nativeSessions" | "turnRuns" | "events" | "handoffs" | "mcpServers" | "workspaces"
 >;
 
-/** The owner's agents from the server catalog, cached. */
 export interface AgentDirectory {
   get(userAgentId: string): Promise<CatalogAgent | undefined>;
   all(): Promise<CatalogAgent[]>;
@@ -165,9 +148,7 @@ export interface AgentInbox {
   read(q: McpInput<"read_inbox_message">): Promise<McpOutput<"read_inbox_message">>;
 }
 
-/** What this host can offer beyond the server. Each capability is optional. */
 export interface HostCapabilities {
-  /** The workspace apps enabled for the organization. */
   enabledApps?(): Promise<readonly AppId[]>;
   /** The owner's private inbox. Without it, inbox tools fail as unavailable. */
   inbox?: AgentInbox;
@@ -186,15 +167,10 @@ export interface Logger {
   log(message: string): void;
 }
 
-/** Tells the host's views that agent work changed, such as the desktop renderer. */
 export interface ChangeSink {
   notify(change: AgentWorkChange): void;
 }
 
-/**
- * Where a realtime hint source pushes its hints. Without one, the host cycle still runs on its
- * 30 s polling interval.
- */
 export interface HostHints {
   /** An agent-work hint: a burst within the hint window runs one cycle. */
   hint(): void;

@@ -24,7 +24,6 @@ const PREVIEW_SIZE = 112;
 
 const title = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
 
-/** One shape or colour option, drawn as a still avatar with that choice applied. */
 function ChoiceTile({
   label,
   code,
@@ -55,7 +54,6 @@ function ChoiceTile({
   );
 }
 
-/** The owner picks a shape and colour for one of their agents. Each choice saves at once. */
 export function AgentAppearanceSheet({
   organizationId,
   agentId,

@@ -84,7 +84,6 @@ test("a turn the owner stopped before it started ends without running", async ()
   const f = await started();
   const sent = f.ownerItem();
   const queued = f.control.queueTurn({ session: sent.session, items: [sent.item] });
-  // The server answers the start with stopping: the owner stopped it after the claim.
   const start = f.control.api.start.bind(f.control.api);
   f.control.api.start = async (...args) => {
     f.control.stop(queued.turn.id);
@@ -175,7 +174,6 @@ test("an outage while loading messages retries later with backoff, without askin
   expect(f.hostCalls("retryLater").map((call) => call.body)).toEqual([
     { attempt: 1, delayMs: 5_000 },
   ]);
-  // The turn never ran, so the server put its items back.
   expect(f.status(sent.turnId)).toBe("cancelled");
   expect(f.control.turns.get(sent.turnId)!.items[0]!.status).toBe("pending");
   expect(f.turns()).toEqual([]);
@@ -284,7 +282,6 @@ test("a full context submits an epoch handoff; its turn saves notes and the next
   });
   expect(saved.success).toBe(true);
   await f.emit(handoff.turnId, { type: "turn.completed", result: { status: "completed" } });
-  // The handoff closes its native session before the next epoch.
   expect(f.nativeSessions()).not.toContain(sent.sessionId);
 
   await f.message({ conversationId: sent.conversationId });
@@ -398,7 +395,6 @@ test("a turn end that the server cannot take during an outage is sent again", as
   f.control.outage.host = false;
   await f.tick();
   expect(f.finished(sent.turnId)).toMatchObject({ status: "completed" });
-  // Another cycle does not report it twice.
   await f.tick();
   expect(f.hostCalls("finish")).toHaveLength(1);
 });

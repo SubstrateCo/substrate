@@ -22,18 +22,16 @@ export function safeRedirect(value: string | null | undefined, fallback = "/mess
   }
 }
 
-// A malformed value falls back to absent, so a bad link still opens the page.
-const text = z.string().optional().catch(undefined);
+const textOrAbsent = z.string().optional().catch(undefined);
 
-/** Search params for the public auth pages. */
 export const authSearch = z.object({
-  redirect: text.transform((value) => safeRedirect(value, "/onboarding")),
-  email: text.transform((value) => value ?? ""),
-  token: text.transform((value) => value ?? ""),
-  error: text.transform((value) => value ?? ""),
-  client_id: text,
-  state: text,
-  code_challenge: text,
+  redirect: textOrAbsent.transform((value) => safeRedirect(value, "/onboarding")),
+  email: textOrAbsent.transform((value) => value ?? ""),
+  token: textOrAbsent.transform((value) => value ?? ""),
+  error: textOrAbsent.transform((value) => value ?? ""),
+  client_id: textOrAbsent,
+  state: textOrAbsent,
+  code_challenge: textOrAbsent,
 });
 
 export type AuthPath =
@@ -43,7 +41,6 @@ export type AuthPath =
   | "/forgot-password"
   | "/reset-password";
 
-/** An auth page that keeps the destination and, when present, the desktop sign-in handoff. */
 export function authLink(
   to: AuthPath,
   redirect: string,

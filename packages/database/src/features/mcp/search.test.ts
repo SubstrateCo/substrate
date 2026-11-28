@@ -88,7 +88,6 @@ test("pages break equal times by ID and do not repeat a record that changes betw
     await repos.tasks.create({ projectEntityId: project.entityId, title: "Beta two" }),
     await repos.projects.create({ name: "Beta three" }),
   ];
-  // Tasks and the project share one time, so only the ID orders them.
   for (const { entityId } of created)
     await f.db
       .update(entities)
@@ -96,7 +95,6 @@ test("pages break equal times by ID and do not repeat a record that changes betw
       .where(eq(entities.entityId, entityId));
   const search = searchAs("alice");
   const first = await search.names({ query: "Beta", limit: 1 });
-  // The first result changes after the agent read it. Offset pages would show it again.
   await f.db
     .update(entities)
     .set({ updatedAt: new Date("2026-03-01T00:00:00Z") })
@@ -106,7 +104,6 @@ test("pages break equal times by ID and do not repeat a record that changes betw
   expect(third.nextCursor).toBeNull();
   const seen = [first, second, third].flatMap(ids);
   expect(seen.toSorted()).toEqual(created.map((row) => row.entityId).toSorted());
-  // The rest keep the tie order: ID, newest first.
   expect(seen.slice(1)).toEqual(
     created
       .flatMap((row) => (row.entityId === seen[0] ? [] : [row.entityId]))
@@ -117,7 +114,6 @@ test("pages break equal times by ID and do not repeat a record that changes betw
 
 test("search leaves out records, conversations and messages the reader cannot see", async () => {
   const { reply } = await contextConversation(f);
-  // Alice's project and private channel are not shared with Bob.
   const bob = searchAs("bob");
   expect((await bob.names({ query: "Launch", limit: 20 })).items).toEqual([]);
   expect((await bob.names({ query: "Private", limit: 20 })).items).toEqual([]);

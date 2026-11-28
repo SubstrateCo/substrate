@@ -7,7 +7,7 @@ import {
   type ManagedSkill,
 } from "@substrate/contracts/harness-runtime";
 
-import { materialize, writeDefaultFiles } from "./config.ts";
+import { materialize, writeAgentFiles } from "./config.ts";
 import { scanNativeSkills, saveNativeSkill } from "./native-config.ts";
 import { agentDirectory } from "./paths.ts";
 import { harnessDefinitions } from "./registry.ts";
@@ -106,8 +106,8 @@ test("reset replaces only managed files with the current agent", async () => {
   await writeFile(join(directory, "CLAUDE.md"), "User prompt");
   const userSkill = { id: "review", name: "review", description: "Mine", content: "Keep me." };
   await saveNativeSkill(directory, "claude", userSkill);
-  await writeDefaultFiles(directory, agent("claude", { instructions: "Updated." }), {
-    replace: true,
+  await writeAgentFiles(directory, agent("claude", { instructions: "Updated." }), {
+    replaceInstructions: true,
   });
   expect(await read(directory, "CLAUDE.md")).toBe("Updated.\n");
   expect(await scanNativeSkills(directory, "claude")).toContainEqual(userSkill);
@@ -115,7 +115,7 @@ test("reset replaces only managed files with the current agent", async () => {
 
 test("the managed prefix starts the instructions file", async () => {
   const directory = await agentDirectory(root, "org-a", "agent-a");
-  await writeDefaultFiles(directory, agent("opencode"), { managedPrefix: "# Policy\n" });
+  await writeAgentFiles(directory, agent("opencode"), { managedPrefix: "# Policy\n" });
   expect(await read(directory, "AGENTS.md")).toBe("# Policy\n\n# Host\n\nReview only.\n");
 });
 
@@ -127,7 +127,7 @@ test("defaults are never written through a symlink", async () => {
   await rejects(materialize(root, configuration(agent("claude"))), {
     code: "unsafe-path",
   });
-  await rejects(writeDefaultFiles(directory, agent("claude"), { replace: true }), {
+  await rejects(writeAgentFiles(directory, agent("claude"), { replaceInstructions: true }), {
     code: "unsafe-path",
   });
   expect(await readFile(outside, "utf8")).toBe("Outside content");

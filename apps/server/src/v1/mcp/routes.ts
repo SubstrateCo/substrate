@@ -12,7 +12,6 @@ export function createMcpRoutes(service: McpService, scopes: Scopes) {
     scopes.workspace("json"),
     async (c) => {
       const result = await service.callAgentTool(c.var.scope, c.req.valid("json"));
-      // The call was stored for the owner's approval: accepted, not failed.
       if ("pending" in result) return respondAccepted(c, result.pending);
       return respond(c, result);
     },

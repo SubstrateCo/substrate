@@ -30,33 +30,33 @@ export async function uploadPictureBytes(
 }
 
 export function createPictureApi(client: PictureAuthClient, http: Api = api) {
+  const savePicture = async (purpose: PictureKind, url: string | null, organizationId?: string) =>
+    purpose === "avatar"
+      ? unwrap(await client.updateUser({ image: url }))
+      : unwrap(await client.organization.update({ organizationId, data: { logo: url } }));
+
   async function uploadPicture(
     file: File,
     purpose: PictureKind,
-    signal?: AbortSignal,
+    uploadSignal?: AbortSignal,
     onCommit?: () => void,
     organizationId?: string,
   ) {
     const { url } = await uploadPictureBytes(
       file,
       purpose,
-      signal,
+      uploadSignal,
       organizationId,
       undefined,
       http,
     );
-    signal?.throwIfAborted();
+    uploadSignal?.throwIfAborted();
     onCommit?.();
-    // Do not cancel the Better Auth save once it starts.
-    return purpose === "avatar"
-      ? unwrap(await client.updateUser({ image: url }))
-      : unwrap(await client.organization.update({ organizationId, data: { logo: url } }));
+    return savePicture(purpose, url, organizationId);
   }
 
-  const removePicture = async (purpose: PictureKind, organizationId?: string) =>
-    purpose === "avatar"
-      ? unwrap(await client.updateUser({ image: null }))
-      : unwrap(await client.organization.update({ organizationId, data: { logo: null } }));
+  const removePicture = (purpose: PictureKind, organizationId?: string) =>
+    savePicture(purpose, null, organizationId);
   return { uploadPicture, removePicture };
 }
 

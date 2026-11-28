@@ -10,7 +10,6 @@ export const unsupportedVersion = z.object({
   data: z.object({ supported: z.array(z.int()) }).catch({ supported: [] }),
 });
 
-/** Maps SDK errors to HarnessErrors. closed aborts when the connection ends. */
 export async function native<T>(run: () => Promise<T>, closed?: AbortSignal): Promise<T> {
   try {
     return await run();

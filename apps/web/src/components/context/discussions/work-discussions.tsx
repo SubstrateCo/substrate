@@ -23,7 +23,6 @@ export function WorkDiscussions({
   sourceType,
 }: {
   entityId: string;
-  /** Set on a CRM record, so each conversation opens with a link back to the record. */
   sourceType?: MessageSource["type"];
   label?: string;
   emptyTitle?: string;

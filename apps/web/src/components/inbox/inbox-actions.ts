@@ -13,7 +13,6 @@ import { useState, type RefObject } from "react";
 import type { LabelActions } from "./label-menu";
 import { localMailQueries } from "@/queries/mail/options";
 
-/** The conversation open in the reader. Closing it returns focus to its row or the search. */
 export function useReaderSelection(field: RefObject<HTMLInputElement | null>) {
   const [selected, setSelected] = useState<MailConversation>();
   function focusList() {
@@ -31,7 +30,6 @@ export function useReaderSelection(field: RefObject<HTMLInputElement | null>) {
   return { selected, setSelected, focusList, closeReader };
 }
 
-/** Message, conversation and label changes. Each one reads local mail again. */
 export function useMailChanges(
   api: MailAPI,
   scope: MailScope,

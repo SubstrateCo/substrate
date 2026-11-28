@@ -68,7 +68,6 @@ test("retry after a committed send loses its response keeps its request ID acros
     .getByRole("navigation", { name: "Apps", exact: true })
     .getByRole("link", { name: "Tasks", exact: true })
     .click();
-  // An unread badge adds ", N unread" to the app link's name.
   await page
     .getByRole("navigation", { name: "Apps", exact: true })
     .getByRole("link", { name: /^Messages(?:,|$)/ })
@@ -290,7 +289,6 @@ test("a completed send preserves a newer draft after leaving and returning", asy
     release();
     await completed;
     await expect(page.getByRole("article").filter({ hasText: sent })).toBeVisible();
-    // The send settles, and its success handler runs, before the composer is editable again.
     await expect(editor).toHaveAttribute("contenteditable", "true");
     await expect(editor).toHaveText("newer draft");
     await conversationButton(page, second.name).click();

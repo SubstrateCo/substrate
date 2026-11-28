@@ -22,10 +22,6 @@ export function DayDivider({ date }: { date: string | Date }) {
   );
 }
 
-/**
- * One message: author, time, body and what hangs off it. Long press opens its actions. The More
- * button shows on web hover or keyboard focus, and always while a screen reader runs.
- */
 export function MessageRow({
   message,
   grouped,

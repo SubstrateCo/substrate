@@ -8,21 +8,17 @@ import type {
 
 import { workspaceRequestTimeoutMs } from "../mcp/request-limits.ts";
 
-/** Local tools answer from main's local store and never wait for an approval. */
 const localToolTimeoutMs = 30_000;
 
-/** Main validates the result before it posts this message. */
 export type WorkspaceApiResponse = { apiResponse: number } & (
   | { result: WorkspaceApiResult; error?: undefined }
   | { error: string }
 );
-/** The answer to a local tool call, from main's agent-work handler. */
 export type LocalToolResponse = { localResponse: number } & (
   | { result: WorkspaceApiResult; error?: undefined }
   | { error: string }
 );
 
-/** Requests the worker sends to main and waits for. */
 function outbound<Request>(post: (id: number, request: Request) => void, timeoutMs: number) {
   let nextID = 0;
   const pending = new Map<

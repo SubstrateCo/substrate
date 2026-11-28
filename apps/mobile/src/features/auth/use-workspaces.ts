@@ -72,7 +72,6 @@ export function useWorkspaces(onSelect: (id: string) => void, invitationId?: str
       onSelect(id);
     },
     onError: () => {
-      // Acceptance or creation can succeed even if activation fails. Reload so it can be selected.
       void client.invalidateQueries({ queryKey: accountKey });
     },
   });

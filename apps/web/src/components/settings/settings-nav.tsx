@@ -37,7 +37,6 @@ export type SettingsNavGroup = {
   items: readonly { to: SettingsPath; label: string; icon: LucideIcon }[];
 };
 
-/** The settings sidebar: account sections, then the active organization's sections. */
 export function SettingsNav({ groups }: { groups: readonly SettingsNavGroup[] }) {
   const pathname = useLocation({ select: (location) => location.pathname });
   const active = groups.flatMap((group) => group.items).find((item) => item.to === pathname);

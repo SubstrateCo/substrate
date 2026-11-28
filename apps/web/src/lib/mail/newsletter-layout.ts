@@ -100,8 +100,6 @@ export function newsletterLayout(html: string) {
   }
   presentation(body, root);
   for (const child of body.childNodes) append(root, child, 0);
-  // Marketing templates repeat empty spacer rows and fixed-height tables around every poster.
-  // Collapse empty scaffolding when images are off, but retain it for the full design.
   for (const el of root.querySelectorAll<HTMLElement>("td,tr,table,div,p,a")) {
     if (
       blank.test(el.textContent) &&

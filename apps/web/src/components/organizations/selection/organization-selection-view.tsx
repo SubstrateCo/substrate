@@ -27,20 +27,13 @@ export function OrganizationSelection({
   hasInvitations = false,
 }: {
   workspaces: ResourceState<Workspace[]>;
-  /** The invitation list has not loaded yet, so the create form waits to choose its layout. */
   invitationsPending?: boolean;
-  /** The workspace being opened, while it opens. */
   openingId?: string;
   onRetry: () => void;
   onSelect: (id: string) => void;
   signOut: ReactNode;
   createForm: ReactNode;
-  /** The user's pending invitations, shown first because they need an answer. */
   invitations?: ReactNode;
-  /**
-   * Whether the user has an invitation they can still accept. The `invitations` slot is opaque,
-   * and the copy and the create form's layout depend on it.
-   */
   hasInvitations?: boolean;
 }) {
   const { data, error } = workspaces;
@@ -59,7 +52,6 @@ export function OrganizationSelection({
   }, [loading, error, data]);
 
   const listed = data ?? [];
-  // With workspaces to open or invitations to answer, creating one is a secondary, collapsed step.
   const collapsible = listed.length > 0 || hasInvitations;
   const description =
     hasInvitations && !loading && listed.length === 0
@@ -169,7 +161,6 @@ function CreateWorkspace({
   headingRef,
   createForm,
 }: {
-  /** Whether creating is a secondary, collapsed step. */
   collapsible: boolean;
   loading: boolean;
   headingRef: RefObject<HTMLHeadingElement | null>;

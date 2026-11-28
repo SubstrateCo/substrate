@@ -13,10 +13,6 @@ import { agentDirectMessage, conversationTextLabel } from "@/lib/messaging/conve
 import { messageLink } from "@/lib/navigation/record-links";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 
-/**
- * One agent's page. Work and settings come from the server, so they work on every owner device.
- * Only transcripts and local configuration need the agent's home desktop.
- */
 export function AgentPage({
   agentId,
   name,
@@ -50,7 +46,6 @@ export function AgentPage({
   const conversations = useQuery(conversationsQueryOptions(organizationId)).data ?? [];
   const header =
     status && agentHeaderStatus(status, agentDirectMessage(conversations, agentId)?.id);
-  // Only a conversation in the viewer's list gets a name; otherwise the header says "Working".
   const place = conversations.find(
     (conversation) => conversation.id === header?.elsewhereConversationId,
   );

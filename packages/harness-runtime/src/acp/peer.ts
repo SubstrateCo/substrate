@@ -3,7 +3,6 @@ import type { AcpLaunch, AcpPeer } from "./api.ts";
 import { connectAcp, type AcpConnectDeps } from "./connection.ts";
 import type { AcpDriverHandlers } from "./driver.ts";
 
-/** A peer has no turn: every agent request gets the no-ask answer, and updates are dropped. */
 const noAsk: AcpDriverHandlers = {
   update: () => {},
   request: async (request) => request.deny(),

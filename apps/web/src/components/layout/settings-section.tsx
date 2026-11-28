@@ -1,6 +1,7 @@
 import { useId, type ReactNode } from "react";
 
 import { PendingButton } from "../feedback/pending-button";
+import { keepFocusOnPointerDown } from "@/components/feedback/keep-focus";
 import { toneBorder } from "@/components/feedback/tag-styles";
 import { Button } from "@/components/ui/button";
 import { FieldLabel } from "@/components/ui/field";
@@ -8,7 +9,6 @@ import { Heading } from "@/components/ui/heading";
 import { Item, ItemActions, ItemContent } from "@/components/ui/item";
 import { cn } from "cn";
 
-/** One settings page or tab: a title, a short description, optional actions, then its groups. */
 export function SettingsSection({
   title,
   description,
@@ -19,7 +19,6 @@ export function SettingsSection({
   title: string;
   description?: ReactNode;
   actions?: ReactNode;
-  /** Accessible name when it should differ from the visible title. */
   label?: string;
   children: ReactNode;
 }) {
@@ -37,7 +36,6 @@ export function SettingsSection({
           </Heading>
           {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </div>
-        {/* Always on the title row's right edge, even when it wraps below a long description. */}
         {actions && (
           <div className="ml-auto flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
             {actions}
@@ -49,7 +47,6 @@ export function SettingsSection({
   );
 }
 
-/** A bordered group of related settings. Its footer holds the actions that save the group. */
 export function SettingsCard({
   title,
   description,
@@ -86,10 +83,6 @@ export function SettingsCard({
   );
 }
 
-/**
- * The title and description of one group of settings. `actions` stay on the title row's right
- * edge, beside a long description instead of below it.
- */
 export function GroupTitle({
   id,
   title,
@@ -120,7 +113,6 @@ export function GroupTitle({
   );
 }
 
-/** A form detail with a quiet description and a consistently aligned control column. */
 export function SettingsDetail({
   title,
   description,
@@ -147,10 +139,6 @@ export function SettingsDetail({
   );
 }
 
-/**
- * One setting inside a card: the label and description on the left, its control on the right.
- * Pass `htmlFor` when the control is a single labelable element, such as a Switch.
- */
 export function SettingsRow({
   label,
   description,
@@ -177,7 +165,6 @@ export function SettingsRow({
   );
 }
 
-/** A bordered list of rows, such as skills, MCP servers, routines, or agent activity. */
 export function SettingsList({
   title,
   description,
@@ -187,9 +174,7 @@ export function SettingsList({
 }: {
   title?: string;
   description?: ReactNode;
-  /** The list's accessible name when it has no title. */
   label?: string;
-  /** Hides the list from assistive technology, such as skeleton rows under a status. */
   hidden?: boolean;
   children: ReactNode;
 }) {
@@ -209,7 +194,6 @@ export function SettingsList({
   );
 }
 
-/** A quiet note inside a section, such as "Open the desktop app". */
 export function SettingsNote({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
   return (
     <div className="flex items-start gap-3 rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
@@ -219,11 +203,6 @@ export function SettingsNote({ icon, children }: { icon?: ReactNode; children: R
   );
 }
 
-/**
- * The one save footer for a settings card, in every area. The status is on the left: the error, or
- * "Unsaved changes" or "All changes saved". On the right, "Discard" (only when dirty) and a primary
- * "Save" that is disabled while nothing changed. Submits its form unless `onSave` is passed.
- */
 export function SettingsFooter({
   dirty,
   pending = false,
@@ -234,9 +213,7 @@ export function SettingsFooter({
 }: {
   dirty: boolean;
   pending?: boolean;
-  /** Reviewed copy for a failed save; replaces the status. */
   error?: ReactNode;
-  /** The id of the form to submit when the footer sits outside it. */
   form?: string;
   onSave?: () => void;
   onDiscard: () => void;
@@ -260,8 +237,7 @@ export function SettingsFooter({
             type="button"
             variant="outline"
             disabled={pending}
-            // Keeps focus where it is, so discarding does not validate the field it leaves.
-            onPointerDown={(event) => event.preventDefault()}
+            onPointerDown={keepFocusOnPointerDown}
             onClick={onDiscard}
           >
             Discard

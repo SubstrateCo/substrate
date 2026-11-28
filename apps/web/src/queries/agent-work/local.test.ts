@@ -16,7 +16,6 @@ function event(seq: number): TurnEventView {
   };
 }
 
-/** A bridge that pages like the desktop: events after a seq, one page at a time. */
 function bridge(stored: TurnEventView[]) {
   const requests: number[] = [];
   return {

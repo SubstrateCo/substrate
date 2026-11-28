@@ -8,8 +8,6 @@ import type { RepositoryContext } from "../../../core/repository-context";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { alias, type PgSelectQueryBuilder } from "drizzle-orm/pg-core";
 
-// Joins `user` for the person behind each actor: the person, or the owner of the agent, while they
-// are still a person in the actor's organization.
 export function joinCrmActorPerson<T extends PgSelectQueryBuilder>(query: T) {
   const person = alias(actors, "crm_actor_person");
   return query
@@ -38,7 +36,6 @@ export function crmActorView(
   };
 }
 
-// Each author's view, and the authors whose interactions the actor may delete.
 async function crmActorViews(context: RepositoryContext, ids: string[]) {
   const views = new Map<string, CrmActivity["actor"]>();
   const deletable = new Set<string>();

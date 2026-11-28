@@ -2,10 +2,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Globe } from "lucide-react";
 
-/**
- * Explains what happens to people outside the workspace and asks whether they may read earlier
- * messages. Show it only when the recipients include someone to invite.
- */
 export function ShareHistoryField({
   id,
   invited,
@@ -15,9 +11,7 @@ export function ShareHistoryField({
   onCheckedChange,
 }: {
   id: string;
-  /** How many recipients will get an invitation. */
   invited: number;
-  /** Channels with outside people also need their organization's approval. */
   channel: boolean;
   checked: boolean;
   disabled: boolean;

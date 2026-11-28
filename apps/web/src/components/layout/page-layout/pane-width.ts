@@ -1,6 +1,3 @@
-// Saved pane widths, in pixels, keyed by layout and pane.
-// Widths are a device preference, not workspace data, so they stay in localStorage.
-
 const key = (layoutId: string, pane: string) => `substrate:page-layout:${layoutId}:${pane}`;
 
 export function readPaneWidth(layoutId: string, pane: string) {

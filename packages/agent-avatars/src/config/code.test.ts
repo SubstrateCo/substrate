@@ -12,7 +12,6 @@ const readable = (config: AvatarConfig) => {
 
 describe("avatar codes", () => {
   test("stored codes keep their meaning: preset lists only ever grow at the end", () => {
-    // Changing an existing position here changes every stored avatar. Append instead.
     expect(BODIES.slice(0, 6)).toEqual(["circle", "squircle", "pill", "blob", "drop", "hexagon"]);
     expect(BODY_COLOR_NAMES.slice(0, 11)).toEqual([
       "slate",

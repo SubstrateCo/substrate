@@ -6,7 +6,6 @@ import {
 } from "./preferences.ts";
 import { describe, expect, test } from "bun:test";
 
-// Wednesday 2026-11-25, 12:00 UTC.
 const now = new Date("2026-11-25T12:00:00.000Z");
 const later = "2026-11-25T13:00:00.000Z";
 const earlier = "2026-11-25T11:00:00.000Z";
@@ -102,16 +101,13 @@ describe("schedules", () => {
 
   test("a daytime window applies in the schedule's time zone", () => {
     const schedule = { days: weekdays, start: 9 * 60, end: 17 * 60, timeZone: "America/New_York" };
-    // 12:00 UTC is 07:00 in New York.
     expect(withinSchedule(schedule, now)).toBe(false);
     expect(withinSchedule(schedule, new Date("2026-11-25T15:00:00.000Z"))).toBe(true);
-    // Saturday at noon in New York.
     expect(withinSchedule(schedule, new Date("2026-11-28T17:00:00.000Z"))).toBe(false);
   });
 
   test("an overnight window belongs to the day it starts on", () => {
     const schedule = { days: [5], start: 22 * 60, end: 2 * 60, timeZone: "UTC" };
-    // Friday 23:00 and Saturday 01:00 are inside; Friday 01:00 belongs to Thursday.
     expect(withinSchedule(schedule, new Date("2026-11-27T23:00:00.000Z"))).toBe(true);
     expect(withinSchedule(schedule, new Date("2026-11-28T01:00:00.000Z"))).toBe(true);
     expect(withinSchedule(schedule, new Date("2026-11-27T01:00:00.000Z"))).toBe(false);

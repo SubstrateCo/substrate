@@ -19,7 +19,6 @@ import { hiddenTaskInline, isClosedTask } from "@/lib/tasks/task-status";
 import { cn } from "cn";
 import { Ban, CornerDownRight } from "lucide-react";
 
-/** Marks a task that waits on another open task. */
 export function TaskBlockedCue() {
   return (
     <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-destructive">
@@ -30,10 +29,6 @@ export function TaskBlockedCue() {
   );
 }
 
-/**
- * One task row: status (a menu for editors), title, parent, then priority, due date, and
- * assignee in fixed columns so they line up down the list.
- */
 export function TaskListItem({
   task,
   assignee,
@@ -47,7 +42,6 @@ export function TaskListItem({
   task: Task;
   assignee?: ProjectDetail["actors"][number];
   parentTitle?: string;
-  /** An open task blocks this one. */
   blocked?: boolean;
   selected: boolean;
   onSelect: () => void;

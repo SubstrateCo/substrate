@@ -43,22 +43,17 @@ import { join } from "node:path";
 import sharp from "sharp";
 
 export interface ModelTarget {
-  /** Short name in reports, such as "opus". */
   label: string;
   harness: HarnessKind;
-  /** The harness's own model ID. */
   model: string;
 }
 
-/** One Substrate tool call, as the model made it. */
 interface ToolCallRecord {
   tool: string;
   input: WorkspaceApiRequest["input"];
   ok: boolean;
-  /** The error code of a failed call. */
   code?: string;
   message?: string;
-  /** Bytes of the JSON result the model received. */
   bytes: number;
   ms: number;
 }
@@ -70,41 +65,27 @@ interface TurnRecord {
   usage?: Usage;
   ms: number;
   calls: ToolCallRecord[];
-  /** Tool calls the harness reported, including its own tools. */
   nativeItems: { type: string; title: string }[];
-  /**
-   * Tool calls the harness reported as failed. More of these than failed Substrate calls means
-   * that input was rejected before it reached a tool, as for input that does not fit the schema.
-   */
   nativeFailed: string[];
-  /** The host asked the turn once to send an answer it had written as plain text. */
   nudged?: boolean;
-  /** Native prompts the eval approved for the owner. */
   permissionPrompts: string[];
-  /** Private text the model wrote outside tools. */
   text: string;
 }
 
 export interface RunRecord {
   scenario: string;
   model: string;
-  /** The agent definition the run created. */
   agentId?: string;
-  /** The actor that the agent writes as. */
   agentActorId?: string;
   turns: TurnRecord[];
-  /** What the agent published in the place the work came from, oldest first. */
   replies: string[];
-  /** Questions the agent asked with reply.ask. */
   questions: string[];
   error?: string;
 }
 
-/** Inbox reads the owner's Gmail on the desktop. It is not part of these evals. */
 const optionalApps = ["tasks", "crm"] as const;
 const turnTimeoutMs = 8 * 60_000;
 
-/** The same mapping from server exceptions to error codes as the server's serviceResult. */
 function failure(error: Error): WorkspaceApiResult {
   const fail = (code: string, message: string) => ({
     success: false as const,
@@ -125,11 +106,6 @@ type Completed = Extract<HarnessEvent, { type: "turn.completed" }>["result"];
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/**
- * Runs one scenario with one model, the way the desktop host runs a turn: the owner's message is
- * admitted by the server code, the turn is claimed and leased, the envelope and prefix are the
- * host's own, and a native harness session calls the tools over the runtime's MCP endpoint.
- */
 export async function runScenario(
   db: Database,
   directory: string,
@@ -187,8 +163,6 @@ export async function runScenario(
       ...optionalApps.filter((app) => !appsOff.includes(app)),
     ];
 
-    // Stored bytes for the file tools, as the server reads them from object storage. An image
-    // reaches the model as a re-encoded preview, never as the uploaded bytes.
     const reader: FileContentReader = {
       bytes: async (objectKey) => seeded.files.get(objectKey) ?? null,
       async preview(objectKey) {
@@ -247,7 +221,6 @@ export async function runScenario(
       });
     const provider = agentToolProvider({
       workspace,
-      // save_handoff is the only local tool left; the evals keep no handoff notes.
       local: (request) =>
         record_(request.tool, request.input, async () => ({
           success: true,
@@ -284,7 +257,6 @@ export async function runScenario(
     });
     record.agentActorId = agentActor.entityId;
 
-    /** The turn's input, built as the host's turn executor builds it. */
     async function input(hostTurn: HostTurn) {
       const { session, turn } = hostTurn;
       const batch = hostTurn.items.filter((item) => !item.steered && item.status === "submitted");
@@ -368,7 +340,6 @@ export async function runScenario(
               turnRecord.nativeFailed.push(titles.get(event.itemId) ?? event.itemId);
             return;
           case "request.opened": {
-            // The owner would see this prompt. The eval approves it and counts it as friction.
             const data = acpRequestData.parse(event.data);
             const options = data.options ?? [];
             const allow =
@@ -430,8 +401,6 @@ export async function runScenario(
             .catch(() => {});
         }, turnTimeoutMs);
         let result = await done.promise;
-        // As the host does: an owner turn that wrote text and published nothing is asked once
-        // to send its answer.
         const published = calls.some(
           (call) => (call.tool === "reply" && call.ok) || call.code === "APPROVAL_PENDING",
         );
@@ -486,7 +455,6 @@ export async function runScenario(
       return turnRecord;
     }
 
-    /** Claims the next turn. Owner messages wait a few seconds so that bursts become one turn. */
     async function claim() {
       for (let attempt = 0; attempt < 40; attempt++) {
         const claimed = await device.host.claim({});
@@ -505,7 +473,6 @@ export async function runScenario(
         return sent;
       }
       if (entry.type === "routine") {
-        // The owner's own routine needs no approval. Its first tick is made due now.
         await seeded.owner.agentWork.createRoutine(agent.id, {
           name: "Eval routine",
           prompt: entry.prompt,
@@ -531,7 +498,6 @@ export async function runScenario(
           threadId,
         );
       }
-      // The agent asks where the work came from: its DM, or the thread it was mentioned in.
       const conversations = [...new Set([dm.id, ...places.map((place) => place.conversationId)])];
       const requests = (
         await Promise.all(
@@ -552,7 +518,6 @@ export async function runScenario(
 
     for (const entry of scenario.steps) {
       const acted = await step(entry);
-      // An answer or decision step has nothing to act on when the agent did not ask.
       if (acted === null) continue;
       const hostTurn = await claim();
       if (!hostTurn) {
@@ -567,7 +532,6 @@ export async function runScenario(
       }
     }
 
-    // What the owner sees: the agent's messages where the work came from.
     const seen = new Set<string>();
     for (const place of [{ conversationId: dm.id, threadId: null }, ...places]) {
       const key = `${place.conversationId}:${place.threadId}`;
@@ -593,7 +557,6 @@ export async function runScenario(
   return { record, world, close };
 }
 
-/** The message as the owner reads it: the app shows a mention as the record's name. */
 async function readable(world: World, body: string) {
   const people = new Map(
     (["priya", "marcus", "dana", "tom"] as const).map((key) => [
@@ -603,20 +566,32 @@ async function readable(world: World, body: string) {
   );
   let text = body;
   for (const [token, kind, id] of body.matchAll(/@\[(task|project|person):([0-9a-f-]{36})\]/g)) {
-    let name: string | undefined;
-    try {
-      if (kind === "task") name = (await world.owner.tasks.get(id!)).title;
-      else if (kind === "project") name = (await world.owner.projects.get(id!)).name;
-      else name = people.get(id!);
-    } catch {
-      /* A mention the owner cannot open stays as written. */
-    }
+    const name = await mentionedName(
+      world,
+      people,
+      kind === "task" || kind === "project" ? kind : "person",
+      id!,
+    );
     if (name) text = text.replaceAll(token, name);
   }
   return text;
 }
 
-/** A fresh account directory for one run, so that agent folders never mix. */
+async function mentionedName(
+  world: World,
+  people: Map<string, string>,
+  kind: "task" | "project" | "person",
+  id: string,
+): Promise<string | undefined> {
+  try {
+    if (kind === "task") return (await world.owner.tasks.get(id)).title;
+    if (kind === "project") return (await world.owner.projects.get(id)).name;
+    return people.get(id);
+  } catch {
+    return undefined;
+  }
+}
+
 export async function runDirectory(root: string, scenario: string, model: string) {
   const directory = join(root, `${scenario}-${model}-${crypto.randomUUID().slice(0, 6)}`);
   await mkdir(directory, { recursive: true });

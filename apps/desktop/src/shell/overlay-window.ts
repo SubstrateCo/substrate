@@ -12,14 +12,9 @@ import {
   type BrowserWindowConstructorOptions,
 } from "electron";
 
-/** Lets the overlay's exit animation finish before the window hides. */
 const overlayHideDelayMs = 250;
 const displayChangeDebounceMs = 500;
 
-/**
- * The transparent, click-through window that shows screen notification cards. It never takes
- * focus: it shows inactive, and it is excluded from screen capture.
- */
 export function createOverlayWindow(options: {
   rendererURL: string;
   partition: string;
@@ -85,7 +80,6 @@ export function createOverlayWindow(options: {
       });
     ignoreMouse(created);
     const contents = created.webContents;
-    // The overlay shows cards only. It never navigates or opens windows.
     contents.setWindowOpenHandler(() => ({ action: "deny" }));
     contents.on("will-navigate", (event) => event.preventDefault());
     contents.on("will-redirect", (event) => event.preventDefault());
@@ -101,7 +95,6 @@ export function createOverlayWindow(options: {
     wanted = true;
     const target = live() ?? create();
     if (target.isVisible()) return;
-    // The column follows the pointer's display when the first card appears.
     place(target);
     target.showInactive();
   }
@@ -141,7 +134,6 @@ export function createOverlayWindow(options: {
   powerMonitor.on("unlock-screen", recreate);
 
   return {
-    /** Creates the hidden window ahead of the first card. */
     ensure() {
       if (!live()) create();
     },
@@ -155,7 +147,6 @@ export function createOverlayWindow(options: {
     },
     webContents: () => live()?.webContents,
     emit(event: ScreenNotificationEvent) {
-      // Main resets click-through on every removal; the overlay re-asserts it on pointer movement.
       if (event.type === "remove") ignoreMouse();
       emitToRenderer(live(), eventChannel, event, options.rendererURL);
     },

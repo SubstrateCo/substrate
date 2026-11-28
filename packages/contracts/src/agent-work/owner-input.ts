@@ -2,9 +2,6 @@ import { agentRequestResponse } from "../harness-runtime/requests.ts";
 import { organizationId } from "../workspace.ts";
 import { z } from "zod";
 
-// Owner calls from any device. The server scopes every read to the caller's own agents and to
-// the records the caller can see now.
-
 const id = z.uuid();
 
 /** GET /agent-work/requests */

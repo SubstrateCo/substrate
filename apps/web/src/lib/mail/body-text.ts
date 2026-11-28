@@ -1,4 +1,3 @@
-/** Only absolute web links are actionable in a received email. */
 export function mailHref(raw: string | null) {
   if (!raw) return undefined;
   const url = URL.parse(raw);
@@ -10,7 +9,6 @@ export function mailHref(raw: string | null) {
     : undefined;
 }
 
-/** A built-in HTML entity decoder, applied only to individual tokens, never to sender markup. */
 export function snippetText(snippet: string) {
   if (!snippet.includes("&")) return snippet;
   const decoder = document.createElement("textarea");
@@ -20,9 +18,6 @@ export function snippetText(snippet: string) {
   });
 }
 
-/** Recognize a Google Meet invitation only when both meeting details and a real Meet URL exist.
- * Keep the sender's date and zone verbatim (never reinterpret them in the viewer's local zone).
- * The complete original remains available under the summary. */
 export function meetingDetails(text: string) {
   const lines = text
     .split(/\r?\n/)

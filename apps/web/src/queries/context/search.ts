@@ -32,7 +32,6 @@ export function useJoinSearchConversation(input: Omit<SearchInput, "after" | "li
     mutate: (conversationId: string, options?: { onError: (error: Error) => void }) =>
       join.mutate(conversationId, {
         ...options,
-        // Mark the joined row in place instead of refetching every loaded page.
         onSuccess: () =>
           client.setQueryData(
             pages.queryKey,

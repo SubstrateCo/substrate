@@ -6,8 +6,6 @@ import { userAgents } from "./user-agents.schema";
 import { and, eq, isNull, sql, type SQLWrapper } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
-// Callers also check the actor entity's organization and deletion state. Pass an alias of
-// `actors` when the query uses one.
 export function activeActorCondition(
   actor: {
     [Key in "disabledAt" | "type" | "organizationId" | "userId" | "userAgentId"]: SQLWrapper;
@@ -33,8 +31,6 @@ export function activeActorCondition(
   );
 }
 
-// Join conditions for the scope's own actor and its live entity. Join `actors` on `actorOn` and
-// the returned `entity` alias on `entityOn`. Callers still apply activeActorCondition().
 export function viewerActorJoins(scope: ActorScope, entityAlias: string) {
   const entity = alias(entities, entityAlias);
   return {
@@ -51,9 +47,6 @@ export function viewerActorJoins(scope: ActorScope, entityAlias: string) {
   };
 }
 
-// Grants belong to people. A local agent uses its owner's human actor, so it can do what the
-// owner can do in this organization. Unknown actors resolve to NULL.
-// Future team agents need their own rule here.
 export function permissionActorEntityId(scope: {
   organizationId: string | SQLWrapper;
   actorEntityId: string | SQLWrapper;
@@ -66,8 +59,6 @@ export function permissionActorEntityId(scope: {
     WHERE pa.organization_id = ${scope.organizationId} AND pa.entity_id = ${scope.actorEntityId}::uuid)`;
 }
 
-// People are visible to everyone in the organization. A local agent is visible only to its owner
-// and the owner's agents.
 export function visibleActorCondition(scope: ActorScope) {
   return sql`(${actors.type} = 'human' OR EXISTS (
     SELECT 1 FROM ${userAgents} vua

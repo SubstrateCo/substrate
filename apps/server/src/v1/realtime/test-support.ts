@@ -1,6 +1,5 @@
 import type { RealtimeReceiver } from "@substrate/database/realtime";
 
-/** A receiver as resolveReceiver returns it, for tests that replace the database lookup. */
 export function testReceiver(value: {
   userId: string;
   organizationId: string | null;

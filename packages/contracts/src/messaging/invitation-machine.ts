@@ -7,7 +7,6 @@ export const sharingInvitationMachine = defineMachine({
   states: sharingInvitationStatuses,
   terminal: ["accepted", "declined", "revoked"],
   events: {
-    // The recipient and target fields record the approval request; it grants no access.
     requestApproval: { from: ["pending"], to: "pending" },
     accept: { from: ["pending"], to: "accepted" },
     decline: { from: ["pending"], to: "declined" },

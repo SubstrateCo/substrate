@@ -107,7 +107,6 @@ test("month view persists and shares event selection, filtering, navigation and 
   await expect(month).toBeVisible();
   await expect(event).toHaveAttribute("aria-current", "page");
   await panel.getByRole("button", { name: "Close event", exact: true }).click();
-  // Reopen without a view in the URL: localStorage, not search state, restores Month.
   await visit(user, undefined, "/calendar", { date: "2020-01-15" });
   await expect(picker).toHaveText("Month");
   await expect(month).toBeVisible();
@@ -115,7 +114,6 @@ test("month view persists and shares event selection, filtering, navigation and 
   await page.reload();
   await expect(picker).toHaveText("Month");
   await expect(event).toBeVisible();
-  // The sidebar checkbox and the filter bar's "Calendar is not" pill change the same choice.
   const calendar = page.getByRole("checkbox", { name: "Customer meetings", exact: true });
   const pill = page.getByRole("group", { name: "Calendar is not Customer meetings", exact: true });
   await calendar.uncheck();
@@ -127,7 +125,6 @@ test("month view persists and shares event selection, filtering, navigation and 
   await expect(event).toBeVisible();
   await page.getByRole("button", { name: "Filter", exact: true }).click();
   await page.getByRole("option", { name: "Calendar", exact: true }).click();
-  // Like the sidebar, the menu ticks the shown calendars; unticking one hides it.
   const option = page.getByRole("option", { name: "Customer meetings", exact: true });
   await expect(option).toHaveAttribute("aria-checked", "true");
   await option.click();
@@ -150,7 +147,6 @@ test("month view persists and shares event selection, filtering, navigation and 
   await expect(page).not.toHaveURL(/date=/);
   await expect(month.locator("time[aria-current='date']")).toHaveCount(1);
   await expect(page.getByRole("button", { name: "Today", exact: true })).toBeDisabled();
-  // A shared URL's explicit choice takes priority over the saved preference.
   await visit(user, undefined, "/calendar", { view: "week", date: "2020-01-15" });
   await expect(picker).toHaveText("Week");
   await expect(month).toHaveCount(0);
@@ -192,7 +188,6 @@ test("an event opens beside the calendar from its link and shows what it recorde
   await page.reload();
   await expect(panel.getByRole("heading", { name: "Pricing review", exact: true })).toBeVisible();
   await expect(panel.getByText("Recorded", { exact: true })).toBeVisible();
-  // A recorded interaction opens over the calendar and closes back to the event.
   await recorded.getByRole("link", { name: "Open interaction", exact: true }).click();
   const interaction = page.getByRole("dialog", { name: "Interaction", exact: true });
   await expect(interaction.getByRole("heading", { name: /with Jordan Lee$/ })).toBeVisible();

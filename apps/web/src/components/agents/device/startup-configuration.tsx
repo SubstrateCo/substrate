@@ -4,7 +4,6 @@ import { CatalogRowStatic } from "../catalog/catalog-row";
 import { ConfigurationList } from "./configuration-page";
 import { Blocks } from "lucide-react";
 
-/** Skills that Substrate writes into the agent folder. */
 export function StartupSkills({ skills }: { skills: HarnessSkill[] }) {
   return (
     <ConfigurationList label="Substrate skills">
@@ -15,7 +14,6 @@ export function StartupSkills({ skills }: { skills: HarnessSkill[] }) {
   );
 }
 
-/** Substrate's own MCP server, which every agent reaches. */
 export function BuiltInServer() {
   return (
     <ConfigurationList label="Built-in server">

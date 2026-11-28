@@ -17,10 +17,8 @@ export function AgentInstructions({
   onBlur,
   onChange,
 }: {
-  /** The built-in rules preview, shown when the agent uses the startup defaults. */
   startupInstructions: ReactNode;
   defaults: boolean;
-  /** The create dialog asks in plain words. */
   creating?: boolean;
   value: string;
   invalid: boolean;

@@ -16,12 +16,6 @@ function ToneIcon({ tone }: { tone: WorkTone }) {
   return null;
 }
 
-/**
- * A turn's work as one status in the reply's header, such as "Worked for 28s". It opens the
- * transcript, which holds the steps. Requests, attention cards, and errors stay in the message
- * body so they are never hidden. Live work shows in the agent avatar's mood, and Stop at the end
- * of the line, so neither moves while the label changes.
- */
 export function WorkStatus({
   tone,
   label,
@@ -32,10 +26,8 @@ export function WorkStatus({
 }: {
   tone: WorkTone;
   label: string;
-  /** The latest activity, shown beside the label while the work runs. */
   activity: string | null;
   onTranscript: () => void;
-  /** Present while the work can still be stopped. */
   onStop?: () => void;
   stopping: boolean;
 }) {
@@ -84,7 +76,6 @@ export function WorkStatus({
   );
 }
 
-/** A silent turn: one muted line, with nothing to open. */
 export function MutedWorkLine({ label }: { label: string }) {
   return <p className="mt-1 text-xs text-muted-foreground">{label}</p>;
 }

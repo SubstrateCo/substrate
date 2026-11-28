@@ -2,7 +2,6 @@ import { Tag } from "@/components/feedback/tag";
 import { SettingsDetail } from "@/components/layout/settings-section";
 import { BadgeCheck, TriangleAlert } from "lucide-react";
 
-/** The sign-in email, read-only. Changing it needs a verified email-change flow first. */
 export function AccountEmailCard({ email, verified }: { email: string; verified: boolean }) {
   return (
     <SettingsDetail

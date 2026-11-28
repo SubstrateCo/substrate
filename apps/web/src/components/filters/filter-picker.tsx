@@ -14,10 +14,6 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ListFilter } from "lucide-react";
 
-/**
- * The labelled "Filter" button. It opens a searchable list of fields; choosing one shows that
- * field's value editor in the same popover.
- */
 export function FilterPicker<Id extends string>({
   fields,
   value,

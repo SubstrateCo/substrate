@@ -54,7 +54,6 @@ export function crmRepository(context: RepositoryContext) {
             ? { archivedAt }
             : { archivedAt, version: sql`${crmDeals.version} + 1` };
         await ctx.touch(id);
-        // The old state is in the WHERE, so one of two concurrent calls records the change.
         const [flipped] = await ctx.db
           .update(table)
           .set(set)

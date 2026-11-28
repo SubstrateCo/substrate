@@ -6,11 +6,6 @@ const iso = (value: Date | null) => value?.toISOString() ?? null;
 
 type Agent = { actorId: string; name: string };
 
-/**
- * A request as its owner sees it now. `conversationName` is null when the owner cannot open the
- * request's conversation; then the request is a placeholder with no IDs, names, text, response or
- * proposal. A proposal whose target conversation the owner cannot open is left out.
- */
 export function toRequestView(row: {
   request: typeof agentRequests.$inferSelect;
   agent: Agent;

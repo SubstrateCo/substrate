@@ -301,7 +301,6 @@ function ImageViewerContent({
 
 type ViewerStatus = "loading" | "ready" | "failed";
 
-/** The image, with a spinner over it until it loads. It stays mounted so its load event fires. */
 function ViewerStage({ status, image }: { status: ViewerStatus; image: ReactNode }) {
   if (status === "failed")
     return (
@@ -317,7 +316,6 @@ function ViewerStage({ status, image }: { status: ViewerStatus; image: ReactNode
   );
 }
 
-/** Rotate and zoom, usable once the image has loaded. */
 function ViewerTools({
   ready,
   zoom,

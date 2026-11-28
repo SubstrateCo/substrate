@@ -10,7 +10,6 @@ import {
   turnOptions,
 } from "@/queries/agent-work/server";
 
-/** The transcript beside a conversation. The turn's summary comes from the server by ID. */
 export function ConversationTurnTranscript({
   conversation,
   turnId,

@@ -2,7 +2,6 @@ import { partialMatchKey, type QueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "@/queries/keys";
 
-/** Cross-app previews can contain optional-app data too. Drop them rather than retain stale names. */
 export async function clearAppData(client: QueryClient, organizationId: string, userId: string) {
   const prefixes = [
     queryKeys.tasks(organizationId),

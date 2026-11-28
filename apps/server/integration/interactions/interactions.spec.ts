@@ -30,7 +30,6 @@ test("interaction workspace reads are organization-wide, isolated from outsiders
   const base = "/api/v1/context/interactions";
   const read = (actor: typeof owner, endpoint: string, params = period) =>
     actor.request.get(`${base}/${endpoint}`, { params });
-  // Contacts and their interactions belong to the whole organization.
   for (const reader of [owner, member]) {
     expect(await result(await read(reader, "activity"))).toMatchObject({
       summary: { total: 1, contacts: 1, meetingsAndCalls: 1, recordedMinutes: 30 },

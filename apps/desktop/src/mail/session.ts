@@ -54,8 +54,6 @@ export function createMailSession(
   let current: Active | undefined,
     epoch = 0;
   let lifecycle = Promise.resolve();
-  // Only opening and closing the shared SQLite handle must be ordered. Reads, network
-  // authorization and mailbox cancellation never take this queue. The store owns its short transactions.
   function transition<T>(fn: () => Promise<T>) {
     const result = lifecycle.then(fn);
     lifecycle = result.then(
@@ -85,8 +83,6 @@ export function createMailSession(
   async function checked(scope: MailScope, signal?: AbortSignal) {
     const generation = options.authority.generation;
     signal?.throwIfAborted();
-    // verify() is shared with other desktop services. Release this caller even if a shared
-    // read (or a transport ignoring abort) is still finishing.
     const cancelled = Promise.withResolvers<never>();
     const listener = signal && addAbortListener(signal, () => cancelled.reject(signal.reason));
     try {
@@ -134,8 +130,6 @@ export function createMailSession(
       l.auth.accountKey === auth.accountKey && l.auth.organizationId === auth.organizationId;
     let local = current;
     if (local && !local.abort.signal.aborted && !matches(local)) {
-      // A fresh verification may discover a different account without a realtime hint.
-      // Fence earlier calls, close the old handle and verify the new scope again.
       await stop();
       return use(scope, work);
     }

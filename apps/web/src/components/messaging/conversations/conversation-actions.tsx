@@ -42,8 +42,6 @@ export function ConversationActions({
   onRemoved: () => Promise<void> | void;
 }) {
   const { organizationId, userId } = useWorkspaceScope();
-  // A dialog opened from the menu returns focus to its trigger. When the conversation is gone
-  // too, the sidebar is the nearest place left.
   const {
     value: dialog,
     open,
@@ -55,7 +53,6 @@ export function ConversationActions({
     ...deleteImpactQueryOptions(organizationId, conversation.id),
     enabled: dialog === "delete",
   });
-  // Running text: a public channel reads "#name", as in the composer and search.
   const name = conversationTextLabel(conversation);
   const candidates = humanMembers(ownerCandidates(conversation));
   const { leaveLabel, deleteLabel } =
@@ -66,7 +63,6 @@ export function ConversationActions({
     ? { onTransfer: () => open("transfer"), onDelete: () => open("delete") }
     : undefined;
 
-  // Only the menu shows the alert settings, so they load when the person reaches for it.
   const [wantedFor, setWantedFor] = useState<string>();
   const notifications = useConversationNotifications(conversation, wantedFor === conversation.id);
 
@@ -151,7 +147,6 @@ export function ConversationActions({
 
 const settingError = () => toast.error("We couldn’t change this setting. Try again.");
 
-/** The viewer's alert settings for a conversation they are a member of. Others get none. */
 function useConversationNotifications(
   conversation: Conversation,
   load: boolean,
@@ -162,7 +157,6 @@ function useConversationNotifications(
     ...conversationNotificationPreferencesOptions(userId, organizationId, conversation.id),
     enabled: member && load,
   });
-  // Channels follow the workspace level; DMs and groups always default to all.
   const workspace = useQuery({
     ...workspaceNotificationPreferencesOptions(userId, organizationId),
     enabled: member && load && conversation.kind === "channel",

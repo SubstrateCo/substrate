@@ -61,7 +61,6 @@ async function prepare(): Promise<void> {
     throw new Error("Start desktop releases from main.");
   }
   const repo = env("GITHUB_REPOSITORY");
-  // A rerun uses the same branch and version, including after a successful merge.
   const branch = `release/desktop-${env("GITHUB_RUN_ID")}`;
   run("git", "config", "user.name", "substrate-release[bot]");
   run("git", "config", "user.email", "substrate-release[bot]@users.noreply.github.com");
@@ -72,7 +71,6 @@ async function prepare(): Promise<void> {
     run("git", "fetch", "origin", existing?.merged ? existing.head.sha : branch);
     run("git", "checkout", "-B", branch, "FETCH_HEAD");
     if (existing?.merged) {
-      // Build the original source again if all jobs are rerun after a publish failure.
       run("git", "checkout", "--detach", existing.head.sha);
     } else {
       if (existing?.state === "closed")
@@ -157,7 +155,6 @@ function finalize(): void {
         "main changed during the build. Rerun all jobs to merge main into the release branch and rebuild.",
       );
     }
-    // GitHub enforces the repository's merge rules. Do not use an admin bypass.
     run(
       "gh",
       "api",

@@ -10,7 +10,6 @@ import type { SharingRequest } from "@/features/messaging/types";
 import { EmptyState } from "@/features/records/ui/states";
 import { ChevronLeft } from "lucide-react-native";
 
-/** Invitations from other organizations, and the review of one. */
 export function SharingRequestsSheet({
   organizationId,
   requests,

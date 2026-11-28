@@ -22,11 +22,6 @@ function decodeEntities(text: string) {
   });
 }
 
-/**
- * Event descriptions come from the provider and may hold HTML. This returns plain text only:
- * line breaks and list items become new lines, other tags and comments are removed, and
- * character references are decoded. Render the result as text, never as markup.
- */
 export function plainTextDescription(value: string | null | undefined) {
   if (!value) return "";
   const text = value

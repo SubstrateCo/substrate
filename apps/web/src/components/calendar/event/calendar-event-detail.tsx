@@ -23,7 +23,6 @@ function Detail({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   );
 }
 
-/** One event's details. The description is shown as plain text, never as markup. */
 export function CalendarEventDetail({ event, now }: { event: EventDetail; now: number }) {
   const zone = localTimeZone();
   const start = eventSpan(event).start;

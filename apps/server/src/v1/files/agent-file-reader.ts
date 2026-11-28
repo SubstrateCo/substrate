@@ -5,7 +5,6 @@ import { ObjectNotFoundError, type ObjectStorage } from "../../storage/types";
 import type { ImageCodec } from "./image-codec";
 import { previewAttachmentImage } from "./image-policy";
 
-/** Stored bytes for the agent file tools. A missing object or an undecodable image reads as null. */
 export function storageFileReader(storage: ObjectStorage, images: ImageCodec): FileContentReader {
   async function bytes(objectKey: string) {
     try {

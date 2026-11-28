@@ -54,7 +54,6 @@ export function ErrorState({
   onRetry,
   compact = false,
 }: {
-  /** Any thrown value. Only an Error carries safe copy; anything else gets the generic message. */
   error: unknown;
   noun: string;
   onRetry?: () => void;
@@ -89,7 +88,6 @@ export function ErrorState({
   );
 }
 
-/** A one-line explanation, such as a read-only or archived record. */
 export function Notice({ icon = Lock, children }: { icon?: LucideIcon; children: string }) {
   return (
     <View className="flex-row items-center gap-2 border-b border-border bg-muted/50 px-4 py-2">
@@ -115,7 +113,6 @@ export function MutationError({ error }: { error: unknown }) {
   );
 }
 
-/** The body of a record section backed by its own query: loading, error, empty text, or rows. */
 export function SectionQuery({
   pending,
   error,
@@ -128,7 +125,6 @@ export function SectionQuery({
   error: Error | null;
   noun: string;
   onRetry: () => void;
-  /** Shown instead of the rows when set. */
   emptyText: string | null;
   children: ReactNode;
 }) {

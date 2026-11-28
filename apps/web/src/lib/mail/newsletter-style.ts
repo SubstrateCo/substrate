@@ -28,8 +28,6 @@ export function pictureSources() {
 }
 type Sources = ReturnType<typeof pictureSources>;
 
-/** The browser parses CSS (including shorthands and media queries); only presentation rules
- * survive. Sender URLs become inert variables populated with checked raster data on request. */
 export function copyPresentation(
   input: CSSStyleDeclaration,
   output: CSSStyleDeclaration,
@@ -73,8 +71,6 @@ export function newsletterRules(css: string, pictures: Sources) {
   return rules(sheet.cssRules);
 }
 
-// This document is a piece of received mail, not app chrome. Its sheet lives only in the
-// scriptless frame; in particular it neither inherits the app reset nor imposes padding on TDs.
 export const readerBase = `
   html,body{margin:0; padding:0; height:auto!important; min-height:0!important; color-scheme:light}
   body{font:14px/1.5 system-ui,sans-serif;color:#25262b;background:white;overflow-wrap:break-word}

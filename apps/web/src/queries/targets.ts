@@ -6,32 +6,21 @@ import type { SearchInput } from "./context/search";
 import { queryKeys } from "./keys";
 import type { MessagePageContext } from "@/api/context/links";
 
-/** Queries that one change can make stale. */
 export interface QueryTarget {
   queryKey: QueryKey;
   exact?: boolean;
-  // Marks queries stale without reading them again.
   refetchType?: "none";
-  // Matches only message context pages that show work links, or have not loaded yet.
   withLinks?: true;
-  // Matches only message context pages whose key includes this message.
   withMessage?: string;
-  // Matches only related lists that show a message of this conversation, or have not loaded yet.
   inConversation?: string;
-  // Matches only queries whose key includes this record ID after queryKey.
   withId?: string;
-  // Matches only message context pages that link one of these tasks or projects, or have not
-  // loaded yet.
   linksTo?: string[];
-  // Matches conversation lists that include a discussion of this work, or have not loaded yet.
   discussesWork?: { projectId: string; taskIds?: string[] };
-  // Matches only searches whose results can include messages, threads, or conversations.
   searchesMessages?: true;
 }
 
 type Change = Extract<RealtimeEvent, { type: "change" }>;
 
-/** The record domains whose changes refresh only one organization's queries. */
 export type RecordDomain = Extract<
   Change["domain"],
   "messaging" | "tasks" | "context" | "notifications"
@@ -43,7 +32,6 @@ function showsLinks(query: Query) {
   return pages === undefined || pages.some((page) => page.links.length > 0);
 }
 
-/** Build the membership lookup once for all cached queries. Single-record writes need no Set. */
 export function entityIdMatcher(ids: readonly string[]): (id: string) => boolean {
   if (ids.length === 1) {
     const [only] = ids;
@@ -89,7 +77,6 @@ function discussesWork(
   );
 }
 
-// A search without kinds searches "all", which includes messages.
 const messageSearchKinds = new Set<SearchInput["kind"]>([
   "all",
   "message",
@@ -133,13 +120,10 @@ export function queryTargetFilter(
   };
 }
 
-/** Identifiers of the changed records. Without one, targets cover every record it could name. */
 export type ChangeDetail = Partial<
   Pick<Change, "messageId" | "threadId" | "projectId" | "taskIds">
 >;
 
-// The history pages that show a changed message. A new reply also changes its root's reply count
-// in the main timeline. An edited or deleted root can be open as a thread's header.
 function historyTargets(
   organizationId: string,
   conversationId: string | undefined,
@@ -157,8 +141,6 @@ function historyTargets(
   return scope === "messages" ? [thread, timeline] : [thread];
 }
 
-// A reaction changes one message's reactions, shown in its history page, its reaction details,
-// and target views of that conversation. Unread counts, order, and search stay the same.
 function reactionTargets(
   organizationId: string,
   conversationId: string,
@@ -180,7 +162,6 @@ function reactionTargets(
   ];
 }
 
-// A change to one project's tasks. Only that project's readers receive it.
 function workTargets(
   organizationId: string,
   projectId: string,
@@ -188,12 +169,9 @@ function workTargets(
 ): QueryTarget[] {
   const shared: QueryTarget[] = [
     { queryKey: queryKeys.crm(organizationId) },
-    // Task discussions show their task's current title and project backlink.
     { queryKey: queryKeys.conversations(organizationId), discussesWork: { projectId, taskIds } },
     ...searchTargets(organizationId),
   ];
-  // The project itself changed, or tasks were deleted: refresh what shows the project or any of
-  // its tasks. Projects lists show project details; locations name their project.
   if (!taskIds)
     return [
       { queryKey: queryKeys.projects(organizationId) },
@@ -205,8 +183,6 @@ function workTargets(
       { queryKey: queryKeys.notifications(organizationId) },
       ...shared,
     ];
-  // Task changes leave related messages and the projects list alone. Notifications show task
-  // titles, but their read state does not change.
   return [
     { queryKey: queryKeys.project(organizationId, projectId) },
     ...taskIds.flatMap((taskId) => [
@@ -222,8 +198,6 @@ function workTargets(
   ];
 }
 
-// Messages that reference one project's work changed. Related lists and source-message activity
-// of those tasks change; a project-wide change can reach any list.
 function referencedWorkTargets(
   organizationId: string,
   { projectId, taskIds }: ChangeDetail,
@@ -244,7 +218,6 @@ function referencedWorkTargets(
   ];
 }
 
-// A changed message's context shows only in pages that include it.
 function messagePagesTarget(
   organizationId: string,
   conversationId: string | undefined,
@@ -255,7 +228,6 @@ function messagePagesTarget(
   return target;
 }
 
-// Searches only become stale, so a change does not start a burst of search requests.
 export function searchTargets(organizationId: string): QueryTarget[] {
   return queryKeys.searches(organizationId).map((queryKey) => ({
     queryKey,
@@ -263,10 +235,6 @@ export function searchTargets(organizationId: string): QueryTarget[] {
   }));
 }
 
-/**
- * What a change to one organization's records makes stale. Realtime hints and local writes of
- * the same records use these targets, so both refresh the same queries.
- */
 export function domainTargets(
   domain: RecordDomain,
   organizationId: string,
@@ -276,16 +244,13 @@ export function domainTargets(
 ): QueryTarget[] {
   switch (domain) {
     case "messaging":
-      // A read position changes only the reader's unread counts.
       if (scope === "read") return [{ queryKey: queryKeys.messageUnread(organizationId) }];
       if (scope === "reactions" && conversationId)
         return reactionTargets(organizationId, conversationId, detail);
       return [
         { queryKey: queryKeys.messageUnread(organizationId) },
-        // Message content changes leave membership and conversation details unchanged.
         ...(scope !== "messages" ? [{ queryKey: queryKeys.conversations(organizationId) }] : []),
         ...historyTargets(organizationId, conversationId, scope, detail),
-        // A new message has no reactions yet. Deleting one removes only its own reactions.
         ...(scope !== "messages"
           ? [
               {
@@ -296,20 +261,13 @@ export function domainTargets(
               },
             ]
           : []),
-        // Related lists show messages with their reply counts. A message change reaches only lists
-        // that show its conversation; membership changes can reveal messages they do not show yet.
         conversationId && (scope === "messages" || detail.messageId)
           ? { queryKey: queryKeys.related(organizationId), inConversation: conversationId }
           : { queryKey: queryKeys.related(organizationId) },
-        // A new message cannot change the context of loaded messages. A new message gets its own
-        // page key; its reference changes arrive as "context" hints.
         ...(scope !== "messages"
           ? [messagePagesTarget(organizationId, conversationId, detail.messageId)]
           : []),
         { queryKey: queryKeys.messageTargets(organizationId, conversationId) },
-        // New posts need not interrupt an open search, and cannot change people, agents, or
-        // records. General changes include edits and deletions, so their old excerpts must be
-        // replaced in open results as well.
         ...searchTargets(organizationId).map((target) =>
           scope === "messages"
             ? { ...target, searchesMessages: true as const }
@@ -318,30 +276,23 @@ export function domainTargets(
       ];
     case "tasks":
       if (detail.projectId) return workTargets(organizationId, detail.projectId, detail.taskIds);
-      // Without IDs, such as a grant change: any task record can change.
       return [
         { queryKey: queryKeys.crm(organizationId) },
         { queryKey: queryKeys.tasks(organizationId) },
         { queryKey: queryKeys.activity(organizationId) },
         { queryKey: queryKeys.related(organizationId) },
-        // Pages without work links show no task titles.
         { queryKey: queryKeys.messagePages(organizationId), withLinks: true },
-        // Notifications show task titles. New notifications arrive as their own hints.
         { queryKey: queryKeys.notifications(organizationId) },
         ...searchTargets(organizationId),
       ];
     case "context":
-      // Reference changes do not change notifications. Writes that create notifications, and
-      // conversation deletion, send notifications hints to the recipients.
       if (conversationId && detail.messageId)
-        // One message's references changed: its context pages and the conversation's targets.
         return [
           messagePagesTarget(organizationId, conversationId, detail.messageId),
           { queryKey: queryKeys.messageTargets(organizationId, conversationId) },
           ...searchTargets(organizationId),
         ];
       if (detail.projectId) return referencedWorkTargets(organizationId, detail);
-      // Without IDs, such as a conversation deletion or a calendar sync: any reference can change.
       return [
         { queryKey: queryKeys.calendar(organizationId) },
         { queryKey: queryKeys.contacts(organizationId) },
@@ -378,10 +329,7 @@ export async function markStaleAfterInflight(
   return true;
 }
 
-/** Invalidates local writes' targets. Stale-only targets stay stale after reads in flight. */
 export function invalidateTargets(client: QueryClient, targets: QueryTarget[]) {
-  // Combined domain targets can overlap. Read each query once; any refreshing target wins
-  // over a stale-only target, regardless of their order.
   const matched = new Map<Query, boolean>();
   for (const target of targets)
     for (const query of client.getQueryCache().findAll(queryTargetFilter(target)))

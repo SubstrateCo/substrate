@@ -33,7 +33,6 @@ export function requestDesktopSignIn(
       finish(new Error("Could not complete sign-in. Please try again.")),
     );
     signal.addEventListener("abort", aborted, { once: true });
-    // Subscribe before opening the browser so even an immediate callback is observed.
     void bridge.requestAuth().then(onBrowserOpened).catch(finish);
   });
 }

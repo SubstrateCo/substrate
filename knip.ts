@@ -12,14 +12,12 @@ export default {
       // Bun's custom bundlers and Electron load these outside the import graph.
       entry: ["src/preload.ts", "src/overlay-preload.ts", "src/harness/worker/harness-worker.ts"],
       project: ["src/**/*.{js,ts}", "scripts/**/*.{js,ts}"],
-      // package-assets tests resolve a synthetic package from a temporary fixture.
       ignoreDependencies: ["sdk"],
     },
     "apps/server": {
       // Runtime scripts and the public API export are discovered from package.json.
       entry: ["{src,scripts}/**/*.test.ts", "scripts/seed-calendar-e2e.ts"],
       project: ["src/**/*.{ts,tsx}", "scripts/**/*.ts", "integration/**/*.ts", "*.config.ts"],
-      // Tests run through a custom Bun launcher rather than a bun test script.
       bun: true,
     },
     "apps/web": {
@@ -65,23 +63,19 @@ export default {
     "packages/database": {
       entry: ["src/**/*.test.ts"],
       project: ["src/**/*.ts", "*.config.ts"],
-      // Tests run through a custom Bun launcher rather than a bun test script.
       bun: true,
     },
     "tooling/architecture-lint": {
-      // oxlint loads src/index.ts through jsPlugins; `node --test` runs the rule tests.
       entry: ["src/**/*.test.ts"],
       project: ["src/**/*.ts"],
     },
     "tooling/design-lint": {
-      // oxlint loads src/index.ts through jsPlugins; `node --test` runs the rule tests.
       entry: ["src/**/*.test.ts"],
       project: ["src/**/*.ts"],
     },
     "packages/harness-runtime": {
       entry: [],
       project: ["src/**/*.ts"],
-      // Located from the ACP manifest and shipped as executable adapters, not imported.
       ignoreDependencies: [
         "@agentclientprotocol/claude-agent-acp",
         "@agentclientprotocol/codex-acp",

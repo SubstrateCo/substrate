@@ -25,14 +25,10 @@ import { cn } from "cn";
 
 const hours = Array.from({ length: 24 }, (_, hour) => hour);
 const percent = (minutes: number) => `${(minutes / dayMinutes) * 100}%`;
-// Hour labels sit 8px above their line; keep the first one in view when the grid opens.
 const hourLabelOffset = 8;
-// Blocks shorter than this are one line with no vertical padding.
 const compactBlockMinutes = 30;
-// Blocks shorter than this show the title and start time on one line.
 const oneLineBlockMinutes = 45;
 
-/** Seven days on a time grid, with all-day events above it and a line at the current time. */
 export function CalendarWeek({
   days,
   events,
@@ -63,13 +59,11 @@ export function CalendarWeek({
         (element.scrollHeight * scrollMinutes) / dayMinutes - hourLabelOffset,
       );
   });
-  // Scroll once per week shown, not on every refresh of its events.
   // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Scroll once per week shown, not on every refresh of its events.
   useLayoutEffect(() => scrollToStart(), [weekKey]);
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-x-auto">
       <div className="flex min-h-0 min-w-xl flex-1 flex-col">
-        {/* Reserve the same scrollbar gutter in each band, even when it cannot scroll. */}
         <div className="flex shrink-0 scrollbar-gutter-stable overflow-y-hidden border-b">
           <div className="w-14 shrink-0" />
           <div data-testid="week-day-headings" className="grid flex-1 grid-cols-7">
@@ -212,16 +206,11 @@ const eventVariants = cva(
   {
     variants: {
       density: {
-        // A timed block of oneLineBlockMinutes or more: title and time on two lines.
         default: "px-1.5 py-0.5",
-        // A timed block under oneLineBlockMinutes: title and start time on one line.
         "one-line": "flex gap-1 px-1.5 py-0.5",
-        // A timed block under compactBlockMinutes: one line, centered, no vertical padding.
         compact: "flex items-center gap-1 px-1.5 py-0 leading-none",
-        // An all-day chip.
         chip: "truncate px-1.5 py-0.5 font-medium",
       },
-      // Past events keep their color as a quieter fill, so what is still to come stands out.
       ended: {
         true: "bg-(--calendar-color)/8 text-muted-foreground hover:bg-(--calendar-color)/15",
         false: "",

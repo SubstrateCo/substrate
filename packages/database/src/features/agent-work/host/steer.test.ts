@@ -41,7 +41,6 @@ test("an owner message joins the live interactive turn of its session as steered
       "submitted",
     ],
   ]);
-  // A second steer finds nothing new.
   expect((await x.steer()).items).toEqual([]);
 });
 
@@ -73,7 +72,6 @@ test("items wait, held, when the turn cannot take them; passive context that can
     (row) => row.sourceRef.source === "owner_message" && row.sourceRef.messageId === waiting.id,
   );
   expect(item).toMatchObject({ status: "pending", held: true });
-  // An owner item of another session in the same folder waits for the slot too.
   const routine = await x.session({
     key: sessionKeys.routine(crypto.randomUUID()),
     kind: "routine",

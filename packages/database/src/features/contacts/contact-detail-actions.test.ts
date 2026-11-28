@@ -65,7 +65,6 @@ test("detail snapshots read only the affected collection and record only real ch
     type: "email",
     value: "other@example.com",
   });
-  // The access check, the profile, two snapshots, and the repository edit's own four.
   expect(tracked.queries).toHaveLength(8);
   expect(detailReads("contact_identifiers")).toHaveLength(3);
   expect(detailReads("contact_addresses")).toEqual([]);
@@ -73,7 +72,6 @@ test("detail snapshots read only the affected collection and record only real ch
   expect(await updates(contact.entityId)).toHaveLength(activityBefore);
 
   tracked.queries.length = 0;
-  // Selecting another primary changes both rows. The whole collection detects the switch.
   await bob.contacts.mutateContactDetail({
     ...base,
     action: "updateIdentifier",

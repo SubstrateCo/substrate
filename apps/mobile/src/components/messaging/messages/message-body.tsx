@@ -6,10 +6,6 @@ import type { ResolvedReference } from "@/features/messaging/references/resolve-
 import { useTheme } from "@/theme";
 import { useMarkdown } from "react-native-marked";
 
-/**
- * A message's Markdown with its references as inline chips. The stored text is parsed as it is:
- * reference tokens become chips only where they are text, and stay literal in code and links.
- */
 export function MessageBody({
   body,
   references,

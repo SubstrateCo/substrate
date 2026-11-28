@@ -16,7 +16,6 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-// User-owned definitions retain organization-scoped actors for attribution.
 export const userAgents = pgTable(
   "user_agents",
   {
@@ -28,15 +27,10 @@ export const userAgents = pgTable(
     instructions: text("instructions").notNull(),
     harness: text("harness", { enum: ["opencode", "claude", "codex"] }).notNull(),
     model: text("model"),
-    // How the agent looks, as a code from @substrate/agent-avatars. Generated from the agent's
-    // ID when it is created; the owner may change it.
     avatarCode: text("avatar_code").notNull(),
     enabled: boolean("enabled").notNull().default(true),
-    // Enabled apps whose Substrate skill and tools this agent does not get. The core tools stay.
     disabledApps: jsonb("disabled_apps").$type<AgentOptionalAppId[]>().notNull().default([]),
-    // Adds Substrate's workspace guide before the agent's own instructions.
     substrateGuide: boolean("substrate_guide").notNull().default(true),
-    // The desktop that runs this local agent. Its working folder lives on that device.
     homeDeviceId: uuid("home_device_id"),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },

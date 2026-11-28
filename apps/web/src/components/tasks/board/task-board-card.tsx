@@ -48,7 +48,6 @@ export function TaskBoardCard({
       className={cn(actionRow, isDragging && "opacity-40")}
     >
       <div className={cn("flex min-w-0 items-start gap-2", onStatusChange && "pr-6")}>
-        {/* Controls sit above the card's stretched title button. */}
         <span className="relative z-10 shrink-0">
           <TaskStatusMenu
             status={task.status}

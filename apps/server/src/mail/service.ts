@@ -11,7 +11,6 @@ import nodemailer from "nodemailer";
 
 export type SendMail = (to: string, message: MailMessage) => Promise<void>;
 
-/** Every email the server sends. Tests pass their own send function instead of SMTP. */
 function createMailService(send: SendMail, origins: MailOrigins) {
   return {
     verifyEmail: async (to: string, url: string) =>

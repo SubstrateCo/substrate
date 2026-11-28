@@ -29,7 +29,6 @@ import {
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
-// `conversation` is the participant's conversation row, or its alias.
 export function approvedParticipant(
   db: DatabaseExecutor,
   conversation: typeof messagingConversations = messagingConversations,
@@ -129,16 +128,8 @@ export function liveApprovedParticipant(
   return and(isNull(messagingParticipants.leftAt), approvedParticipant(db, conversation));
 }
 
-// A person's membership is held by their human actor in their own organization. The alias keeps
-// callers' correlated columns, such as an outer actors.user_id, bound to the outer row.
 const participantActor = alias(actors, "participant_actor");
 
-// A local agent reads with its owner's access. Agent DMs also require its own membership,
-// so the owner's other agents cannot read them. Agent membership alone never grants access.
-//
-// The participant subquery joins its own conversation row, which approvedParticipant reads,
-// instead of the outer one. It is uncorrelated for a fixed scope, so PostgreSQL computes the
-// viewer's conversations once instead of once per conversation row.
 export function visibleConversations(
   db: DatabaseExecutor,
   scope: {
@@ -207,7 +198,6 @@ export function visibleConversations(
   );
 }
 
-// Resolve the owner's human identity for both direct reads and correlated mention checks.
 function taskDiscussionAccess(
   db: DatabaseExecutor,
   scope: { userId: string | SQLWrapper; organizationId: string | SQLWrapper },
@@ -293,8 +283,6 @@ export async function conversationReaders(
         userId && organizationId ? [{ userId, organizationId }] : [],
       ),
     };
-  // entityReaders holds the active-human, membership, task-access and apps terms of
-  // taskDiscussionAccess; the reader's own actor entity must also be live.
   const readers = await db
     .select({ userId: actors.userId, organizationId: actors.organizationId })
     .from(actors)
@@ -421,7 +409,6 @@ export async function claimConversationChange(
     )
     .returning();
   if (claimed) return claimed;
-  // A deleted conversation is denied, as for a read.
   await conversationRow(db, conversation.id);
   throw new ConflictError("This conversation changed. Try again.");
 }

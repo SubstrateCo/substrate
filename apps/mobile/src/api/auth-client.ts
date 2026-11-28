@@ -11,7 +11,6 @@ import * as SecureStore from "expo-secure-store";
 
 export const authClient = createAuthClient({
   baseURL: apiURL,
-  // Screens own post-auth navigation, as in the web client.
   disableDefaultFetchPlugins: true,
   plugins: [
     organizationClient({ ac, roles }),

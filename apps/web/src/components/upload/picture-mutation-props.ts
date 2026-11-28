@@ -3,7 +3,6 @@ import type { usePictureMutations } from "@/queries/files/mutations";
 
 type PictureMutations = Pick<ReturnType<typeof usePictureMutations>, "upload" | "remove">;
 
-/** Maps the picture upload and remove mutations to the upload view's state and callbacks. */
 export function pictureMutationProps({
   upload,
   remove,

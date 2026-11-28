@@ -10,7 +10,6 @@ import { describe, expect, test } from "bun:test";
 
 type Requests = NonNullable<Parameters<typeof requestActionMutationOptions>[3]>;
 
-/** Server requests that all settle with `settle`. */
 const requests = (settle: () => Promise<void>): Requests => ({
   respondToRequest: settle,
   approveProposal: settle,
@@ -19,7 +18,6 @@ const requests = (settle: () => Promise<void>): Requests => ({
 
 const target = crypto.randomUUID();
 
-/** Which of the cached keys the targets match, by TanStack prefix matching. */
 function matched(cached: QueryKey[], targets: (QueryKey | QueryTarget)[]) {
   const client = new QueryClient();
   for (const key of cached) client.setQueryData(key, []);

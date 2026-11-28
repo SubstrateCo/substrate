@@ -13,7 +13,6 @@ import { and, eq } from "drizzle-orm";
 
 const f = setupDatabase();
 
-/** A recorded meeting with one guest, and the interaction it created for that guest. */
 async function recordedMeeting(title?: string) {
   await enableCalendar(f);
   const meeting = await insertMeeting(f, await insertCalendar(f), {

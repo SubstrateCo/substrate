@@ -61,7 +61,6 @@ test("published participation survives without the thread session, and disabling
     { requestId: crypto.randomUUID(), body: "Done" },
     threadTurn(channel.id, root.id),
   );
-  // Without its session, the published reply is the evidence that the agent joined.
   await f.db.delete(agentSessions);
   const followUp = await x.alice.sendMessage(channel.id, "And investors?", root.id);
   expect((await messageWakes(followUp.id)).map((wake) => wake.userAgentId)).toEqual([

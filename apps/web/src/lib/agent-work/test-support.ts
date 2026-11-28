@@ -94,7 +94,6 @@ export function request(fields: Partial<AgentVisibleRequestView> = {}): AgentVis
   };
 }
 
-/** A request in a conversation the viewer cannot open. */
 export function hiddenRequest(
   fields: Partial<AgentHiddenRequestView> = {},
 ): AgentHiddenRequestView {
@@ -123,7 +122,6 @@ export function status(fields: Partial<AgentStatusView> = {}): AgentStatusView {
   };
 }
 
-/** A stopped turn in the Needs you list. */
 export function attentionTurn(
   fields: Partial<AgentAttentionTurnView> = {},
 ): AgentAttentionTurnView {
@@ -140,7 +138,6 @@ export function attentionTurn(
   };
 }
 
-/** An item the home desktop couldn't confirm the agent received, in the Needs you list. */
 export function uncertainItem(
   fields: Partial<AgentUncertainItemView> = {},
 ): AgentUncertainItemView {

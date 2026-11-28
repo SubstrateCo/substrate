@@ -58,12 +58,10 @@ export const taskApi = {
   },
 };
 
-/** Download through the byte-serving attachment route, never the redirecting file route. */
 export async function saveTaskAttachment(
   query: z.input<typeof taskAttachmentRequest>,
   filename: string,
 ) {
-  // Ask for the destination first so a canceled picker does not fetch private bytes.
   const save = await prepareTaskDownload(safeTaskFilename(filename));
   const response = await api.files.attachments.tasks.content.$get({ query });
   if (!response.ok) throw new Error("Could not download this attachment. Check your access.");

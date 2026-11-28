@@ -48,7 +48,6 @@ export const listReactions = ({
       { init: { signal } },
     ),
   );
-/** A person or agent who reacted, from a reactions page. */
 export type Reactor = Awaited<ReturnType<typeof listReactions>>["items"][number];
 export const addMembers = ({ data, signal }: ApiInput<z.input<typeof membersInput>>) =>
   readResult(api.messaging.members.$post({ json: data }, { init: { signal } }));

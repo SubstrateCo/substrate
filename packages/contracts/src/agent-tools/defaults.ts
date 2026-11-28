@@ -2,10 +2,6 @@ import type { AppId } from "../apps/index.ts";
 import type { HarnessKind } from "../harness-runtime/kinds.ts";
 import { enabledAppGuides } from "./skills/index.ts";
 
-/**
- * What each enabled app is for, its standing rules and its most used inputs. It comes from the
- * app guides alone, so the instructions change with the apps and name none that is off.
- */
 function appSection(enabledApps: readonly AppId[]) {
   const guides = enabledAppGuides(enabledApps);
   if (!guides.length) return "";

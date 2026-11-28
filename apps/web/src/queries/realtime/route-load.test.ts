@@ -158,7 +158,6 @@ test("a late unobserved loader cannot refresh or revalidate a disposed generatio
       organizationId: "org",
       id: crypto.randomUUID(),
     });
-    // The refresh now waits for the loader's read.
     await advanceTimersAsync(25);
     cache.dispose();
     initial.resolve(["original snapshot"]);

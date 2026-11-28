@@ -11,14 +11,11 @@ export function WorkspaceLinkBoundary({
   children,
 }: {
   organizationId: string;
-  /** The workspace a link was made in. */
   workspaceId?: string;
   children: ReactNode;
 }) {
   const change = useActivateOrganization(null);
   const navigate = useNavigate();
-  // App-rail and typed URLs may omit the workspace. Resolve it once, so history and copied
-  // record links keep the same explicit scope.
   useEffect(() => {
     if (!workspaceId)
       void navigate({

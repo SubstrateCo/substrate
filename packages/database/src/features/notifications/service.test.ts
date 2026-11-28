@@ -68,7 +68,6 @@ test("marking one notification read uses one mutation statement and no-op retrie
       createFeedService(tx, { userId: "bob", organizationId: f.orgA }).markRead(notice!.id),
     );
   expect((await mark()).hints).toHaveLength(1);
-  // Workspace resolution and the authorized read mutation. No preflight notification read.
   expect(queries.filter((query) => !["begin", "commit"].includes(query))).toHaveLength(2);
   expect((await mark()).hints).toEqual([]);
   expect((await feed("bob").list())[0]?.readAt).toBeInstanceOf(Date);
@@ -220,7 +219,6 @@ test("the unread indicator ignores readable targets that the feed cannot show", 
   const service = feed("alice");
   expect(await service.list()).toEqual([]);
   expect((await service.groups({ limit: 20, filter: "all" })).items).toEqual([]);
-  // Nothing in the feed can clear this row, so it must not light the dot.
   expect(await service.hasUnread()).toBe(false);
 });
 
@@ -350,7 +348,6 @@ test("feed pages read current work and message targets in one statement without 
   const read = async () => {
     queries.length = 0;
     const result = await service.list();
-    // The workspace check, then the feed with its targets.
     return { result, statements: queries.length };
   };
   await insert([task.entityId]);
@@ -431,7 +428,6 @@ test("partner feeds use the selected workspace and current conversation access, 
     organizationId: f.orgA,
   });
   expect(await feed("outsider").list()).toEqual([]);
-  // The partner's membership moves from its workspace B actor to its workspace A actor.
   await f.db
     .update(messagingParticipants)
     .set({ leftAt: new Date() })

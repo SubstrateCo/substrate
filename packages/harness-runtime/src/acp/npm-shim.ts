@@ -35,7 +35,6 @@ const codexLayout = (arch: string): string[][] => {
   ];
 };
 
-/** CLIs whose npm package installs a native executable, by CLI name. */
 const npmLayouts = new Map([
   ["claude", claudeLayout],
   ["codex", codexLayout],

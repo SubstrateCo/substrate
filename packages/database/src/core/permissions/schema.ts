@@ -12,12 +12,10 @@ export const entityGrants = pgTable(
   {
     organizationId: text("organization_id").notNull(),
     entityId: uuid("entity_id").notNull(),
-    // Grants sit on access containers: the foreign key requires the entity to be its own.
     accessEntityId: uuid("access_entity_id")
       .generatedAlwaysAs(sql`entity_id`)
       .notNull(),
     actorEntityId: uuid("actor_entity_id").notNull(),
-    // Grants belong to people. Agents use their owner's access.
     actorType: actorType("actor_type").generatedAlwaysAs(sql.raw(`'human'::actor_type`)).notNull(),
     level: permissionLevel("level").notNull(),
   },

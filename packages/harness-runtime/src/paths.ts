@@ -48,7 +48,6 @@ export async function safePath(
   return target;
 }
 
-/** Whether `path` is `root` or inside it. Both must be canonical. */
 function within(root: string, path: string) {
   const rel = relative(root, path);
   return rel === "" || (!isAbsolute(rel) && rel !== ".." && !rel.startsWith(`..${sep}`));

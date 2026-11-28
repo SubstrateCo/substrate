@@ -34,7 +34,6 @@ test("agent settings keep their controls within the sheet at desktop and narrow 
   await expect(sheet.getByLabel("Agent name", { exact: true })).toHaveValue(agent.name);
   for (const width of [1440, 390]) {
     await user.page.setViewportSize({ width, height: 900 });
-    // Switching between modal and desktop sheet layouts remounts the content.
     await user.page.reload();
     await expect(sheet.getByLabel("Agent name", { exact: true })).toHaveValue(agent.name);
     for (const control of [
@@ -106,7 +105,6 @@ test("an agent's shape and colour save at once and stay after reload", async ({
   const sheet = user.page.getByRole("dialog", { name: "Agent settings", exact: true });
   const bodies = sheet.getByRole("group", { name: "Shape", exact: true });
   const colours = sheet.getByRole("group", { name: "Colour", exact: true });
-  // The generated look already holds one shape and one colour; pick others.
   await expect(bodies.getByRole("radio", { checked: true })).toHaveCount(1);
   await expect(colours.getByRole("radio", { checked: true })).toHaveCount(1);
   const body = bodies.getByRole("radio", { checked: false }).first();

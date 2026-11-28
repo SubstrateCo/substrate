@@ -2,7 +2,6 @@ import type { UploadFile } from "@/api/files/uploads";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 
-/** Files from the document picker, as upload inputs. Returns nothing when canceled. */
 export async function pickDocuments(): Promise<UploadFile[]> {
   const result = await DocumentPicker.getDocumentAsync({
     multiple: true,

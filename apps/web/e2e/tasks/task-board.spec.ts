@@ -213,7 +213,6 @@ test("failed and canceled drags keep the saved status, and pending moves cannot 
     title: "Move safely",
   });
   const user = await client(actors.sender);
-  // Fit every column, so drag auto-scroll cannot move the drop target during a drag.
   await user.page.setViewportSize({ width: 1920, height: 900 });
   await visit(user, undefined, "/tasks", { projectId: created.entityId });
   await user.page.getByRole("radio", { name: "Board", exact: true }).click();

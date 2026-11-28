@@ -84,7 +84,6 @@ describe("native sign-in", () => {
     const started = await signIns.start({ harness: "claude", methodId: "oauth" });
     expect(started).toMatchObject({ type: "agent", status: "running" });
     peer.authenticated.resolve();
-    // Sign-in closes the peer after it records the outcome.
     await peer.closed.promise;
     expect(signIns.read({ loginId: started.loginId, cursor: 0 }).status).toBe("succeeded");
     expect(peer.calls).toEqual(["authenticate:oauth", "close"]);
@@ -116,7 +115,6 @@ describe("native sign-in", () => {
     signIns.write({ loginId, text: "123-456" });
     expect(terminal.lines).toEqual(["123-456"]);
     terminal.exit.resolve(true);
-    // Sign-in subscribed to the exit first, so its handler has run once this await resumes.
     await terminal.exit.promise;
     expect(signIns.read({ loginId, cursor: 0 }).status).toBe("succeeded");
     expect(() => signIns.write({ loginId, text: "late" })).toThrow();

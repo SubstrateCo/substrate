@@ -9,7 +9,6 @@ import { leaseGraceMs, leaseUntil } from "./lease-time";
 import { endLostTurn } from "./recovery";
 import { and, eq, inArray, isNotNull, lt, or, sql } from "drizzle-orm";
 
-/** Extends the leases of every live turn that this device holds. */
 export async function renewLeases(db: DatabaseExecutor, deviceId: string, now = new Date()) {
   await db
     .update(agentTurns)
@@ -22,11 +21,6 @@ function hint(db: DatabaseExecutor, ownerUserIds: Iterable<string>) {
     effectsFor(db).hint({ audience: realtimeKeys.user(userId), domain: "agent-work" });
 }
 
-/**
- * Ends live turns whose host is gone: the lease expired, and the agent moved off the lease's
- * device or the lease expired more than ten minutes ago. A host that comes back within that time
- * recovers its own turns with its local evidence. Returns how many turns ended.
- */
 export async function sweepExpiredLeases(
   db: DatabaseExecutor,
   now = new Date(),
@@ -59,7 +53,6 @@ export async function sweepExpiredLeases(
   return rows.length;
 }
 
-/** The agent moved to another device: its live turns elsewhere end now. */
 export async function endMovedLeases(
   db: DatabaseExecutor,
   userAgentId: string,

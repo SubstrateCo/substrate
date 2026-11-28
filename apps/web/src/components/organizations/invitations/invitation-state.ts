@@ -8,7 +8,6 @@ const statuses = {
   canceled: { label: "Canceled", icon: CircleX },
 } satisfies Record<string, { label: string; icon: LucideIcon; className?: string }>;
 
-/** One state per invitation. A pending invitation past its expiry is "Expired". */
 export function invitationState(status: string, expired: boolean) {
   const key = status === "pending" && expired ? "expired" : status;
   const match = Object.entries(statuses).find(([name]) => name === key)?.[1];

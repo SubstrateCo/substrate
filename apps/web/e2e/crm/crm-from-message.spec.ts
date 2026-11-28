@@ -119,7 +119,6 @@ test("create CRM records from a private message only after audience consent and 
         .getByRole("complementary", { name: "Thread", exact: true })
         .getByText(privateBody, { exact: true }),
     ).toBeVisible();
-    // The conversation names the record it was opened from and opens it over the messages.
     await page
       .getByRole("navigation", { name: "Opened from", exact: true })
       .getByRole("link", { name, exact: true })
@@ -172,7 +171,6 @@ test("retrying after a lost creation response keeps the same request ID and one 
   await page.route("**/api/v1/crm/from-message", async (route) => {
     requests.push(route.request().postDataJSON());
     if (requests.length === 1) {
-      // Commit through the real backend, then simulate losing only the response to the renderer.
       const committed = await route.fetch();
       expect(committed.ok()).toBe(true);
       await route.abort("failed");

@@ -5,7 +5,6 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-/** Prints the model IDs that each installed harness offers. Use them in --models. */
 const directory = await mkdtemp(join(tmpdir(), "substrate-evals-models-"));
 const host = await createHarnessHost({ accountDirectory: directory });
 try {

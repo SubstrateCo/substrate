@@ -63,9 +63,7 @@ test("project discussions include the thread roots of its tasks' own discussions
   expect(await context().related(project.entityId)).toMatchObject([
     { messageId: root.id, conversationId: discussion, purpose: "discussion", replyCount: 1 },
   ]);
-  // The task's own discussion is shown on the task itself, not as a related discussion.
   expect(await context().related(task.entityId)).toEqual([]);
-  // People who cannot see the task cannot see its discussion through the project either.
   await repos.permissions.grant({
     entityId: project.entityId,
     actorEntityId: f.bob,
@@ -124,7 +122,6 @@ test("message targets retain timeline reaction and reply summaries for roots and
         (query) => query.includes('from "messaging_messages"') && query.includes("count(*)"),
       ),
     ).toHaveLength(1);
-    // Workspace context, message with root and authors, two summary reads, and attachments.
     expect(queries).toHaveLength(5);
   }
   await chat.toggleReaction(root.id, "👍");
@@ -171,7 +168,6 @@ test("batched message targets match single targets with constant reads and omit 
     singles.push(await context().messageTarget(target.conversationId, target.messageId));
   expect(all.result).toEqual(singles);
   expect(one.result).toEqual(singles.slice(0, 1));
-  // Bob sees only the public channel; the private targets are left out without an error.
   expect((await context("bob").messageTargets(targets)).map((target) => target.message.id)).toEqual(
     [publicReply.id, ...posts.map((post) => post.id)],
   );

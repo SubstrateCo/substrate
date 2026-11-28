@@ -16,7 +16,6 @@ import {
 import { calendarError, createGoogleCalendar, googleEvent, normalizeGoogleEvent } from "./google";
 import { describe, expect, test } from "bun:test";
 
-/** Google response JSON. Fixtures go through the same parser as provider responses. */
 type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 const normalize = (event: Json) => normalizeGoogleEvent(googleEvent.parse(event));
 
@@ -339,7 +338,6 @@ describe("Google sync paging", () => {
     const result = await adapter.syncEvents(account, { ...window, syncCursor: null });
     expect(result).toMatchObject({ fullSync: true, cancelledEventIds: [], nextCursor: "cursor-1" });
     expect(result.events.map((entry) => entry.providerEventId)).toEqual(["a", "b"]);
-    // One token for the owner's account serves every page.
     expect(tokens).toEqual([account]);
     expect(authorization).toEqual(["Bearer token", "Bearer token"]);
     expect(urls.map((url) => url.pathname)).toEqual([

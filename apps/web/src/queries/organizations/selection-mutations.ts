@@ -13,8 +13,6 @@ import { queryKeys } from "@/queries/keys";
 type WorkspaceActivation = { organizationId: string; destination?: string | null };
 
 export function organizationActivationOptions(activate = activateOrganization) {
-  // The document exit owns this cache boundary. Keeping a draft must not switch the session
-  // or refresh the current cache; leaving gives the new document its own cache.
   const activateTarget = ({ organizationId, destination }: WorkspaceActivation) =>
     activate(organizationId, destination);
   return {
@@ -37,7 +35,6 @@ export function createOrganizationMutationOptions(client: QueryClient) {
   return {
     mutationFn: async (input: { name: string; slug: string }) =>
       unwrap(await authClient.organization.create(input)),
-    // Creation also sets the active organization, even if opening the new document fails.
     onSuccess: () =>
       Promise.all([
         client.invalidateQueries({ queryKey: queryKeys.organizations }),

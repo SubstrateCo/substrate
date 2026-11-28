@@ -13,11 +13,6 @@ import { agentTurns } from "./turns.schema";
 import { agentWorkItems } from "./work-items.schema";
 import { and, eq, inArray, ne, type SQL } from "drizzle-orm";
 
-/**
- * Asks live turns to end. Each moves to stopping with its reason, once: a turn that is already
- * stopping keeps its first reason. The host sees stopping on its next sync or report and ends the
- * turn; a turn that has not started ends at its start. Returns the turns that now stop.
- */
 export async function stopTurns(
   db: DatabaseExecutor,
   where: SQL | undefined,
@@ -39,10 +34,6 @@ export async function stopTurns(
   return stopped;
 }
 
-/**
- * Ends the agent's live work, for example when the owner disables or deletes it. A turn that
- * never started puts its batch back, to wait until the agent runs again; any other turn stops.
- */
 export async function endAgentTurns(db: DatabaseExecutor, userAgentId: string, now = new Date()) {
   const live: TurnRow[] = await db
     .select()
@@ -68,11 +59,6 @@ export async function endAgentTurns(db: DatabaseExecutor, userAgentId: string, n
   return live.length;
 }
 
-/**
- * The owner deleted the agent: its live turns end, and nothing of it waits or runs again. Its
- * queued items are dropped, its turns that need the owner are dismissed, and its running helpers
- * and routines stop.
- */
 export async function endDeletedAgentWork(
   db: DatabaseExecutor,
   userAgentId: string,

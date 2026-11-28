@@ -52,7 +52,6 @@ test("a bound home-agent DM finds older unread mail and reads its HTML privately
   )(scope);
   const f = await runtimeFixture({ inbox });
   try {
-    // The list representative of this thread is a sent reply; the matching email is not cached.
     await mail.session.use(scope, (l) =>
       l.db.commit(box, null, {
         cursor: "recent",
@@ -147,7 +146,6 @@ test("a shared thread or forged origin cannot obtain the owner's mail; ending a 
     await f.emit(shared.turnId, { type: "turn.completed", result: { status: "completed" } });
     const owner = await f.message();
     const dm = f.turns().at(-1)!;
-    // The call names the turn; the session, attempt and agent must match the claimed turn.
     for (const forged of [
       { turn: dm.context, sessionId: shared.sessionId, agentId },
       {
@@ -180,7 +178,6 @@ test("a shared thread or forged origin cannot obtain the owner's mail; ending a 
     expect((await call).isError).toBe(true);
     expect(searches).toBe(1);
 
-    // Unattended work in the owner's DM session, such as a resume note, never reads mail.
     const note = f.control.item(
       owner.sessionId,
       { source: "recovery", turnId: dm.turnId },

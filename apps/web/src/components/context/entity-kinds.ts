@@ -13,11 +13,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-/**
- * One icon and one singular label per kind of record, for search results, link pickers, work
- * tiles, and references (DESIGN §4). A chip that needs a different glyph, such as the `@` of a
- * mention, overrides it where it renders. Collection icons (`Users` for Contacts) are separate.
- */
 export const entityKinds = {
   task: { icon: ListTodo, label: "Task" },
   project: { icon: FolderKanban, label: "Project" },

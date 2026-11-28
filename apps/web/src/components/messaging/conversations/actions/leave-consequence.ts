@@ -1,4 +1,3 @@
-/** What leaving costs the person, which depends on whether anyone can still open it. */
 export function leaveConsequence(publicChannel: boolean) {
   return publicChannel
     ? "It leaves your sidebar and you stop getting reply alerts. Mentions still reach you. You can still open it from links and search, and posting rejoins it."

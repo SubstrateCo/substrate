@@ -6,7 +6,6 @@ import { connectionOperations } from "./connections";
 import { invitationOperations } from "./invitations";
 import { sharingQueries } from "./queries";
 
-// Trusted server facade for cross-organization sharing.
 export function createSharingRepository(
   db: DatabaseExecutor,
   scope: SessionIdentity,
@@ -19,7 +18,6 @@ export function createSharingRepository(
   };
 }
 
-// Trusted non-HTTP entry point. Reads resolve at entry; writes authorize in their own transaction.
 export function createSharingService(db: DatabaseExecutor, scope: SessionIdentity) {
   type Queries = ReturnType<typeof sharingQueries>;
   const run = async <T>(work: (queries: Queries) => Promise<T>) =>

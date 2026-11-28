@@ -22,8 +22,6 @@ export function CreateConversationDialog({
   const { organizationId, userId } = useWorkspaceScope();
   const workspacePeople = useQuery(workspacePeopleQueryOptions(organizationId));
   const catalog = useQuery(agentCatalogQueryOptions(userId));
-  // Until people load, or if they fail to load, the picker suggests nobody and still accepts
-  // typed email addresses.
   const people = workspacePeople.isSuccess
     ? workspacePeople.data.filter((person) => person.id !== userId)
     : [];

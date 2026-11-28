@@ -18,14 +18,6 @@ import type {
 } from "./turns.ts";
 import type { AgentSessionKind } from "./wakes.ts";
 
-// Owner views of agent work, served by the server to any of the owner's devices. Transcripts
-// stay on the agent's home host and are not part of these views.
-//
-// A session's place is visible while the owner can open its conversation: a DM or thread
-// session's origin, a routine's destination, or a helper's parent session. Work in a hidden
-// place keeps its IDs, states and times, but not its places, keys, references, activity,
-// errors, outputs or text, because they may quote the conversation.
-
 export interface AgentWorkSessionView {
   id: string;
   userAgentId: string;

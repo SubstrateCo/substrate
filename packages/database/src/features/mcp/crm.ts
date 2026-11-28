@@ -18,10 +18,6 @@ import { linkSummary } from "./links";
 import { mcpTaskQueries } from "./tasks";
 import { z } from "zod";
 
-/**
- * A phone number without a country cannot be matched later. People may store one as written;
- * an agent must say which country a national number belongs to.
- */
 function requireDialable(value: string, countryCode: string | undefined) {
   if (!countryCode && !value.trim().startsWith("+"))
     throw new ValidationError(
@@ -29,7 +25,6 @@ function requireDialable(value: string, countryCode: string | undefined) {
     );
 }
 
-// Not strict: it reads these fields out of a contact's other fields.
 const contactExtras = z.object(
   mcpTools.create_crm_contact.input.pick({
     email: true,
@@ -48,7 +43,6 @@ function isDetailChange(change: ContactWrite): change is ContactWrite & DetailCh
   return contactDetailActions.some((action) => action === change.action);
 }
 
-/** The fields a caller supplied: a field left out must not overwrite a stored value. */
 function supplied<T extends { [field: string]: JsonValue | undefined }>(changes: T) {
   // SAFETY: removing undefined values leaves a subset of the same fields.
   return Object.fromEntries(Object.entries(changes).filter(([, value]) => value !== undefined)) as {
@@ -56,10 +50,6 @@ function supplied<T extends { [field: string]: JsonValue | undefined }>(changes:
   };
 }
 
-/**
- * Checks a flat tool input against the form schema of its kind or action. The message names the
- * fields to correct, because the tool's own schema cannot say which fields each variant needs.
- */
 function form<T>(schema: z.ZodType<T>, value: { [field: string]: JsonValue | undefined }): T {
   const given = Object.fromEntries(
     Object.entries(value).filter(([, field]) => field !== undefined),
@@ -74,13 +64,10 @@ function form<T>(schema: z.ZodType<T>, value: { [field: string]: JsonValue | und
   );
 }
 
-/** Called only behind the MCP turn/device/write gates, on the caller's transaction. */
 export function mcpCrmTools(context: RepositoryContext, identity: SessionIdentity) {
-  // Preserve the validated acting agent. CRM resolves human responsibility separately.
   const crm = crmRepository(context);
   const interactions = contextContactInteractionRepository(context);
   const contacts = contactApplicationRepository(context);
-  /** Stage names by ID, so that a deal says where it is without a pipeline read. */
   const stageNames = async () =>
     new Map((await crm.pipeline()).map((stage) => [stage.id, stage.name]));
   const read = async (input: McpInput<"get_crm_record">) => {
@@ -96,7 +83,6 @@ export function mcpCrmTools(context: RepositoryContext, identity: SessionIdentit
       }
     }
   };
-  /** The email, phone and account that a new contact can take in the call that creates it. */
   const addContactDetails = async (
     contactEntityId: string,
     { email, phone, phoneCountryCode, accountEntityId, title }: z.output<typeof contactExtras>,
@@ -135,7 +121,6 @@ export function mcpCrmTools(context: RepositoryContext, identity: SessionIdentit
   return {
     fromMessageView,
     async createFromMessage(input: McpInput<"create_crm_from_message">) {
-      // A contact takes its email, phone and account here as in create_crm_contact.
       const extras = input.kind === "contact" ? contactExtras.parse(input.fields) : {};
       const fields = Object.fromEntries(
         Object.entries(input.fields).filter(([field]) => !(field in contactExtras.shape)),
@@ -188,7 +173,6 @@ export function mcpCrmTools(context: RepositoryContext, identity: SessionIdentit
       };
       const { kind } = input;
       if (!kind) {
-        // One page of each kind. A caller that needs more pages one kind.
         const options = { ...input, afterEntityId: undefined, limit };
         const [accounts, people, deals] = await Promise.all([
           crm.listAccounts(options),
@@ -217,7 +201,6 @@ export function mcpCrmTools(context: RepositoryContext, identity: SessionIdentit
       const rows = await list({ ...input, limit });
       const last = rows.at(-1);
       const lastId = last && ("contact" in last ? last.contact.entityId : last.entityId);
-      // A full page has more only if a record follows it: a one-row ID seek, not an empty page.
       const more =
         rows.length === limit &&
         lastId !== undefined &&
@@ -272,7 +255,6 @@ export function mcpCrmTools(context: RepositoryContext, identity: SessionIdentit
     },
     async updateDeal(input: McpInput<"update_crm_deal">) {
       const { entityId, expectedVersion, requestId: _request, ...changes } = input;
-      // The deal form replaces every field, so fields the agent left out keep their value here.
       const { deal, contacts: people } = await crm.getDeal(entityId);
       return {
         record: await crm.updateDeal(entityId, expectedVersion, {
@@ -291,7 +273,6 @@ export function mcpCrmTools(context: RepositoryContext, identity: SessionIdentit
     },
     async transition(input: McpInput<"transition_crm_deal">) {
       const { entityId, ...change } = input;
-      // Without a stage, the outcome changes in the stage the deal is in.
       const stageId = change.stageId ?? (await crm.getDeal(entityId)).deal.stageId;
       return { record: await crm.transitionDeal(entityId, { ...change, stageId }) };
     },
@@ -309,12 +290,10 @@ export function mcpCrmTools(context: RepositoryContext, identity: SessionIdentit
         occurredAt: new Date(last.occurredAt).toISOString(),
         entityId: last.entityId,
       };
-      // A full page has more only if an interaction follows it.
       const more = items.length === input.limit && cursor && (await page(1, cursor)).length > 0;
       return { items, nextBefore: more ? cursor : null };
     },
     async searchInteractions(input: McpInput<"search_crm_interactions">) {
-      // Without a period the search covers all time; the period fields then only pass validation.
       const until = input.until ?? new Date().toISOString();
       const from = input.from ?? new Date(Date.parse(until) - 86_400_000).toISOString();
       const page = await interactions.workspaceTimeline({
@@ -357,7 +336,6 @@ export function mcpCrmTools(context: RepositoryContext, identity: SessionIdentit
         change.type === "phone"
       )
         requireDialable(change.value, change.countryCode);
-      // The tool offers only detail actions; the form schema also knows the record actions.
       if (!isDetailChange(change)) throw new ValidationError("Use a contact detail action.");
       await contacts.mutateContactDetail(change);
       return { record: await contacts.getContact(input.contactEntityId) };
@@ -374,7 +352,6 @@ export function mcpCrmTools(context: RepositoryContext, identity: SessionIdentit
     async archiveRecord(input: McpInput<"archive_crm_record">) {
       if (input.kind === "contact") await contacts.archive(input.entityId, input.archived);
       else {
-        // The archive write checks access but not the kind, so check the kind first.
         await read({ kind: input.kind, entityId: input.entityId });
         await crm.archive(input.entityId, input.archived);
       }
@@ -404,7 +381,6 @@ export function mcpCrmTools(context: RepositoryContext, identity: SessionIdentit
       };
     },
     async requireInteraction(entityId: string) {
-      // Access/integrity check only. Never return this core row; public reads use CRM views.
       await interactions.get(entityId);
     },
     async publishInteraction(input: McpInput<"publish_crm_interaction">) {

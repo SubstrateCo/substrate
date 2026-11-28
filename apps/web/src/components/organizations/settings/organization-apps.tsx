@@ -105,7 +105,6 @@ const scopeCopy = {
   },
 } as const;
 
-/** Required apps are always on; other apps change only for those allowed to change them. */
 function appCardMode({
   entry,
   canChange,
@@ -232,7 +231,6 @@ export function OrganizationApps({
   );
 }
 
-/** The apps once loaded. A failed refresh keeps them, with the error above. */
 function AppsLoadState<T>({
   state,
   onRetry,

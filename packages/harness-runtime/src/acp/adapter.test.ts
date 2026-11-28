@@ -322,7 +322,6 @@ test("a request the agent withdraws closes on the host, and the turn goes on", a
     type: "text",
     text: "Continued without an answer",
   });
-  // The withdrawn request no longer takes an answer.
   await rejects(f.adapter.respond(request.requestId, { action: "decline" }), {
     code: "unknown-request",
   });

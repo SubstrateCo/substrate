@@ -10,9 +10,7 @@ ruleTester.run("icon-button-name", iconButtonName, {
     '<Button size="icon" aria-labelledby="title-id"><X /></Button>',
     '<Button size="icon-xs"><Plus /><span className="sr-only">New task</span></Button>',
     '<Button size="icon-sm"><Plus />{label}</Button>',
-    // Labelled buttons are not icon-only.
     '<Button size="sm"><Plus />New task</Button>',
-    // Props the file cannot see may carry the name.
     '<Button size="icon-sm" {...props}><X /></Button>',
     '<Button size="icon-sm" asChild><Link to="/" aria-label="Home"><House /></Link></Button>',
   ],
@@ -27,7 +25,6 @@ ruleTester.run("icon-button-name", iconButtonName, {
       ],
     },
     {
-      // An icon element alone is not a name, even inside a tooltip.
       code: wrapped('<PendingButton size="icon" pending={saving}><RefreshCw /></PendingButton>'),
       errors: [{ messageId: "missing", data: { component: "PendingButton", size: "icon" } }],
     },

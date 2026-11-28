@@ -12,7 +12,6 @@ import { agentSessions } from "../agent-work/sessions.schema";
 import { agentTurns } from "../agent-work/turns.schema";
 import { and, eq } from "drizzle-orm";
 
-/** The server turn an MCP call runs in, from the server's own turn and session rows. */
 export interface ServerTurn {
   turnId: string;
   attempt: number;
@@ -21,11 +20,8 @@ export interface ServerTurn {
   sessionKey: string;
   sessionKind: AgentSessionKind;
   kind: TurnKind;
-  /** Where the work came from. Null for routine and helper sessions. */
   origin: TurnPlace | null;
-  /** Where unattended work publishes, such as a routine's destination. */
   destination: TurnPlace | null;
-  /** A quiet handoff turn saves its notes on its host and must not publish or propose. */
   handoff: boolean;
 }
 
@@ -34,11 +30,6 @@ const place = (conversationId: string | null, threadId: string | null) =>
 
 const turnEnded = "This turn has ended. Its calls no longer run.";
 
-/**
- * Loads the turn that the host attached to a call. It must be a turn of this agent and owner in
- * this organization, live, in the attempt the host runs, and leased by the calling device, which
- * must be the agent's home. The caller's device is the installation the request came from.
- */
 export async function requireLiveTurn(
   db: DatabaseExecutor,
   identity: SessionIdentity & { actorEntityId: string },
@@ -93,7 +84,6 @@ export async function requireLiveTurn(
   };
 }
 
-/** A write publishes only where the owner can still look. */
 export async function requireTurnPlaces(
   db: DatabaseExecutor,
   identity: SessionIdentity,
@@ -103,10 +93,6 @@ export async function requireTurnPlaces(
   if (turn.destination) await requirePlace(db, identity, turn.destination);
 }
 
-/**
- * Where reply posts. By default, where the work came from: top level in a DM, or the turn's
- * thread. Background turns with a destination post there. Any turn may choose a target.
- */
 export function replyTarget(
   turn: ServerTurn,
   to: { conversationId: string; threadId?: string } | undefined,
@@ -118,7 +104,6 @@ export function replyTarget(
   return target;
 }
 
-/** Where a request's card shows: the turn's own place, if it has one. */
 export function turnPlace(turn: ServerTurn): TurnPlace | null {
   if (turn.kind === "unattended" && turn.destination) return turn.destination;
   return turn.origin ?? turn.destination ?? null;

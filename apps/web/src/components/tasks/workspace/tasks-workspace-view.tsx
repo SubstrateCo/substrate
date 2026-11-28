@@ -40,7 +40,6 @@ export function TasksWorkspace({
     onSaved: (id: string) => void;
     renderCreate: (editor: FormDialogEditor) => ReactNode;
   }) => ReactNode;
-  /** The selected project's content pane and task inspector. */
   project: ReactNode;
   selectedProjectId?: string;
   onSelectProject: (id: string) => void;
@@ -104,7 +103,6 @@ export function TasksWorkspace({
   );
 }
 
-/** The main pane without a selected project. The sidebar shows the projects. */
 function NoProjectSelected({
   phase,
   unavailable,
@@ -141,7 +139,6 @@ function NoProjectSelected({
         }
       />
     );
-  // Projects loaded, so the selected one was removed or is out of reach.
   return (
     <ContentNotice
       icon={Unlink}

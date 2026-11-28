@@ -5,7 +5,6 @@ import { isAccessFailure } from "@/api/access-failure";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { needsYouOptions, turnOptions } from "@/queries/agent-work/server";
 
-/** The transcript beside an agent's activity in the Agents app, also for /agents?turnId links. */
 export function ActivityTurnTranscript({
   agentId,
   agentName,
@@ -22,9 +21,7 @@ export function ActivityTurnTranscript({
   const { userId, organizationId } = useWorkspaceScope();
   const found = useQuery(turnOptions(userId, organizationId, turnId));
   const needsYou = useQuery(needsYouOptions(userId, organizationId));
-  // A link may name a turn of another agent; show it only under its own agent.
   const turn = found.data?.userAgentId === agentId ? found.data : undefined;
-  // A turn that is gone, or that the owner can't open, reads as missing.
   const gone = (found.isSuccess && !turn) || isAccessFailure(found.error);
   return (
     <TurnTranscript

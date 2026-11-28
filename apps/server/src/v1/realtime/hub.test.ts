@@ -12,7 +12,6 @@ afterEach(() => {
   setSystemTime();
 });
 
-// Freezes the clock past every check made so far, so sessions with a short check interval are stale.
 function expireSessionChecks() {
   setSystemTime(new Date(Date.now() + 5));
 }
@@ -80,7 +79,6 @@ function fixture(options: Parameters<typeof createRealtimeHub>[1] = {}) {
       get pings() {
         return pings;
       },
-      // Settles on the first ping.
       pinged: pinged.promise,
     };
   }
@@ -148,7 +146,6 @@ test("changes forward their record identifiers, which the client contract accept
     messageId: "message",
     threadId: null,
   });
-  // A project audience selects only connections in the project's workspace.
   const elsewhere = await f.connect("user", "other-org");
   await f.hub.publish({
     id: crypto.randomUUID(),
@@ -199,7 +196,6 @@ function drift(f: ReturnType<typeof fixture>, peers: { cookie: string }[]) {
     moved!.cookie,
     testReceiver({ userId: "moved", organizationId: "other", actorId: "moved-actor" }),
   );
-  // A replaced workspace actor must not inherit the old connection's actor audience.
   f.sessions.set(
     recreated!.cookie,
     testReceiver({ userId: "recreated", organizationId: "org", actorId: "replacement-actor" }),
@@ -213,10 +209,8 @@ test("revocation and workspace drift stop delivery by the next session check", a
     await f.connect("moved"),
     await f.connect("recreated"),
   ];
-  // reserve() checks each session once; open() reuses that check.
   expect(f.checks).toBe(3);
   drift(f, peers);
-  // A check stays valid until the next one is due, so ordinary hints skip the session lookup.
   await f.publish(realtimeKeys.organization("org"));
   expect(f.checks).toBe(3);
   for (const peer of peers) expect(peer.events).toHaveLength(2);
@@ -341,7 +335,6 @@ test("session checks during delivery run with bounded concurrency", async () => 
   };
   const delivery = f.publish(realtimeKeys.organization("org"));
   await saturated.promise;
-  // Two checks wait on the gate; the others must wait for a free slot.
   expect(active).toBe(2);
   gate.resolve();
   await delivery;
@@ -397,7 +390,6 @@ test("a slow heartbeat session check does not delay pings to other connections",
     return authenticate(headers, organizationId);
   };
   const tick = f.hub.tick();
-  // The fast peer pings while the slow check still waits on the gate.
   await fast.pinged;
   expect(fast.pings).toBe(1);
   expect(slow.pings).toBe(0);

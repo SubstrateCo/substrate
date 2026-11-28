@@ -76,7 +76,6 @@ test("a project is archived, restored, archived again and deleted through approv
     status: "executed",
     receipt: { kind: "project", id: project.entityId },
   } as const;
-  // Deleting an active project could never run, so it is refused when proposed.
   expect(await rejection(propose("delete_project", input))).toBeInstanceOf(ValidationError);
   expect(await approve("archive_project", input)).toMatchObject(receipt);
   expect(await archivedAt(project.entityId)).not.toBeNull();
@@ -109,7 +108,6 @@ test("sharing grants and revokes a person's access, and an agent share fails on 
 
 test("an owner action approved with only edit access fails and changes nothing", async () => {
   const { approve } = await proposals();
-  // Without the admin role, Alice has only the edit access Bob grants her.
   await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));
   const project = await f.forActor(f.bob).projects.create({ name: "Bob's" });
   await f.forActor(f.bob).permissions.grant({

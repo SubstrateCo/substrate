@@ -39,7 +39,6 @@ export function createCrmService(deps: { publish: CommittedPublisher }) {
       serviceResult(() => scope.repositories.crm.getDeal(id)),
     pipeline: (scope: WorkspaceScope) =>
       serviceResult(async () => {
-        // ensurePipeline writes only when no stage exists, so read first.
         const stages = await scope.repositories.crm.pipeline();
         if (stages.length) return stages;
         return deps.publish(await scope.repositories.crm.ensurePipeline());

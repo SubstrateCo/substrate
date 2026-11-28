@@ -41,14 +41,11 @@ const database = at("db/tasks.ts");
 ruleTester.run("layer-imports", layerImports(config, model), {
   valid: [
     { code: 'import { Hono } from "hono";', filename: route },
-    // Type-only imports pass rules with allowTypeOnly, in both spellings.
     { code: 'import type { Context } from "hono";', filename: service },
     { code: 'import { type Context } from "hono";', filename: service },
-    // A workspace package is pkg:, not third-party, so the vendor allowlist does not apply.
     { code: 'import { id } from "@acme/shared";', filename: route },
     { code: 'import { db } from "@acme/db";', filename: at("src/legacy/routes.ts") },
     { code: 'import { db } from "@acme/db";', filename: at("scripts/seed.ts") },
-    // The database layer may import contracts.
     { code: 'import { task } from "./contracts/task";', filename: database },
   ],
   invalid: [
@@ -79,7 +76,6 @@ ruleTester.run("layer-imports", layerImports(config, model), {
       ],
     },
     {
-      // A relative import resolves to the file's layer; type-only imports count for X3.
       code: 'import type { TaskService } from "../src/v1/tasks/service";',
       filename: database,
       errors: [

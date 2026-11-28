@@ -2,8 +2,6 @@ import { createContext, useContext } from "react";
 
 import type { SearchKind } from "./workspace-search-view";
 
-// Lets workspace views open the search panel with a filter, such as "Browse channels".
-// Each request has a new ID, so the same filter can be requested again.
 export interface SearchRequest {
   id: number;
   kind: SearchKind;

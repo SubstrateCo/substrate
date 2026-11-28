@@ -3,7 +3,6 @@ import type { DesktopScheme } from "./identity.ts";
 import { z } from "zod";
 
 export const desktopOrigin = "https://desktop.substrate.local";
-// Desktop main adds this to API requests. It names the installation; it is not a credential.
 export const desktopInstallationHeader = "x-substrate-installation";
 
 export const desktopPath = z

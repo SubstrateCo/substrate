@@ -65,7 +65,6 @@ export function InvitationReview({
       if (outcome.conversationId) onOpenConversation(outcome.conversationId);
       return;
     }
-    // Switching resets private state, and the shell reopens in the accepted workspace.
     setSwitching({ pending: true });
     const response = await authClient.organization.setActive({
       organizationId: outcome.organizationId,

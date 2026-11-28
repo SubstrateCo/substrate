@@ -1,11 +1,9 @@
 import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-/** What an epoch of a server session handed to the next one. Times are epoch ms. */
 export const handoffs = sqliteTable(
   "handoffs",
   {
     organizationId: text("organization_id").notNull(),
-    /** The server session ID. */
     sessionId: text("session_id").notNull(),
     epoch: integer("epoch").notNull(),
     objectives: text("objectives").notNull(),

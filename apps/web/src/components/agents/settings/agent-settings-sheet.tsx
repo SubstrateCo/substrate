@@ -16,10 +16,6 @@ import { useWorkspaceScope } from "@/components/workspace/workspace-scope-contex
 import type { AgentSettingsPage } from "@/lib/agent-work/agent-sections";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
 
-/**
- * One agent's settings in the sheet over its page. The overview lists everything; routines,
- * skills, and MCP servers open as full lists in the same sheet, one level down.
- */
 export function AgentSettingsSheet({
   agentId,
   page,
@@ -53,7 +49,6 @@ export function AgentSettingsSheet({
   );
 }
 
-/** The agent's page once its catalog entry loads. A failed refresh keeps a loaded agent. */
 function AgentSettingsBody({
   agent,
   runSettings,

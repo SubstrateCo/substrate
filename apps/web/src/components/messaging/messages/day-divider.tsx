@@ -1,6 +1,5 @@
 import { formatDayLabel, type DateInput } from "@/lib/format/date";
 
-/** A line with the day's name between messages from different days. */
 export function DayDivider({ date }: { date: DateInput }) {
   const label = formatDayLabel(date);
   return (

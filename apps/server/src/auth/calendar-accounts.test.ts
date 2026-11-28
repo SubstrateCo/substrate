@@ -11,7 +11,6 @@ test("Google is offered only when configured, with identity scopes, offline acce
     google: { clientId: "id", clientSecret: "secret" },
     microsoft: { clientId: "id", clientSecret: "secret", tenantId: "common" },
   });
-  // Product scopes come from each link, so the provider asks only for identity scopes.
   expect(providers).toEqual({
     google: {
       clientId: "id",
@@ -28,7 +27,6 @@ test("Google is offered only when configured, with identity scopes, offline acce
 });
 
 test("calendar providers cannot start a sign-in, but can be linked", () => {
-  // Request bodies are JSON, parsed the way the auth hook parses them.
   const signIn = (path: string, body: string) =>
     isCalendarProviderSignIn(path, requestedProvider.parse(JSON.parse(body)).provider);
   expect(signIn("/sign-in/social", JSON.stringify({ provider: "google" }))).toBe(true);

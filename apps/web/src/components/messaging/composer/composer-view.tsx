@@ -45,7 +45,6 @@ export function Composer({
   onCancel,
   className,
 }: {
-  /** Called on Escape when no picker is open, such as to stop editing. */
   onCancel?: () => void;
   className?: string;
   onSend: (body: string, onSuccess: () => void) => void;
@@ -55,14 +54,11 @@ export function Composer({
   draftKey: string;
   submitLabel?: string;
   errorDescription?: string;
-  /** Blocks submitting a draft that is otherwise sendable, such as an unchanged edit. */
   submitDisabled?: boolean;
-  /** Shown before the submit button, such as Cancel. */
   secondaryAction?: ReactNode;
   autoFocus?: boolean;
   attachmentControls?: ReactNode;
   attachmentDrafts?: ReactNode;
-  /** Attaches files pasted into the editor, such as a screenshot. */
   onPasteFiles?: (files: File[]) => void;
   hasAttachments?: boolean;
   attachmentsReady?: boolean;
@@ -91,8 +87,6 @@ export function Composer({
     autoFocus,
   });
   const [references, setReferences] = useState(false);
-  // Where the reference query that the person dismissed starts. It stays closed while they keep
-  // typing that query, and opens again for a new one.
   const [dismissedAt, setDismissedAt] = useState<number>();
   const pickerListId = useId();
   const picker = useRef<ReferencePickerHandle>(null);
@@ -100,7 +94,6 @@ export function Composer({
   const [caret, setCaret] = useState(draft.length);
   const draftReferences = useContext(ComposerDraftReferences);
   if (!draftReferences) throw new Error("Composer requires ComposerDraftProvider");
-  // Callers key the composer by draft, so the draft key never changes while it is mounted.
   const [resolvedReferences, setResolvedReferences] = useState(
     () => draftReferences.get(draftKey) ?? [],
   );
@@ -185,8 +178,6 @@ export function Composer({
                       if (event.isComposing || isComposing()) return;
                       const modified = event.altKey || event.ctrlKey || event.metaKey;
                       if (pickerOpen && !modified) {
-                        // Left and Right stay text editing. Tab switches the picker's tab, as its
-                        // footer shows; after Escape, Tab moves focus as usual.
                         if (event.key === "Tab") {
                           event.preventDefault();
                           picker.current?.cycle(event.shiftKey ? -1 : 1);
@@ -207,7 +198,6 @@ export function Composer({
                             event.preventDefault();
                             return;
                           }
-                          // Nothing to insert: close the picker and let Enter send.
                           dismissReferences();
                         }
                       }

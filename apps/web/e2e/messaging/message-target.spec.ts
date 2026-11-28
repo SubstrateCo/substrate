@@ -46,7 +46,6 @@ test("root and reply permalinks retain root reactions outside the timeline and r
     });
     expect(response.ok()).toBe(true);
   };
-  // Each permalink gets its own thread, so one target's reactions cannot satisfy the other's checks.
   const targets: { target: "root" | "reply"; root: { id: string }; messageId: string }[] = [];
   for (const target of ["root", "reply"] as const) {
     const root = await post<{ id: string }>(actors.sender, "messaging/messages", {
@@ -61,7 +60,6 @@ test("root and reply permalinks retain root reactions outside the timeline and r
     await react(root.id);
     targets.push({ target, root, messageId: target === "root" ? root.id : reply.id });
   }
-  // Both roots fall outside the latest timeline page.
   await Promise.all(
     Array.from({ length: 51 }, (_, index) =>
       post(actors.sender, "messaging/messages", {
@@ -72,7 +70,6 @@ test("root and reply permalinks retain root reactions outside the timeline and r
   );
   const viewer = await client(actors.sender);
   let live = false;
-  // Suppress change hints first: the local mutation must refresh the target itself.
   await viewer.page.routeWebSocket("**/api/v1/realtime?*", (socket) => {
     const server = socket.connectToServer();
     server.onMessage((message) => {
@@ -97,7 +94,6 @@ test("root and reply permalinks retain root reactions outside the timeline and r
       });
     await expect(reaction(1)).toHaveAttribute("aria-pressed", "false");
     await viewer.page.getByRole("button", { name: "Back to latest", exact: true }).click();
-    // Only the thread root remains; the latest timeline page cannot supply its summary.
     await expect(viewer.page.getByText(rootBody, { exact: true })).toHaveCount(1);
     await reaction(1).click();
     await expect(reaction(2)).toHaveAttribute("aria-pressed", "true");

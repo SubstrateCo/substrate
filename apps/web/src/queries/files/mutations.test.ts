@@ -80,7 +80,6 @@ for (const kind of ["avatar", "organization-logo"] as const) {
         kind === "organization-logo",
       );
       expect(queryClient.getQueryState(otherOrganizationKey)?.isInvalidated).toBe(false);
-      // Logos appear only in organization detail and the organization list.
       for (const key of [
         queryKeys.projects("active"),
         queryKeys.conversations("active"),

@@ -18,11 +18,6 @@ import { useAgentMutations } from "@/queries/agents/mutations";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-/**
- * Every setting of one agent on one scrolling page: its details, its look, when it runs, a summary of its
- * routines and tools, and delete. Only the details section holds a draft; everything else saves at
- * once or opens its own list.
- */
 export function AgentSettingsOverview({
   agent,
   runSettings,
@@ -46,7 +41,6 @@ export function AgentSettingsOverview({
         {...renderers}
         agent={agent}
         pending={pending}
-        // The mutation outlives each agent's form; show only this agent's failure.
         error={save.variables?.id === agent.id ? save.error : null}
         onResetError={() => save.reset()}
         onSave={(input, options) => save.mutate(input, { onSuccess: options.onSuccess })}

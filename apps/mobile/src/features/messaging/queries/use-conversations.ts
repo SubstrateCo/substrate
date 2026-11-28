@@ -17,7 +17,6 @@ const conversationsOptions = (scope: QueryScope, selectedId?: string) =>
     retry: false,
   });
 
-/** All visible conversations. With `selectedId`, also that task discussion if it is one. */
 export function useConversations(organizationId: string, selectedId?: string) {
   return useQuery(conversationsOptions(useMessagingScope(organizationId), selectedId));
 }
@@ -41,7 +40,6 @@ export function useUnreadCounts(organizationId: string) {
   });
 }
 
-/** Workspace members other than the viewer, as people to choose, sorted by name. */
 export function useWorkspacePeople(organizationId: string) {
   const scope = useMessagingScope(organizationId);
   return useQuery({
@@ -61,7 +59,6 @@ export function useWorkspacePeople(organizationId: string) {
   });
 }
 
-/** The viewer's own agents. */
 export function useOwnAgents(organizationId: string) {
   const scope = useMessagingScope(organizationId);
   return useQuery({

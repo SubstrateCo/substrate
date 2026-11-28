@@ -100,23 +100,6 @@ function pickerInputState({
   };
 }
 
-/**
- * A token input for choosing people. It suggests `people` by name or email, shows each choice as
- * a removable chip, and, with `allowEmail`, offers "Invite <email>" for an address that matches no
- * one. Typing a separator, pasting a list, or leaving the field adds complete addresses.
- *
- * Suggestions open when the person types or presses ArrowDown (first option) or ArrowUp (last),
- * never on focus. They sit under the field, in the flow of the form, so they push the rest of a
- * dialog down instead of covering its consent text or footer. A pick closes them; hold Shift to
- * keep choosing.
- *
- * With `max`, a paste that holds more addresses than fit is refused whole: the text stays in the
- * field and `limitText` says why. The field stays on screen while it holds text, even when full.
- *
- * Label it with a `FieldLabel htmlFor={id}`. It owns no validation; pass `invalid` and
- * `describedBy` from the form, and use `onPendingTextChange` to refuse a submit while unfinished
- * text is left in the field.
- */
 export function PeoplePicker({
   id,
   people,
@@ -134,19 +117,13 @@ export function PeoplePicker({
   onBlur,
 }: {
   id: string;
-  /** The people to suggest. Leave out the viewer and anyone who cannot be chosen. */
   people: readonly PickerPerson[];
-  /** Eligible agents, when this action supports agent membership. */
   agents?: readonly PickerAgent[];
   value: readonly PickedRecipient[];
   onValueChange: (value: PickedRecipient[]) => void;
-  /** Called with the text typed into the field that is not a chip yet. */
   onPendingTextChange?: (text: string) => void;
-  /** Allow addresses that match none of `people`, such as people to invite. */
   allowEmail?: boolean;
-  /** The most people to choose. The input hides when the limit is reached and holds no text. */
   max?: number;
-  /** Shown when pasted addresses do not fit in `max`. Defaults to "Choose one person." */
   limitText?: string;
   placeholder?: string;
   disabled?: boolean;
@@ -158,12 +135,10 @@ export function PeoplePicker({
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  // Set while the text in the field holds more addresses than `max` leaves room for.
   const [overflowing, setOverflowing] = useState(false);
   const anchor = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
-  // Where focus goes once the chips have changed: the input may not exist until then.
   const focusAfterChange = useRef<"input" | "chip">(undefined);
   const noticeId = `${listId}-limit`;
   const options = suggestionsFor(query, people, agents, value, allowEmail);
@@ -198,14 +173,12 @@ export function PeoplePicker({
   const addTyped = (text: string, refocus = false) => {
     const result = addTypedRecipients(value, text, people, { allowEmail, max });
     if (result.value.length !== value.length) {
-      // Text left in the field keeps focus, so it can be corrected.
       if (refocus && max !== undefined && result.value.length >= max) {
         focusAfterChange.current = result.rest ? "input" : "chip";
       }
       onValueChange(result.value);
     }
     setText(result.rest);
-    // The refused text stays; say why. Set after `setText`, which clears the notice.
     setOverflowing(result.overflow);
     setOpen(false);
   };
@@ -219,9 +192,7 @@ export function PeoplePicker({
     if (move && options.length && !full) {
       event.preventDefault();
       let next = (activeIndex + move + options.length) % options.length;
-      // A closed list opens on the end the arrow points away from.
       if (!showOptions) next = move > 0 ? 0 : options.length - 1;
-      // Render the move first, so the option to keep in view exists.
       flushSync(() => {
         setOpen(true);
         setActive(next);
@@ -231,7 +202,6 @@ export function PeoplePicker({
       event.preventDefault();
       choose(options[activeIndex], event.shiftKey);
     } else if (event.key === "Enter" && query.trim()) {
-      // Unfinished text never submits the form.
       event.preventDefault();
     } else if (event.key === "Backspace" && !query && value.length) {
       event.preventDefault();
@@ -242,7 +212,6 @@ export function PeoplePicker({
     }
   };
 
-  // Runs after the chips changed, when the input has mounted or unmounted.
   useEffect(() => {
     const target = focusAfterChange.current;
     focusAfterChange.current = undefined;
@@ -378,7 +347,6 @@ function PeopleSuggestions({
       role="listbox"
       aria-label="Suggested people"
       className="grid max-h-56 gap-0.5 overflow-y-auto rounded-lg border bg-popover p-1"
-      // Keep focus in the input while choosing with the pointer.
       onMouseDown={(event) => event.preventDefault()}
     >
       {options.map((option, index) => {

@@ -35,7 +35,6 @@ test("record link summaries use a fixed number of queries and count only readabl
   expect(tracked.queries.length).toBe(singleCount);
   expect(byTitle(linked.records)).toEqual(["Buyer 4.0", "Buyer 4.1", "Buyer 4.2", "Buyer 4.3"]);
   expect(linked.recordCount).toBe(4);
-  // Bob can read the account but none of the buyers, so he sees no links and no count.
   const bob = new RepositoryContext(f.db, { organizationId: f.orgA, actorEntityId: f.bob });
   expect(
     await linkSummary(bob, { userId: "bob", organizationId: f.orgA }, four.entityId),
@@ -51,7 +50,6 @@ test("thread messages list their readable records with one reference query", asy
   for (const id of [project.entityId, task.entityId, account.entityId, contact.entityId])
     await session.context.attach(reply.id, id);
   await session.context.attach(root.id, project.entityId);
-  // Alice is a plain member, so Bob's account stays hidden from her.
   await f.db.update(member).set({ role: "member" }).where(eq(member.id, "alice-a"));
   const hidden = await f.forActor(f.bob).crm.createAccount({ name: "Hidden" });
   await f.db.insert(messageEntityReferences).values({

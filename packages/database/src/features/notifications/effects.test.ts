@@ -27,7 +27,6 @@ async function person(id: string, organizationId = f.orgA) {
   return (await ensureHumanActor(f.db, { userId: id, organizationId })).entityId;
 }
 
-// Transaction control is not part of the notification work.
 const statements = (queries: string[]) =>
   queries.filter((query) => !/^\s*(begin|commit|rollback|savepoint|release)/i.test(query));
 
@@ -67,7 +66,6 @@ test("grouped entity alerts insert in one access-checked statement, and the firs
     notify(
       aliceContext(tx),
       [
-        // Entity targets reach recipients only by actor, so this group names nobody.
         { kind: "reply", recipients: [{ userId: "bob" }, { userId: "alice" }] },
         { kind: "mention", recipients: [{ actorEntityId: f.bob }] },
         {
@@ -90,8 +88,6 @@ test("grouped entity alerts insert in one access-checked statement, and the firs
   );
   expect(statements(queries)).toHaveLength(1);
   expect(statements(queries)[0]).toMatch(/^\s*insert into "notifications".*\bselect\b/is);
-  // Bob reads through his grant and Alice as the organization owner. One has no access, the
-  // others are not live verified members, and the outsider belongs to another organization.
   expect(await stored(eventKey)).toEqual(
     [`${f.orgA}:${f.alice}:assignment`, `${f.orgA}:${f.bob}:mention`].sort(byText),
   );

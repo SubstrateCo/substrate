@@ -8,7 +8,6 @@ import { Image } from "@/components/ui/image";
 
 const icons = { claude, codex };
 
-/** A runtime's mark, with a smaller size for model metadata. */
 export function HarnessIcon({
   harness,
   compact = false,

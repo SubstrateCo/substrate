@@ -17,7 +17,6 @@ export function ThreadPaneFrame({
 }) {
   const close = useRef<HTMLButtonElement>(null);
   const covers = useAsideCovers();
-  // Remember focus before moving it into a covering thread pane.
   useEffect(() => {
     const previous = document.activeElement;
     return () => {

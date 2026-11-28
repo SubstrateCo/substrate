@@ -24,7 +24,6 @@ export async function provisionVerifiedAccount(
     "Verify your Substrate email",
     "/api/auth/verify-email",
   );
-  // Hit the API baseURL directly and stop at the redirect rather than loading the /login HTML.
   const verifyURL = new URL(link);
   const verified = await page.request.get(`${verifyURL.pathname}${verifyURL.search}`, {
     maxRedirects: 0,

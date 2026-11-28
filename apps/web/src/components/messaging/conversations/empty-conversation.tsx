@@ -5,7 +5,6 @@ import {
   type Conversation,
 } from "@/lib/messaging/conversations";
 
-/** A conversation with no messages yet. */
 export function EmptyConversation({ conversation }: { conversation: Conversation }) {
   const title = conversationName(conversation);
   let emptyTitle = `Your conversation with ${title}`;

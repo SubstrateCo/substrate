@@ -29,7 +29,6 @@ export const editorDocumentSchema = z.object({
 type EditorParagraph = z.infer<typeof paragraphSchema>;
 export type EditorDocument = z.infer<typeof editorDocumentSchema>;
 
-/** The editor owns nodes. Only this boundary converts them to the message draft. */
 export function editorDocument(parts: readonly DraftPart[]): EditorDocument {
   const paragraphs: EditorParagraph[] = [{ type: "paragraph", content: [] }];
   for (const part of parts) {
@@ -55,7 +54,6 @@ export function editorDocument(parts: readonly DraftPart[]): EditorDocument {
   return { type: "doc", content: paragraphs };
 }
 
-/** Serialize the editor document after the adapter parses its JSON at the input boundary. */
 export function partsFromEditor(document: EditorDocument): DraftPart[] {
   const parts: DraftPart[] = [];
   const text = (value: string) => {

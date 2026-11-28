@@ -13,7 +13,6 @@ export function appEnabledCondition(organizationId: string | SQLWrapper, app: Ap
   )`;
 }
 
-/** App access is separate from grants, including an administrator's implicit ownership. */
 export function entityAppsEnabled(organizationId: string | SQLWrapper, type: SQLWrapper) {
   const gated = entityType.enumValues.flatMap((value) => {
     const apps = requiredAppsForEntityType(value);

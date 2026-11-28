@@ -159,7 +159,6 @@ test("latest messages stay bottom-aligned when a thread opens and closes", async
   const log = page.getByRole("log", { name: "Messages", exact: true }).first();
   const gap = () => log.evaluate((node) => node.scrollHeight - node.scrollTop - node.clientHeight);
   await expect.poll(gap).toBeLessThan(2);
-  // Use the latest row's thread action so opening does not scroll an old root into view.
   const latest = log.getByRole("article").last();
   await latest.hover();
   await latest.getByRole("button", { name: "Reply in thread", exact: true }).click();
@@ -241,7 +240,6 @@ for (const location of ["channel", "thread"] as const) {
           .poll(async () => (await image.boundingBox())!.height)
           .toBeLessThan(loadedHeight - 20);
         await expectPosition(page, row, top);
-        // A deliberate scroll must replace the saved anchor, rather than fight the reader.
         const next = scope
           .getByRole("log", { name: "Messages", exact: true })
           .getByRole("article")
@@ -295,7 +293,6 @@ test("thread reading-position resize and scroll workload @benchmark", async ({
     await settle(page);
   };
   const results = [];
-  // Warm up layout and compiled event handlers before collecting three identical trials.
   await resize();
   for (let trial = 0; trial < 3; trial++) {
     const beforeResize = await metrics();
@@ -324,6 +321,5 @@ test("thread reading-position resize and scroll workload @benchmark", async ({
     contentType: "application/json",
   });
   console.log("Reading-position performance:", JSON.stringify(results));
-  // The scroll-only workload must not cause repeated synchronous layout.
   for (const result of results) expect(result.scrollLayouts).toBeLessThanOrEqual(2);
 });

@@ -5,11 +5,6 @@ import { layerFinding } from "./layer-finding.ts";
 
 const compile = (patterns: string[] = []) => patterns.map(pathPattern);
 
-/**
- * Code shapes that a layer must not contain, from the `forbidCalls`, `forbidNew`,
- * `forbidMembers`, and `forbidSyntax` fields of the rules in `architecture.config.json`.
- * The AST skips strings and comments and sees constructs that span lines.
- */
 export function layerSyntax(config: ArchitectureConfig, model: LayerModel): Rule {
   const rules = config.rules
     .filter(
@@ -62,17 +57,23 @@ export function layerSyntax(config: ArchitectureConfig, model: LayerModel): Rule
         }
       }
 
-      // Selectors for the forbidden node types run beside the path checks; `:exit` keeps
-      // them from replacing a path visitor for the same type.
       const syntaxVisitors = Object.fromEntries(
-        [...syntaxTypes].map((type) => [`${type}:exit`, checkSyntax]),
+        [...syntaxTypes].map((type) => [type, checkSyntax]),
       );
       return {
         ...syntaxVisitors,
-        CallExpression: (node) => check(node, memberPath(node.callee), (entry) => entry.calls),
-        NewExpression: (node) =>
-          check(node, memberPath(node.callee), (entry) => entry.constructors),
-        MemberExpression: (node) => check(node, memberPath(node), (entry) => entry.members),
+        CallExpression: (node) => {
+          check(node, memberPath(node.callee), (entry) => entry.calls);
+          checkSyntax(node);
+        },
+        NewExpression: (node) => {
+          check(node, memberPath(node.callee), (entry) => entry.constructors);
+          checkSyntax(node);
+        },
+        MemberExpression: (node) => {
+          check(node, memberPath(node), (entry) => entry.members);
+          checkSyntax(node);
+        },
       };
     },
   };

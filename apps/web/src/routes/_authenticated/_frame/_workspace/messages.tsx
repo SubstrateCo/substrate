@@ -11,7 +11,6 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace/messages
     turnId: z.uuid().optional(),
     sourceType: z.enum(["deal", "account", "contact"]).optional(),
     sourceId: z.uuid().optional(),
-    /** Opens the task of a task discussion, or the deal or account it was opened from. */
     sheet: z.boolean().optional(),
   }),
 });

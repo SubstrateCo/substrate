@@ -4,7 +4,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { agentSettingsPageLabels, type AgentSettingsPage } from "@/lib/agent-work/agent-sections";
 import { ArrowLeft } from "lucide-react";
 
-/** The sheet's title: Settings on the overview, or a back button and the open list. */
 export function AgentSettingsSheetHeader({
   page,
   onBack,

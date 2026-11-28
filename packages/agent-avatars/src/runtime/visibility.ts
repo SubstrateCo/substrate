@@ -10,7 +10,6 @@ function shared(): IntersectionObserver {
   return observer;
 }
 
-/** One observer serves every avatar on the page. */
 export function observeVisibility(element: Element, listener: VisibilityListener): () => void {
   listeners.set(element, listener);
   shared().observe(element);

@@ -62,7 +62,6 @@ describe("contact interactions", () => {
       occurredAt: new Date(),
       summary: "Before",
     });
-    // The edit checked the interaction before the deletions committed.
     const checked = await requireInteraction(
       new RepositoryContext(f.db, { organizationId: f.orgA, actorEntityId: f.alice }),
       interaction.entityId,

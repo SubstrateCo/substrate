@@ -22,7 +22,6 @@ test("a committed group read asks the server for the dot again instead of waitin
     expect(dot.getCurrentResult().data).toEqual({ unread: true });
     const options = readNotificationsOptions(client, "org", {
       markGroupRead: async () => {
-        // The last unread group is now read on the server.
         serverUnread = false;
         return null;
       },

@@ -38,7 +38,6 @@ test("a deletion racing an open reaction shows no reaction on the deleted messag
     release.resolve();
     await Promise.all([open, deleting]);
   }
-  // The reaction row may outlive the deletion. Reads hide it.
   expect((await f.messaging("alice").listMessages(channel.id))[0]).toMatchObject({
     id: message.id,
     body: "",

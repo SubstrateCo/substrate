@@ -2,17 +2,8 @@ import type { DatabaseExecutor } from "../executor";
 import type { SessionIdentity } from "./identity";
 import { workspaceContext, type ResolvedWorkspace } from "./workspace";
 
-// Expired entries are dropped when the cache grows past this many.
 const sweepSize = 5000;
 
-/**
- * Keeps a person's resolved workspace for `ttlMs`, so a burst of requests resolves it once.
- *
- * Only session reads use it. Every write resolves the workspace again inside its transaction, so
- * a cached value never admits a write. A removed member, a disabled actor or a changed role
- * still reads with the old value until it expires or `forget` runs. Agent identities and failed
- * lookups are never kept.
- */
 export function createWorkspaceCache(
   db: DatabaseExecutor,
   ttlMs: number,

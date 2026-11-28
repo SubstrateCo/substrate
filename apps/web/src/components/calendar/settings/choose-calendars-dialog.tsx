@@ -26,7 +26,6 @@ import {
 import { Field, FieldLabel } from "@/components/ui/field";
 import { CalendarDays, RotateCcw, TriangleAlert } from "lucide-react";
 
-/** The calendars to preselect: the primary one, unless it is connected already. */
 const initialSelection = (options: readonly ProviderCalendarOption[]) =>
   new Set(
     options.flatMap((option) =>
@@ -34,10 +33,6 @@ const initialSelection = (options: readonly ProviderCalendarOption[]) =>
     ),
   );
 
-/**
- * Chooses calendars to connect from one account. Connected calendars stay checked and cannot be
- * cleared here; disconnecting happens on the calendar's own row.
- */
 export function ChooseCalendarsDialog({
   accountName,
   options,
@@ -54,11 +49,9 @@ export function ChooseCalendarsDialog({
   accountName: string;
   options: readonly ProviderCalendarOption[] | undefined;
   loadError: Error | null;
-  /** The account no longer grants calendar access, so it must be reconnected first. */
   accessRequired: boolean;
   pending: boolean;
   error: Error | null;
-  /** The provider's consent page is opening. */
   reconnecting: boolean;
   onReconnect: () => void;
   onRetry: () => void;
@@ -116,10 +109,6 @@ export function ChooseCalendarsDialog({
   );
 }
 
-/**
- * Without calendar access, the reconnect notice replaces any load or connect error, since
- * reconnecting fixes both.
- */
 function ChooseCalendarsBody({
   accessRequired,
   error,
@@ -161,7 +150,6 @@ function ChooseCalendarsBody({
   );
 }
 
-/** The account's calendars, or why they cannot be shown yet. */
 function CalendarOptions({
   options,
   loadError,

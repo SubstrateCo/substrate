@@ -113,7 +113,6 @@ function ImageAttachment({
   );
 }
 
-/** Files on a message. Images show their server preview; every file can be shared or downloaded. */
 export function MessageAttachments({
   attachments,
   target,

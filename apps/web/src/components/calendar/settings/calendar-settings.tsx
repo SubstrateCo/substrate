@@ -33,7 +33,6 @@ type Dialog =
   | { kind: "backfill"; calendar: CalendarView }
   | { kind: "disconnect"; calendar: CalendarView };
 
-/** Settings → Calendars: the viewer's calendars in the active organization. */
 export function CalendarSettingsPage({ organizationId }: { organizationId: string | null }) {
   return (
     <SettingsPanel title="Calendars">
@@ -100,7 +99,6 @@ function CalendarSettings({ organizationId }: { organizationId: string }) {
       link.mutate();
     },
   };
-  // Changes made from a row show their error above the accounts; dialogs show their own.
   const inlineError = dialog ? null : (update.error ?? action.error ?? connect.error ?? link.error);
   const accessRequired = isCalendarAccessRequired(inlineError);
   return (
@@ -222,7 +220,6 @@ function CalendarSettingsDialog({
   }
 }
 
-// The calendar row whose change is saving, so only that row shows it.
 function savingCalendar(
   accounts: readonly CalendarAccountView[],
   update: ReturnType<typeof useUpdateCalendar>,
@@ -239,7 +236,6 @@ function savingCalendar(
   );
 }
 
-// A reconnect sends one provider calendar; find its row so only that row shows it is saving.
 function connectingCalendar(
   accounts: readonly CalendarAccountView[],
   variables: { credentialAccountId: string; providerCalendarIds: string[] },

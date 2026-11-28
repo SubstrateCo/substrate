@@ -33,7 +33,6 @@ const sortOptions: SortOption<DirectorySort>[] = [
 ];
 
 const column = createAppColumnHelper<DirectoryRow>();
-/** The largest page the server returns. */
 const maxPageSize = 100;
 
 function directoryColumns(type: DirectoryInput["type"]) {
@@ -81,7 +80,6 @@ export function InteractionDirectory({
   type,
 }: {
   period: InteractionTimeline;
-  /** The activity period that `period` covers. */
   days: InteractionDays;
   onDaysChange: (days: InteractionDays) => void;
   type: "people" | "accounts";
@@ -89,7 +87,6 @@ export function InteractionDirectory({
   const [search, setSearch] = useState("");
   const [repeat, setRepeat] = useState(false);
   const [sort, setSort] = useState<DirectorySort>("latest");
-  // The rows that fit on screen, unknown until the table measures its space.
   const [pageSize, setPageSize] = useState<number>();
   const debounced = useSearchDebounce(search, `${repeat}:${sort}`);
   const filters: InteractionFilters = { days, repeat };
@@ -105,7 +102,6 @@ export function InteractionDirectory({
           maxLength={200}
           onChange={(e) => setSearch(e.target.value)}
         />
-        {/* Pills take the free space and wrap inside it, so the sort stays on the row. */}
         <div className="flex-1">
           <FilterBar
             aria-label="Directory filters"
@@ -148,7 +144,6 @@ function DirectoryPage({
   pending: boolean;
   onFitPageSize: (rows: number) => void;
 }) {
-  // A resize changes the page size but keeps the first row in view.
   const [offset, setOffset] = useState(0);
   const query = useQuery({
     ...interactionDirectoryOptions({ ...input, offset }),

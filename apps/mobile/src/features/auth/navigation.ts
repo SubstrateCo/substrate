@@ -21,7 +21,6 @@ export function authModeForPath(path: string): AuthMode | null {
   }
 }
 
-/** Only app-owned destinations can continue an authentication flow. */
 // oxlint-disable-next-line deslop/prefer-literal-union -- This validator must accept an untrusted string, not only already-valid destinations.
 export function authDestination(value: string | undefined): string | undefined {
   if (!value || value.length > 1000) return undefined;

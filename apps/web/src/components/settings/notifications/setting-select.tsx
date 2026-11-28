@@ -8,7 +8,6 @@ import {
 import { formatDateTime } from "@/lib/format/date";
 import { muteLabels, type MuteChoice, type MuteState } from "@/lib/notifications/mute";
 
-/** The select of one settings row. `id` matches the row's `htmlFor`. */
 export function SettingSelect<T extends string>({
   id,
   value,
@@ -47,10 +46,6 @@ export function SettingSelect<T extends string>({
 
 const timedMute = "until";
 
-/**
- * How long to pause or mute. An active timed mute shows its end as the chosen option, so the
- * select always names the current state.
- */
 export function MuteSelect({
   id,
   state,

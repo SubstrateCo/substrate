@@ -104,7 +104,6 @@ export default defineConfig({
         "react/jsx-fragments": "error",
         // Render callbacks are allowed when their prop name starts with "render".
         "react/no-unstable-nested-components": "error",
-        // An effect that re-runs on a value it never reads needs a stated reason.
         "react/exhaustive-effect-dependencies": "error",
         // Files that export components export only components, so Fast Refresh keeps their state.
         "react/only-export-components": ["error", { allowConstantExport: true }],
@@ -172,7 +171,6 @@ export default defineConfig({
       },
     },
     {
-      // Line numbers and diff markers draw their gutter with CSS counters and generated content.
       files: ["apps/web/src/components/ui/code-block.tsx"],
       rules: {
         "shadcn/no-arbitrary-values": [

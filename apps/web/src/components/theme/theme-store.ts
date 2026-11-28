@@ -6,9 +6,7 @@ function storedTheme(storageKey: string): Theme {
   try {
     const value = localStorage.getItem(storageKey);
     if (value === "light" || value === "dark") return value;
-  } catch {
-    // Theme switching still works when storage is unavailable.
-  }
+  } catch {}
   return "system";
 }
 
@@ -32,9 +30,7 @@ export function createThemeStore(storageKey: string) {
       if (theme !== "light" && theme !== "dark" && theme !== "system") return;
       try {
         localStorage.setItem(storageKey, theme);
-      } catch {
-        // Keep the in-memory preference if persistence is blocked.
-      }
+      } catch {}
       update(theme);
     },
     subscribe: (listener: () => void) => {

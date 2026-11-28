@@ -34,7 +34,6 @@ const confirmCopy = {
   },
 };
 
-/** External collaboration for one conversation: invite with consent, and manage who has access. */
 export function SharingSheet({
   organizationId,
   conversationId,

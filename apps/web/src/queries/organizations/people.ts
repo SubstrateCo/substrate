@@ -5,7 +5,6 @@ import { queryOptions } from "@tanstack/react-query";
 import { getOrganizationPeople } from "@/api/organizations/requests";
 import { queryKeys } from "@/queries/keys";
 
-/** Members of the workspace as people to choose, sorted by name. Only members may read them. */
 export const workspacePeopleQueryOptions = (organizationId: string) =>
   queryOptions({
     queryKey: queryKeys.organizationPeople(organizationId),

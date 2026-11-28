@@ -62,7 +62,6 @@ export function crmAccountsRepository(context: RepositoryContext) {
         const changedFields = (["name", "website", "domain", "summary"] as const).filter(
           (key) => previous[key] !== value[key],
         );
-        // Reassignment writes the entity before the CRM row. Use that order for CRM edits too.
         await ctx.touch(id);
         const [row] = await ctx.db
           .update(crmAccounts)

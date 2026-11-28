@@ -37,7 +37,6 @@ const isLead = (value: number): value is MeetingReminderSettings["leadMinutes"] 
 
 const loading = <Skeleton role="status" aria-label="Loading" className="h-5 w-9" />;
 
-// Only the desktop app has this bridge. Browsers show nothing.
 export function DesktopPreferences() {
   const bridge = desktopSettingsBridge();
   if (!bridge) return null;
@@ -45,7 +44,6 @@ export function DesktopPreferences() {
 }
 
 function DesktopPreferencesCard({ bridge }: { bridge: DesktopSettingsAPI }) {
-  // The main process owns this setting, so read it fresh each time the card opens.
   const settings = useQuery(desktopSettingsQueryOptions(bridge));
   const update = useDesktopSettingsUpdate(bridge);
   return (

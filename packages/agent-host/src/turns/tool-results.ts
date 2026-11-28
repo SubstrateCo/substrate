@@ -7,10 +7,6 @@ import { z } from "zod";
 
 const fields = z.record(z.string(), z.unknown());
 
-/**
- * The registry declares which output fields identify published records. A call that waits for
- * the owner's approval published a proposal request instead.
- */
 export function toolOutputs(
   request: WorkspaceApiRequest,
   result: WorkspaceApiResult,

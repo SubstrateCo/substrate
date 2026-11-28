@@ -6,10 +6,8 @@ ruleTester.run("no-decorative-class", noDecorativeClass, {
     '<h2 className="text-xl font-medium" />',
     '<p className="text-xs font-medium text-muted-foreground" />',
     '<div className="shadow-raised hover:bg-row-hover active:scale-97 transition-colors" />',
-    // A fade from one surface to transparent hints at more content.
     '<div className="sticky bottom-0 h-4 bg-linear-to-t from-popover to-transparent" />',
     '<div className="animate-pulse bg-muted" />',
-    // Prose that happens to contain a class word is not a class list.
     '<p>{"Use uppercase letters"}</p>',
   ],
   invalid: [
@@ -34,7 +32,6 @@ ruleTester.run("no-decorative-class", noDecorativeClass, {
       errors: [{ messageId: "gradient" }],
     },
     {
-      // A coloured radial wash behind a page.
       code: '<main className="fixed inset-0 bg-radial from-accent to-transparent" />',
       errors: [{ messageId: "gradient" }],
     },

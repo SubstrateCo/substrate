@@ -57,7 +57,6 @@ test("human and agent attribution is distinct from responsibility and hides all 
 });
 
 test("unreadable targets and related endpoints are denied without identifiers, names, or counts", async () => {
-  // Contacts are readable by every member, so the restricted records are accounts.
   const target = await f.forActor(f.alice).crm.createAccount({ name: "Customer" });
   const hidden = await f.forActor(f.alice).crm.createAccount({ name: "Hidden" });
   await f.db.delete(crmActivityEvents);

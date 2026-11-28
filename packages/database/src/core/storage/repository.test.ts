@@ -117,7 +117,6 @@ describe("stored file relationships", () => {
       .insert(member)
       .values({ id: "alice-a", userId: "alice", organizationId: f.orgA, role: "owner" });
     await f.db.update(fileUploads).set({ deletedAt: new Date() }).where(eq(fileUploads.id, id));
-    // Even an inconsistent surviving completed row cannot override the deletion marker.
     expect(await rejection(repo.getUpload(scope, id))).toBeInstanceOf(ConflictError);
   });
 
@@ -450,7 +449,6 @@ describe("stored file relationships", () => {
 
   test("uploader deletion cleans ownerless managed files", async () => {
     const repo = createStorageRepository(f.db);
-    // This storage-only identity has no actor history that would prevent account deletion.
     await f.db
       .insert(user)
       .values({ id: "uploader", name: "Uploader", email: "uploader@example.com" });

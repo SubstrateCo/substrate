@@ -26,7 +26,6 @@ export function hashSeed(seed: string | number): number {
   return h1 >>> 0;
 }
 
-/** A small seeded random number generator that returns values in [0, 1). */
 export function seededRandom(seed: number): () => number {
   let state = seed >>> 0;
   return () => {

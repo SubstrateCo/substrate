@@ -25,7 +25,6 @@ const session = (emailVerified: boolean): NonNullable<Awaited<ReturnType<typeof 
   },
 });
 
-/** Session query options whose loader counts its reads. */
 function countedSession(read: () => ReturnType<typeof session>) {
   const counter = { reads: 0 };
   const options = sessionQueryOptions(async () => {
@@ -43,7 +42,6 @@ test("workspace navigations reuse a verified session instead of refetching it", 
     await requireVerifiedSession(client, "/tasks", options);
     expect((await requireVerifiedSession(client, "/notifications", options)).user.id).toBe("user");
     expect(counter.reads).toBe(1);
-    // Realtime session events invalidate the cached session; the next navigation rechecks it.
     await client.invalidateQueries({ queryKey: queryKeys.session });
     await requireVerifiedSession(client, "/messages", options);
     expect(counter.reads).toBe(2);

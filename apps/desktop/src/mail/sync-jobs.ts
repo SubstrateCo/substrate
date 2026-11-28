@@ -5,7 +5,6 @@ type Job = {
   done: Promise<void>;
 };
 
-/** One writer per mailbox. A burst during a run asks for one more pass from the committed cursor. */
 export function mailboxSyncJobs() {
   const jobs = new Map<string, Job>();
   const lanes = new Map<string, { controller: AbortController; done: Promise<unknown> }>();

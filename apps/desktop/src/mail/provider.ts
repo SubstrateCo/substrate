@@ -1,10 +1,8 @@
 import type { MailStore, SyncedMail, SyncPage } from "@substrate/client-storage/mail";
 import { mailViewRule, type MailLabel } from "@substrate/contracts/mail";
 
-/** Changed IDs need current labels only if their bodies are already cached. */
 export type MailChanges = SyncPage & { changedIds?: string[] };
 
-/** The worker never interprets a provider cursor. A wake is only a request to reconcile. */
 export interface MailReader {
   labels(): Promise<MailLabel[]>;
   page(cursor: string | null): Promise<MailChanges>;
@@ -30,8 +28,6 @@ async function reconcileLabels(
     for (const cached of (await store.cachedDates(id, page.changedIds)).keys()) changed.add(cached);
   const rule = mailViewRule("unread", Date.now());
   const matches = (flags: number) => (flags & (rule.require | rule.exclude)) === rule.require;
-  // The final body batch hasn't committed yet. Compare its newer flags instead of
-  // the cached versions. A missing ID in the unread list is not evidence of deletion.
   for (const m of page.messages) {
     if (unread && matches(m.flags) !== unread.has(m.remoteId)) changed.add(m.remoteId);
     else changed.delete(m.remoteId);

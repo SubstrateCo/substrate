@@ -1,4 +1,3 @@
-/** The parts of `architecture.config.json` that the lint rules read. */
 export interface ArchitectureConfig {
   root?: string;
   include?: string[];
@@ -19,16 +18,11 @@ export interface LayerRule {
   id: string;
   tag: string;
   layer: string | string[];
-  /** Exact import target labels (`database`, `3p:zod`) or `/regex/` entries. */
   forbidImports?: string[];
   allowTypeOnly?: boolean;
-  /** Callee path patterns: `c.req.json`, `*.req.{json,query}`, `**.safeParse`. */
   forbidCalls?: string[];
-  /** Constructor path patterns: `Response`. */
   forbidNew?: string[];
-  /** Member path patterns: `repositories.*`. */
   forbidMembers?: string[];
-  /** ESTree node types: `CatchClause`, `ImportExpression`. */
   forbidSyntax?: string[];
   message: string;
   fix: string;
@@ -37,11 +31,9 @@ export interface LayerRule {
 interface RuleException {
   rule: string;
   files: string[];
-  /** Required. Optional here because the check reports a missing reason. */
   reason?: string;
 }
 
-/** Rule IDs the lint reports without a config entry. */
 const BUILT_IN_RULES = ["X3"];
 const TARGET_LABELS = new Set(["unlayered", "builtin", "unresolved"]);
 const CHECKS = ["forbidImports", "forbidCalls", "forbidNew", "forbidMembers", "forbidSyntax"];
@@ -51,11 +43,6 @@ const FIELDS = {
   exception: ["rule", "files", "reason"],
 };
 
-/**
- * Lists the config mistakes that would turn a rule off without a sign: a misspelled field,
- * an unknown layer or rule ID, or an exception without a reason. Top-level fields that only
- * the scanner reads are not checked here.
- */
 export function configProblems(config: ArchitectureConfig): string[] {
   const problems: string[] = [];
   const unknownFields = (keys: string[], known: string[], where: string) => {

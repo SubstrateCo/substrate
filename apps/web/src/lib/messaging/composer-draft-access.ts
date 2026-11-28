@@ -1,4 +1,3 @@
-/** A list that omits discussions cannot revoke drafts for those discussions. */
 export function retainConversationDraft(
   conversationId: string,
   allowed: ReadonlySet<string>,

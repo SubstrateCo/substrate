@@ -41,13 +41,11 @@ export function createOrganizationService(deps: { apiURL: string; publish: Commi
     people(scope: WorkspaceScope) {
       return serviceResult(() => scope.repositories.organizations.people());
     },
-    /** The link that the invitation email carries, so people who may invite can share it. */
     invitationLink(scope: WorkspaceScope, invitationId: string) {
       return serviceResult(async () => {
         const invitation = await scope.repositories.organizations.pendingInvitation(invitationId);
         if (!canShareInvitation(invitation.viewerRole, invitation.role))
           throw new ServiceError("NOT_FOUND", "Invitation not found.");
-        // The handoff page opens the desktop app and also offers the browser.
         const path = `/accept-invitation/${encodeURIComponent(invitation.id)}`;
         return { url: desktopHandoffURL(path, deps.apiURL) };
       });

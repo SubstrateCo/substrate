@@ -49,7 +49,6 @@ test("switching workspaces clears private messages, reconnects in the selected o
     .click();
   await user.page.getByRole("menuitem", { name, exact: true }).click();
   await reconnect;
-  // Messages names the selected workspace and never keeps the first workspace's conversation.
   await expect
     .poll(() => {
       const url = new URL(user.page.url());
@@ -81,7 +80,6 @@ test("switching workspaces clears private messages, reconnects in the selected o
   await user.page.reload();
   await expect(user.page.getByText(secondBody, { exact: true })).toBeVisible();
 
-  // An unsaved draft asks before the switch back, and nothing changes until it is discarded.
   await user.page
     .getByRole("button", { name: `Signed in as ${account.name}`, exact: true })
     .click();

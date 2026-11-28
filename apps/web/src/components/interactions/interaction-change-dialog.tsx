@@ -11,7 +11,6 @@ export type InteractionChange = {
   action: "edit" | "delete";
 };
 
-/** Edit an interaction's summary, or confirm its deletion. */
 export function InteractionChangeDialog({
   change,
   onClose,
@@ -19,7 +18,6 @@ export function InteractionChangeDialog({
 }: {
   change: InteractionChange;
   onClose: () => void;
-  /** Runs after a successful save or delete. Defaults to `onClose`. */
   onDone?: () => void;
 }) {
   const { organizationId } = useWorkspaceScope();

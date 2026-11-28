@@ -121,20 +121,17 @@ test("owners and admins of the owning organization manage conversations without 
   });
   await chat("alice").addMembers(secret.id, ["outside@example.com"]);
   await chat("bob").sendMessage(secret.id, "private words");
-  // alice is an organization owner but not a member.
   expect(await listed("alice")).toEqual([]);
   expect(await rejection(chat("alice").listMessages(secret.id))).toBeInstanceOf(AccessDeniedError);
   expect(await chat("alice").listManagedConversations()).toMatchObject([
     { id: secret.id, name: "secret", private: true, ownerName: "Bob" },
   ]);
   expect(await rejection(chat("bob").listManagedConversations())).toBeInstanceOf(AccessDeniedError);
-  // Managing never becomes reading: an admin cannot add themselves or take ownership.
   expect(await chat("alice").addMembers(secret.id, ["alice@example.com"])).toEqual({ added: 0 });
   expect(await rejection(chat("alice").transferOwnership(secret.id, "alice"))).toBeInstanceOf(
     ValidationError,
   );
   expect(await rejection(chat("alice").listMessages(secret.id))).toBeInstanceOf(AccessDeniedError);
-  // A member from another organization cannot manage it, even as that organization's owner.
   expect(await rejection(chat("outsider", f.orgB).deleteConversation(secret.id))).toBeInstanceOf(
     AccessDeniedError,
   );
@@ -251,7 +248,6 @@ test("delete impact counts only linked work the caller can read", async () => {
       title,
     });
   expect(await chat("bob").deleteImpact(channel.id)).toEqual({ linkedWork: 2 });
-  // carol is an organization member with no access to Bob's project.
   await f.db.insert(user).values({
     id: "carol",
     name: "Carol",
@@ -282,10 +278,8 @@ test("delete impact reads a managed conversation once and needs no second sessio
       title,
     });
   const { db, queries } = recordQueries();
-  // alice is a host owner who is not a member: she counts readable work but cannot read messages.
   const admin = createMessagingService(db, { userId: "alice", organizationId: f.orgA });
   expect(await admin.deleteImpact(secret.id)).toEqual({ linkedWork: 2 });
-  // One session read and one managed lookup.
   expect(queries.filter((query) => query.includes('from "messaging_conversations"'))).toHaveLength(
     1,
   );
@@ -336,7 +330,6 @@ test("a post racing a conversation deletion is denied and leaves no message", as
   let posting: Promise<unknown> | undefined;
   try {
     await held.promise;
-    // The post still sees the conversation, then its first write meets the deletion.
     posting = rejection(chat("bob").sendMessage(channel.id, "too late"));
     await Bun.sleep(100);
   } finally {

@@ -5,7 +5,6 @@ import { and, eq } from "drizzle-orm";
 const scoped = (organizationId: string, agentId: string) =>
   and(eq(agentWorkspaces.organizationId, organizationId), eq(agentWorkspaces.agentId, agentId));
 
-/** The working folder of each agent of each organization on this desktop. */
 export function workspaceRepository(run: RunTransaction) {
   return {
     /** The agent's working folder, or null for its own folder. */

@@ -9,8 +9,6 @@ import type { calendarEvents, calendars } from "./schema";
 type CalendarRow = typeof calendars.$inferSelect;
 type EventRow = typeof calendarEvents.$inferSelect;
 
-// An unlinked account leaves a NULL credential and the stored status unchanged; it reads as
-// disconnected.
 export function effectiveSyncStatus(row: Pick<CalendarRow, "credentialAccountId" | "syncStatus">) {
   return row.credentialAccountId ? row.syncStatus : "disconnected";
 }

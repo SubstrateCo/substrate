@@ -21,8 +21,6 @@ import { messageEntityReferences } from "../schema";
 import { checkMessagingReferences } from "./messaging-references";
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
-// `referenced` reports saved work or messaging references, and `work` the referenced tasks and
-// projects. `notified` lists the alerts created.
 export async function applyMessageEffects(
   ctx: RepositoryContext,
   scope: SessionIdentity,
@@ -30,7 +28,6 @@ export async function applyMessageEffects(
   conversation: Pick<typeof messagingConversations.$inferSelect, "organizationId" | "kind"> & {
     taskEntityId?: string | null;
   },
-  // `seenBy` names actors who already have the message in view; their notice is stored read.
   options: { delivery?: boolean; seenBy?: string[] } = {},
 ): Promise<{
   referenced: boolean;
@@ -56,8 +53,6 @@ export async function applyMessageEffects(
   await checkMessagingReferences(db, scope, conversationOrganizationId, messagingReferences);
   let referenced = messagingReferences.length > 0;
   if (agentIds.length) {
-    // A mentioned agent must be an active member of this conversation. Mentions notify nobody;
-    // only the owner's mention can start a run, which the trigger evaluator decides.
     const members = await db
       .select({ id: messagingParticipants.actorEntityId })
       .from(messagingParticipants)
@@ -80,7 +75,6 @@ export async function applyMessageEffects(
       throw new ValidationError("Add the agent to this conversation before you mention it.");
   }
   if (personIds.length) {
-    // Every mentioned person must be an active workspace member who can see this conversation.
     const people = await db
       .select({ userId: sql<string>`${actors.userId}` })
       .from(actors)
@@ -98,7 +92,6 @@ export async function applyMessageEffects(
   }
   if (workReferences.length) {
     if (conversationOrganizationId !== scope.organizationId) throw new AccessDeniedError();
-    // The caller has verified the active actor; this applies view access to the task and its project.
     const targets = await readableWorkTargets(
       ctx,
       workReferences.map((reference) => reference.id),
@@ -124,10 +117,8 @@ export async function applyMessageEffects(
       .onConflictDoNothing();
     referenced = true;
   }
-  // Edits validate and replace derived references, but never deliver a new message event.
   if (options.delivery === false) return { referenced, work, notified: [] };
   if (message.threadId && !conversation.taskEntityId) {
-    // Members who left get mention alerts only.
     const authors = await db
       .selectDistinct({ userId: actors.userId })
       .from(messagingMessages)
@@ -153,9 +144,6 @@ export async function applyMessageEffects(
     for (const author of authors)
       if (author.userId && !recipients.has(author.userId)) recipients.set(author.userId, "reply");
   }
-  // Group and channel thread replies reach only the thread's people, above; every reply in a
-  // direct message reaches the other person. Channel members opt in to every top-level post with
-  // the "all" level: their own for the channel, else their workspace's channel level.
   const channel = conversation.kind === "channel";
   const ordinaryRecipients =
     conversation.taskEntityId || (message.threadId && (channel || conversation.kind === "group"))

@@ -8,7 +8,6 @@ import {
 } from "./requests.ts";
 import { expect, test } from "bun:test";
 
-/** The option that denies the request, as an expiry or the no-ask profile picks it. */
 const denyOption = (payload: NativeRequestPayload) =>
   payload.type === "approval"
     ? payload.options.find((option) => option.style === "deny")?.id

@@ -20,7 +20,6 @@ import { MessageCircle, MessageSquareReply } from "lucide-react";
 
 export type Discussion = {
   messageId: string;
-  /** `discussion`: a thread in the discussion of one of a project's tasks. */
   purpose: "source" | "mention" | "association" | "discussion";
   link: RecordLink;
   conversationName: string | null;
@@ -163,7 +162,6 @@ export function DiscussionItemSkeleton() {
   );
 }
 
-// Render the message like chat, but cap its height and fade it out when it overflows.
 function DiscussionBody({ body }: { body: string }) {
   const [overflows, setOverflows] = useState(false);
   const { references, loading } = useRecordReferences(body);
@@ -171,7 +169,6 @@ function DiscussionBody({ body }: { body: string }) {
     const observer = new ResizeObserver(() =>
       setOverflows(element.scrollHeight > element.clientHeight),
     );
-    // The capped box keeps its size when the content grows, so watch the content too.
     observer.observe(element);
     if (element.firstElementChild) observer.observe(element.firstElementChild);
     return () => observer.disconnect();
@@ -180,7 +177,6 @@ function DiscussionBody({ body }: { body: string }) {
     <div
       ref={ref}
       className={cn(
-        // Keep links, tables, and code blocks above the card link so they stay usable.
         "max-h-48 overflow-hidden [&_:is(a,table,pre)]:relative [&_:is(a,table,pre)]:z-10",
         overflows && "mask-b-from-70%",
       )}

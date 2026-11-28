@@ -29,8 +29,6 @@ export async function profileRefreshHints(
     .where(eq(member.userId, userId));
   const own = organizations.map(({ id }) => id);
   const viewer = alias(messagingParticipants, "viewer");
-  // Organization hints reach every member of the user's workspaces. Conversation hints are only
-  // needed where a viewer is outside them. Left conversations count: old messages show the name.
   const conversations = await db
     .selectDistinct({ id: messagingParticipants.conversationId })
     .from(messagingParticipants)
@@ -72,8 +70,6 @@ export async function profileRefreshHints(
   ];
 }
 
-// Members see agents as names and pictures in messages and tasks; "profile" refreshes those labels.
-// Access hints force session rechecks and reset private caches, so keep them for grant changes.
 export async function agentRefreshHints(
   db: DatabaseExecutor,
   userId: string,
@@ -92,8 +88,6 @@ export async function agentRefreshHints(
   ];
 }
 
-// A project grant changes what the granted actor can read, and an agent's reads are shown to its owner.
-// Other workspace members keep their access, so they only need a task refresh.
 export async function projectAccessRefreshHints(
   db: DatabaseExecutor,
   organizationId: string,
@@ -122,9 +116,6 @@ export async function projectAccessRefreshHints(
   ];
 }
 
-// Work hints reach only the readers of the project, so the project and task IDs they name never
-// reach anyone who cannot read them. A change to the project itself, or to more tasks than a hint
-// names, names only the project.
 export function workHint(
   organizationId: string,
   projectId: string,
@@ -152,7 +143,6 @@ interface CrmContextRecord {
   accessEntityId: string;
 }
 
-// One hint per project. A record that is the project itself names only the project.
 function projectHints(
   organizationId: string,
   records: WorkRecord[],
@@ -169,7 +159,6 @@ function projectHints(
   );
 }
 
-// Reads each record's project for callers that do not have it.
 export async function workChangeHints(
   db: DatabaseExecutor,
   organizationId: string,
@@ -188,8 +177,6 @@ export async function workChangeHints(
   return projectHints(organizationId, rows, "tasks");
 }
 
-// Each endpoint refreshes independently. Conversation viewers see only the message ID; CRM readers
-// get a data-less hint on the record's access container, never the private source identifiers.
 export function referenceChangeHints(
   organizationId: string,
   work: (WorkRecord | CrmContextRecord)[],
@@ -245,7 +232,6 @@ export async function invitationRefreshHints(
   ];
 }
 
-// Built inside the transaction from the changed row. Emails are stored lowercase.
 export async function sharingInvitationHints(
   db: DatabaseExecutor,
   invite: typeof messagingInvitations.$inferSelect,
@@ -286,9 +272,6 @@ export async function sharingInvitationsHints(
   });
 }
 
-// Reads the removal hints, then runs `mutate`, which deletes the conversations or ends
-// participation. The hints are registered only after `mutate` succeeds. A `domain` replaces each
-// hint's domain, such as "access" when the change revokes access.
 export async function withRemovalHints<T>(
   tx: DatabaseExecutor,
   conversations: { id: string; organizationId: string }[],
@@ -303,8 +286,6 @@ export async function withRemovalHints<T>(
   return result;
 }
 
-// Use withRemovalHints. Conversation audiences check the live row, so they cannot reach anyone
-// after a removal; these hints use user, organization, and actor audiences instead.
 export async function conversationRemovalHints(
   db: DatabaseExecutor,
   conversations: { id: string; organizationId: string }[],
@@ -330,7 +311,6 @@ export async function conversationRemovalHints(
     .from(notifications)
     .innerJoin(messagingMessages, eq(messagingMessages.id, notifications.messageId))
     .where(inArray(messagingMessages.conversationId, ids));
-  // Requests go with the conversation and no wake reports it, so their owners refresh.
   const requestOwners = await db
     .selectDistinct({ userId: agentRequests.ownerUserId })
     .from(agentRequests)
@@ -356,8 +336,6 @@ export async function conversationRemovalHints(
   ];
 }
 
-// A reaction changes only one message's reactions: not unread counts, order, or other
-// conversations. Joining the conversation also changes conversation lists.
 export function reactionChangeHints(
   change: {
     conversationId: string;
@@ -379,9 +357,6 @@ export function reactionChangeHints(
   ];
 }
 
-// Builds hints from what a send or reaction changed, so nothing is read back after commit.
-// Membership changes refresh conversation lists; other changes touch only message content: the
-// new message's thread, or its main timeline when threadId is null.
 export function messageChangeHints(
   change: {
     conversationId: string;
@@ -391,7 +366,6 @@ export function messageChangeHints(
   },
   effects: {
     joined: boolean;
-    // Work the new message references. Its page loads after the commit, with its references.
     work?: WorkRecord[];
   },
 ): RealtimeHint[] {

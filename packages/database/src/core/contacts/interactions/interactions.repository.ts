@@ -41,7 +41,6 @@ export function contactInteractionRepository(context: RepositoryContext) {
 
   return {
     ...interactionWorkspaceRepository(context),
-    /** `checked` is the caller's requireContact in this transaction. */
     async createManual(input: InteractionInput, checked?: AuthorizedAccess<"edit">) {
       const value = parseInput(interactionInput, input);
       return context.transaction(async (ctx) => {
@@ -78,7 +77,6 @@ export function contactInteractionRepository(context: RepositoryContext) {
     async get(entityId: string) {
       return (await requireInteraction(context, entityId)).interaction;
     },
-    /** `checked` is the caller's access to the contact, already read in this context. */
     async listForContact(
       contactEntityId: string,
       options: TimelineOptions = {},
@@ -104,7 +102,6 @@ export function contactInteractionRepository(context: RepositoryContext) {
         .limit(pageSize(options.limit));
       return rows;
     },
-    /** `checked` is the caller's requireInteraction(entityId) in this transaction. */
     async update(entityId: string, input: { summary: string }, checked?: CheckedInteraction) {
       const value = parseInput(z.object({ summary: z.string().trim().min(1).max(10000) }), input);
       return context.transaction(async (ctx) => {
@@ -112,7 +109,6 @@ export function contactInteractionRepository(context: RepositoryContext) {
           checked?.interaction.entityId === entityId
             ? checked
             : await requireInteraction(ctx, entityId);
-        // The liveness condition makes an edit lose to a deletion that committed after the check.
         const [row] = await ctx.db
           .update(contactInteractions)
           .set(value)
@@ -134,7 +130,6 @@ export function contactInteractionRepository(context: RepositoryContext) {
         const { interaction: existing } = await requireInteraction(ctx, entityId);
         const author = existing.createdByActorEntityId;
         if (!(await deletableAuthors(ctx, [author])).has(author)) throw new AccessDeniedError();
-        // Only one of two concurrent deletions writes the row.
         const deleted = await ctx.db
           .update(entities)
           .set({ deletedAt: new Date(), updatedAt: new Date() })

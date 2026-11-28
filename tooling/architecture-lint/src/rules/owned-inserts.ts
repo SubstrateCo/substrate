@@ -3,15 +3,9 @@ import { globMatcher } from "../layers/model.ts";
 import { relative, sep } from "node:path";
 
 export interface OwnedInsertsOptions {
-  /** Table binding name to the files that may insert into it, relative to the repository. */
   tables: Record<string, { files: string[]; use: string }>;
 }
 
-/**
- * Some tables have one writer that enforces their invariants: local triggers enter `inbox`
- * only through `enqueue()`, and wakes enter `agentWakes` only through `admit()`. Inserts
- * elsewhere skip the trigger registry or the admission decision.
- */
 export function ownedInserts(root: string): Rule {
   return {
     meta: {

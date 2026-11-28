@@ -4,14 +4,11 @@ export type PagePane = "sidebar" | "content" | "aside";
 
 export type PageLayoutContextValue = {
   id: string;
-  // Nested layouts have depth > 0. Only the outermost content is the page outlet.
   depth: number;
   mobileView?: "sidebar" | "content";
   hasAside: boolean;
-  /** Below `lg` an aside covers the content instead of sitting beside it. */
   asideCovers: boolean;
   setHasAside: (hasAside: boolean) => void;
-  // Panes register their panel element so saved widths use the real available size.
   registerPane: (pane: PagePane, element: HTMLDivElement | null) => void;
 };
 
@@ -23,7 +20,6 @@ export function usePageLayout(component: string) {
   return context;
 }
 
-/** Whether an aside in this layout covers the content, so it should take focus when it opens. */
 export function useAsideCovers() {
   return usePageLayout("useAsideCovers").asideCovers;
 }

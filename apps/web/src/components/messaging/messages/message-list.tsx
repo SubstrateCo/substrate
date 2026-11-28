@@ -32,18 +32,13 @@ export function MessageList({
   messages: Message[];
   conversationId: string;
   onThread?: (id: string) => void;
-  /** The first row of the timeline, such as a way to load older messages. */
   header?: ReactNode;
-  /** Floats over the bottom of the list, such as a jump to the latest messages. */
   footer?: ReactNode;
   previousDate?: Message["createdAt"];
   olderPage?: boolean;
-  /** The person is sending a message here. */
   sending?: boolean;
   canPost?: boolean;
-  /** The "New" divider goes above this message. */
   firstUnreadMessageId?: string | null;
-  /** Unread replies per thread root. */
   unreadReplies?: ReadonlyMap<string, number>;
   positionReady?: boolean;
   onLatestVisibleChange?: (visible: boolean) => void;
@@ -77,7 +72,6 @@ export function MessageList({
           {message.id === firstUnreadMessageId && <NewMessagesDivider />}
           <MessageRow
             message={message}
-            // A pending agent reply row sits between this message and the one before it.
             grouped={grouped && !pendingAgentReply(messages[index - 1]?.id ?? "")}
             onThread={onThread}
             unreadReplies={unreadReplies?.get(message.id)}
@@ -93,7 +87,6 @@ export function MessageList({
   );
 }
 
-// Takes the context as plain props, so a row whose props did not change keeps its rendered item.
 function MessageRow({
   message,
   grouped,

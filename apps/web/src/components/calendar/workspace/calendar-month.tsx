@@ -14,7 +14,6 @@ import {
 import { formatDateOnly, formatDayLabel, formatWeekdayShort, isSameDay } from "@/lib/format/date";
 import { cn } from "cn";
 
-/** A Sunday-first month. Event links use the same selection and detail pane as the other views. */
 export function CalendarMonth({
   days,
   events,

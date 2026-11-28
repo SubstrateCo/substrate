@@ -22,8 +22,6 @@ function collectionOf(action: Action) {
   if (action.endsWith("Address")) return "addresses";
   return "urls";
 }
-/** The content of the collection the action edits, without timestamps. A primary change edits
- * other rows too, so the snapshot covers the whole collection. */
 async function contentKey(ctx: RepositoryContext, contactId: string, action: Action) {
   const rows = await contactDetailRows(ctx, contactId)[collectionOf(action)]();
   return JSON.stringify(

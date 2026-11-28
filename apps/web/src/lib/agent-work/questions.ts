@@ -3,13 +3,11 @@ import type { AgentRequestPayload, AgentRequestResponse } from "@substrate/contr
 type Questions = Extract<AgentRequestPayload, { type: "questions" }>["questions"];
 export type QuestionDraft = { selected: string[]; custom: string };
 
-/** Selected options first, then the typed answer. Empty answers are left out. */
 export function questionAnswer(draft: QuestionDraft | undefined) {
   const custom = draft?.custom.trim();
   return [...(draft?.selected ?? []), ...(custom ? [custom] : [])];
 }
 
-/** The owner may go on once they answer, or at once when the question is optional. */
 export function questionReady(question: Questions[number], draft: QuestionDraft | undefined) {
   return question.optional === true || questionAnswer(draft).length > 0;
 }
@@ -26,7 +24,6 @@ export function questionsResponse(
   };
 }
 
-/** Single-select replaces the choice. Multi-select toggles it. */
 export function toggleQuestionOption(
   draft: QuestionDraft | undefined,
   label: string,
@@ -42,7 +39,6 @@ export function toggleQuestionOption(
   };
 }
 
-/** A typed answer replaces a single-select choice. */
 export function setQuestionCustom(
   draft: QuestionDraft | undefined,
   custom: string,

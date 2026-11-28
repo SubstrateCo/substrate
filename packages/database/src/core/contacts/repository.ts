@@ -11,8 +11,6 @@ import { readContactProfile } from "./profile";
 import { contacts } from "./schema";
 import { and, asc, eq, gt, or, sql } from "drizzle-orm";
 
-/** `checked` is the caller's requireContact in this transaction; writes to that contact reuse it
- * instead of checking again. */
 export function contactRepository(context: RepositoryContext, checked?: AuthorizedAccess<"edit">) {
   const { db, scope } = context;
   async function write(entityId: string, input: Partial<ContactInput>, changedOnly = false) {
@@ -25,7 +23,6 @@ export function contactRepository(context: RepositoryContext, checked?: Authoriz
       const fields = (Object.keys(value) as (keyof typeof value)[]).filter(
         (key) => value[key] !== undefined,
       );
-      // The liveness condition makes an edit lose to a deletion that committed after the check.
       const [contact] = await tx
         .update(contacts)
         .set(value)
@@ -88,8 +85,6 @@ export function contactRepository(context: RepositoryContext, checked?: Authoriz
       return contact;
     },
 
-    /** update, but only when a given field differs from the stored value. Returns null when a
-     * concurrent identical edit already wrote them, so the caller records one change. */
     async updateChanged(entityId: string, input: Partial<ContactInput>) {
       return (await write(entityId, input, true)) ?? null;
     },

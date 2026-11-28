@@ -42,7 +42,6 @@ export function registerWindowBridge(
   getWindow: () => BrowserWindow | undefined,
 ) {
   ipcMain.handle(windowChannel, (event, method, value) => {
-    // Only the main window: other windows, such as the notification overlay, are rejected.
     const window = getWindow();
     if (!window || window.isDestroyed() || !trustedSender(event, window.webContents, rendererURL))
       throw new Error("Untrusted window request.");

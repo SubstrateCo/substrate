@@ -5,7 +5,6 @@ import { ContentNotice } from "@/components/feedback/content-notice";
 import { PageSheet, PageSheetBody, PageSheetHeader } from "@/components/layout/page-sheet";
 import { Unlink } from "lucide-react";
 
-/** The task inspector sheet. Its `TaskDetail` child tracks drafts only while the sheet is open. */
 export function TaskSheet({
   open,
   inspector,

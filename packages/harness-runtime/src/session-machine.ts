@@ -1,6 +1,5 @@
 import { defineMachine } from "@substrate/contracts/state-machine";
 
-/** Native resources only; persisted agent-work sessions have a separate machine. */
 export const nativeSessionMachine = defineMachine({
   states: ["opening", "idle", "running", "draining", "closing", "closed"],
   terminal: ["closed"],

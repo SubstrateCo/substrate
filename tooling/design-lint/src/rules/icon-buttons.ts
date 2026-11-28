@@ -14,7 +14,6 @@ const NAME_ATTRIBUTES = ["aria-label", "aria-labelledby", "title"];
 
 type Element = NodeOf<"JSXElement">;
 
-/** An icon-only button (`size="icon"`, `"icon-sm"`, ...) whose props this file can see. */
 function iconButton(element: Element) {
   const opening = element.openingElement;
   const component = elementName(opening.name);
@@ -24,7 +23,6 @@ function iconButton(element: Element) {
   return { component, size };
 }
 
-/** Visible or screen-reader text among the children, or an expression that may render text. */
 function hasTextChild(children: Element["children"]): boolean {
   return children.some((child) => {
     if (child.type === "JSXText") return child.value.trim() !== "";

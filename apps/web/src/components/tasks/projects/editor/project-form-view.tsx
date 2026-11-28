@@ -10,10 +10,6 @@ import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard
 import { FormTextField } from "@/components/forms/form-text-field";
 import { SettingsCard, SettingsFooter } from "@/components/layout/settings-section";
 
-/**
- * A new project's name and description inside a dialog, or an existing project's details as a
- * settings card.
- */
 export function ProjectForm({
   project,
   onSubmit,

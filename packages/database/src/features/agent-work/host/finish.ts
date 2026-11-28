@@ -28,16 +28,12 @@ export interface FinishTurnInput {
   error?: string | null;
   attentionReason?: TurnAttentionReason | null;
   interruption?: TurnInterruption | null;
-  /** Inputs the harness reported as read. */
   consumedItemIds?: string[];
-  /** Steered inputs that an interrupt receipt reported as still queued. */
   stillQueuedItemIds?: string[];
   usage?: Usage | null;
-  /** Queues a recovery item, so that the next turn of the session continues this turn's work. */
   resume?: string;
 }
 
-// The turn machine event that ends a live turn with each status.
 const finishEvents = {
   completed: "complete",
   cancelled: "cancel",
@@ -46,14 +42,8 @@ const finishEvents = {
   failed: "fail",
 } as const satisfies Record<FinishTurnInput["status"], keyof typeof turnMachine.events>;
 
-/** The lease ends with the turn. A retry or continue takes a new one. */
 export const noLease = { leaseDeviceId: null, leaseExpiresAt: null };
 
-/**
- * A helper whose turn ended without its report has failed: its parent is told, so that no
- * helper runs forever. A completed or interrupted turn keeps its helper running only while its
- * session has more work, such as a parent message or a resume note.
- */
 export async function settleHelper(
   db: DatabaseExecutor,
   turn: Pick<TurnRow, "sessionId">,
@@ -78,14 +68,6 @@ export async function settleHelper(
   await finishHelper(db, helper, null, now);
 }
 
-/**
- * Ends a live turn and settles its items. Batch items are consumed unless the turn needs
- * attention. Steered items are consumed with evidence, requeued to the front of their lane when
- * a receipt says they were still queued, and uncertain otherwise: they are never resent, and the
- * turn needs the owner until each is resent or discarded. Pending passive context for the turn
- * is dropped. The caller checked who may end the turn; `deviceId` is the host that reported it,
- * or null when the server ends a lost turn.
- */
 export async function finishTurn(
   db: DatabaseExecutor,
   turn: TurnRow,
@@ -118,7 +100,6 @@ export async function finishTurn(
   }
   const event = settle.uncertain.length && !keep ? "needAttention" : finishEvents[input.status];
   const status = turnMachine.events[event].to;
-  // The turn's compare-and-set goes first: a concurrent end of the same turn settles nothing.
   const ended = await db
     .update(agentTurns)
     .set({

@@ -26,10 +26,6 @@ export function agentApps(
   return enabledApps.filter((app) => !agent.disabledApps.some((disabled) => disabled === app));
 }
 
-/**
- * An agent as the harness runtime runs it. Its sessions always get the core Substrate tools,
- * plus the skills and tools of its apps. With the guide, its instructions start with Substrate's.
- */
 function harnessAgent(
   organizationId: string,
   agent: RuntimeAgentDefinition,

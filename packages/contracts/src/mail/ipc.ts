@@ -15,9 +15,7 @@ import {
 import { z } from "zod";
 
 export const channel = "substrate:mail";
-// Main derives identity. The expected scope is only a precondition: a stale renderer cannot
-// receive the *new* account's messages during a workspace or sign-in transition.
-const target = userWorkspace.extend({ mailboxId: z.string().min(1) });
+const workspaceMailbox = userWorkspace.extend({ mailboxId: z.string().min(1) });
 const nickname = z.string().trim().max(80);
 export type MailScope = z.output<typeof userWorkspace>;
 const folder = z.object({
@@ -94,8 +92,6 @@ export const methods = {
     input: userWorkspace.extend({ id: z.string().min(1) }),
     output: bridgeOutput<MailBody | null>(),
   },
-  // Local, per-message artwork. Main only returns bounded raster image data for a reference
-  // actually present in this user's cached HTML, never a general-purpose network response.
   picture: {
     input: userWorkspace.extend({ id: z.string().min(1), source: z.string().min(1).max(8192) }),
     output: z.string().nullable(),
@@ -105,17 +101,20 @@ export const methods = {
     output: z.string().nullable(),
   },
   reconnectGmail: {
-    input: target.extend({ chooseClient: z.boolean().optional() }),
+    input: workspaceMailbox.extend({ chooseClient: z.boolean().optional() }),
     output: z.enum(["connected", "different-account", "cancelled"]),
   },
-  rename: { input: target.extend({ nickname }) },
+  rename: { input: workspaceMailbox.extend({ nickname }) },
   labelColor: {
-    input: target.extend({ labelId: z.string().min(1), color: z.enum(mailColors).nullable() }),
+    input: workspaceMailbox.extend({
+      labelId: z.string().min(1),
+      color: z.enum(mailColors).nullable(),
+    }),
   },
   labelVisibility: {
-    input: target.extend({ change: labelDisplay }),
+    input: workspaceMailbox.extend({ change: labelDisplay }),
   },
-  disconnect: { input: target },
+  disconnect: { input: workspaceMailbox },
   sync: { input: userWorkspace.extend({ mailboxId: z.string().nullable() }) },
 };
 export type MailAPI = BridgeAPI<typeof methods>;

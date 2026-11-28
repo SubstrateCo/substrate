@@ -17,7 +17,6 @@ const staticFonts = Object.values(geistWeights).map((family) => {
   return { family, weight: Number(match[1]) };
 });
 
-// Native uses the closest loaded static asset, while metrics retain the exact web weight.
 const fontFamilies = Object.fromEntries(
   Object.entries(metrics.fontWeight).map(([mode, weights]) => [
     mode,
@@ -63,7 +62,6 @@ const translucent = new Set(
   ),
 );
 
-// Opaque tokens keep Tailwind opacity modifiers. Translucent tokens keep their own alpha, so a modifier has no effect.
 function cssVariables(theme: Record<keyof typeof themes.light, string>) {
   return Object.fromEntries(
     tokenNames.map((token) => {

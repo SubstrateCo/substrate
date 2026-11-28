@@ -13,17 +13,10 @@ type RequestInput =
   | readonly RequestInput[]
   | { readonly [key: string]: RequestInput };
 
-/** A hash of the request's input, to tell a retry from a reused request ID. */
 export function requestFingerprint(input: RequestInput) {
   return createHash("sha256").update(JSON.stringify(input)).digest("hex");
 }
 
-/**
- * Claims the actor's request identity by inserting its row first. A concurrent request with the
- * same identity waits on the primary key until this transaction ends. Returns the entity an
- * earlier request with the same input produced, or null for a new request. Call inside a
- * transaction, and call recordRequest before it commits.
- */
 export async function previousRequest(
   ctx: RepositoryContext,
   operation: RequestOperation,
@@ -54,7 +47,6 @@ export async function previousRequest(
   return previous.entityId;
 }
 
-/** Records the entity of a new request. Call in the transaction that called previousRequest. */
 export async function recordRequest(
   ctx: RepositoryContext,
   operation: RequestOperation,

@@ -101,7 +101,6 @@ export async function bundleHarnessWorker(
       const target = join(destination, name);
       await mkdir(dirname(target), { recursive: true });
       if ((await realpath(target).catch(() => undefined)) === source) continue;
-      // A link from before a dependency upgrade points at the old, maybe deleted, version.
       if (await lstat(target).catch(() => undefined)) await unlink(target);
       await symlink(source, target, process.platform === "win32" ? "junction" : "dir");
     }

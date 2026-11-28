@@ -31,7 +31,6 @@ function compareTasks(a: ProjectTask, b: ProjectTask) {
   );
 }
 
-/** Tasks in parent order, each followed by its subtasks. A filtered-out parent still shows its matching subtasks. */
 export function taskTree(
   tasks: ProjectTask[],
   include: (task: ProjectTask) => boolean,

@@ -2,7 +2,6 @@ import { utcTimestamp } from "../timestamps.ts";
 import { organizationId } from "../workspace.ts";
 import { z } from "zod";
 
-// Routes name the record in the path; bodies and queries carry the workspace.
 export const calendarWorkspace = z.object({ organizationId });
 export const providerCalendarList = calendarWorkspace.extend({
   credentialAccountId: z.string().min(1).max(200),

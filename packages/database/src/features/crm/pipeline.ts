@@ -19,8 +19,6 @@ export function crmPipelineRepository(context: RepositoryContext) {
       .where(eq(crmStages.organizationId, org))
       .orderBy(asc(crmStages.position));
   }
-  // Claims the next pipeline version by compare-and-set. False means another pipeline change
-  // won. Read the stages after this call.
   async function claimPipeline(ctx: RepositoryContext) {
     const [settings] = await ctx.db
       .select({ version: crmSettings.pipelineVersion })
@@ -77,7 +75,6 @@ export function crmPipelineRepository(context: RepositoryContext) {
         }
         const positioned = stages.map((stage, position) => ({ ...stage, position }));
         const kept = positioned.filter((stage) => stage.id);
-        // No unique constraint covers position, so one statement can renumber every kept stage.
         if (kept.length)
           await ctx.db.execute(sql`update ${crmStages}
             set name = v.name, position = v.position, retired = false
@@ -118,7 +115,6 @@ export function crmPipelineRepository(context: RepositoryContext) {
         await requireAppEnabled(ctx, "crm");
         const existing = await stages(ctx);
         if (existing.length) return existing;
-        // A lost claim means another call changed the pipeline; return what it created.
         const claimed = await claimPipeline(ctx);
         const rows = await stages(ctx);
         if (rows.length) return rows;

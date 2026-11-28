@@ -11,7 +11,6 @@ export function isEmailAddress(value: string) {
   return email.length <= 320 && emailPattern.test(email);
 }
 
-/** The recipient for a typed address. An address of a workspace member picks that person. */
 export function recipientFor(text: string, people: readonly PickerPerson[]) {
   const email = normalize(text);
   if (!isEmailAddress(email)) return undefined;
@@ -29,7 +28,6 @@ export function recipientEmails(value: readonly PickedRecipient[]) {
 
 export type CreateDraft = { name: string; recipients: PickedRecipient[] };
 
-/** The first problem with a new conversation, in the order the form shows its fields. */
 export function createConversationProblem(kind: ConversationKind, draft: CreateDraft) {
   const name = draft.name.trim();
   if (kind === "channel" && !name) return { field: "name", message: "Enter a channel name." };

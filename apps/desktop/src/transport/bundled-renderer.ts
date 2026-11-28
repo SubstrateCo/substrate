@@ -23,7 +23,6 @@ function isAppURL(url: URL, origin: string = bundledApplicationURL) {
   return url.origin === origin && !url.username && !url.password;
 }
 
-/** `backend` is a validated `backendURL()` origin. */
 export function proxyURL(value: string, backend: string, origin: string = bundledApplicationURL) {
   const url = new URL(value);
   if (!isAppURL(url, origin) || !(url.pathname === "/api" || url.pathname.startsWith("/api/"))) {
@@ -33,7 +32,6 @@ export function proxyURL(value: string, backend: string, origin: string = bundle
   if (path.includes("\\") || path.split("/").some((part) => part === ".." || part.includes("\0"))) {
     throw new Error("Unsafe API path.");
   }
-  // Concatenation keeps even a double-slash pathname on the configured origin.
   return new URL(`${backend}${url.pathname}${url.search}`).href;
 }
 
@@ -65,7 +63,6 @@ export async function assetPath(root: string, url: URL) {
   }
   const file = await existingFile(candidate);
   if (file) return file;
-  // Missing assets must not receive HTML; extensionless workspace routes use SPA history.
   return extname(pathname) ? null : existingFile(resolve(directory, "index.html"));
 }
 

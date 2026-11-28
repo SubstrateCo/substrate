@@ -51,7 +51,6 @@ import {
 } from "lucide-react-native";
 
 export type CrmScreenProps = WorkspaceScreenProps & {
-  /** Whether the CRM app is on. Off shows only the core contact and interaction flows. Defaults to the workspace's setting. */
   crmEnabled?: boolean;
 };
 
@@ -83,7 +82,6 @@ export function CrmScreen({ organizationId, onOpenRecord, crmEnabled }: CrmScree
   const scope = useRecordScope(organizationId);
   const apps = useWorkspaceApps(scope);
   const admin = useOrganizationAdmin(organizationId);
-  // Contacts and interactions are core. A failed app lookup hides only the CRM sections.
   const crm = crmEnabled ?? apps.enabled("crm");
   const params = useLocalSearchParams<{ crmSection?: string }>();
   const section = crmSection(firstParam(params.crmSection));
@@ -271,13 +269,11 @@ type ListProps = {
   scope: QueryScope;
   archived: boolean;
   onOpenRecord: OnOpenRecord;
-  /** The filter bar, shown below the list's search bar. */
   filters: ReactNode;
 };
 
 type CreatableListProps = ListProps & { creating: boolean; onCreateClose: () => void };
 
-/** The list's search text, and the debounced term its query reads. */
 function useListSearch() {
   const [search, setSearch] = useState("");
   return { search, setSearch, term: useDebounced(search.trim()) };
@@ -392,10 +388,6 @@ function AccountList({
   );
 }
 
-/**
- * The create-account form. It mounts once per opening, so its request key covers retries of this
- * form only; the next account gets a new key.
- */
 function NewAccount({
   scope,
   onOpenRecord,

@@ -5,11 +5,9 @@ import { queryOptions, skipToken, useMutation, useQueryClient } from "@tanstack/
 import { queryKeys } from "../keys";
 import { harnessBridge, withHarnessSession } from "@/lib/desktop/bridges";
 
-/** The renderer keeps at most this much sign-in output. */
 const outputLimit = 200_000;
 const pollMs = 500;
 
-/** Joins the next read onto the output read so far. */
 function appendSignInOutput(
   previous: HarnessSignInState | undefined,
   next: HarnessSignInState,
@@ -18,10 +16,6 @@ function appendSignInOutput(
   return { ...next, output: output.length > outputLimit ? output.slice(-outputLimit) : output };
 }
 
-/**
- * A running sign-in's status and output. Polls while it runs; each read continues from the last
- * cursor, so output accumulates in the cache.
- */
 export function harnessSignInQueryOptions(
   userId: string,
   organizationId: string,
@@ -46,7 +40,6 @@ export function harnessSignInQueryOptions(
   });
 }
 
-/** Start, answer, and cancel a sign-in, and sign out. Success refreshes every model catalog. */
 export function useHarnessSignInMutations(userId: string, organizationId: string) {
   const client = useQueryClient();
   const refreshCatalogs = () =>
@@ -57,7 +50,6 @@ export function useHarnessSignInMutations(userId: string, organizationId: string
     onSuccess: (state) =>
       client.setQueryData(queryKeys.harnessSignIn(userId, organizationId, state.loginId), state),
   });
-  // Input and cancelling change the sign-in's output and status; read them now, not at the next poll.
   const signInKey = (loginId: string) => queryKeys.harnessSignIn(userId, organizationId, loginId);
   const send = useMutation({
     mutationFn: (input: { loginId: string; text: string }) =>

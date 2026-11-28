@@ -219,7 +219,6 @@ test("a conversation audience resolves in one statement for every receiver, and 
     [alice, bob, external].map((identity) => resolveReceiver(fixture.db, identity)),
   );
   expect(receivers.map((receiver) => receives(receiver!))).toEqual([true, false, true]);
-  // A partner's identity in another workspace is not the participant.
   expect(receives({ ...receivers[2]!, organizationId: fixture.orgA })).toBe(false);
   expect(receives({ ...receivers[0]!, organizationId: null, actorId: null })).toBe(false);
   expect(queries).toHaveLength(1);
@@ -255,7 +254,6 @@ test("a project audience reaches its grantees and admins in one statement, never
     queries.length = 0;
     const receives = await audienceRecipients(db, audience);
     expect(queries).toHaveLength(1);
-    // Alice owns the project and Carol is an admin; Bob has no grant; the partner is elsewhere.
     expect(receivers.map((receiver) => receives(receiver!))).toEqual([true, false, true, false]);
   }
   await fixture.forActor(fixture.alice).permissions.grant({
@@ -268,7 +266,6 @@ test("a project audience reaches its grantees and admins in one statement, never
     realtimeKeys.entity(fixture.orgA, project.entityId),
   );
   expect(granted(receivers[1]!)).toBe(true);
-  // The same project ID in another workspace's audience reaches no one here.
   expect(
     (await audienceRecipients(fixture.db, realtimeKeys.entity(fixture.orgB, project.entityId)))(
       receivers[0]!,
@@ -293,7 +290,6 @@ test("a task discussion reaches the people who can view the task, once for every
     .insert(member)
     .values({ id: "carol-a", userId: "carol", organizationId: fixture.orgA, role: "admin" });
   await ensureHumanActor(fixture.db, carol);
-  // A participant row in a task discussion does not reach anyone.
   await fixture.db.insert(messagingParticipants).values({
     conversationId: id,
     actorEntityId: fixture.bob,
@@ -306,9 +302,7 @@ test("a task discussion reaches the people who can view the task, once for every
   const audience = realtimeKeys.conversation(id);
   const { db, queries } = recordQueries();
   const receives = await audienceRecipients(db, audience);
-  // One statement reads the conversation; one reads every task reader.
   expect(queries).toHaveLength(2);
-  // Alice owns the project and Carol is an admin; Bob has no grant; the partner is elsewhere.
   expect(receivers.map((receiver) => receives(receiver!))).toEqual([true, false, true, false]);
   await fixture.forActor(fixture.alice).permissions.grant({
     entityId: project.entityId,
@@ -339,7 +333,6 @@ test("a contact audience reaches every member, like contact access", async () =>
     fixture.db,
     realtimeKeys.entity(fixture.orgA, contact.entityId),
   );
-  // Bob is a member without a grant: contacts are member-edited, so he reads it.
   expect(receivers.map((receiver) => receives(receiver!))).toEqual([true, true, false]);
 });
 
@@ -377,7 +370,6 @@ test("batched receivers match single resolution for mixed identities in constant
   ]);
   await ensureHumanActor(fixture.db, { userId: "carol", organizationId: fixture.orgA });
   await ensureHumanActor(fixture.db, { userId: "dave", organizationId: fixture.orgA });
-  // Dave keeps an actor but left; the partner's actor here is disabled.
   await fixture.db.delete(member).where(eq(member.id, "dave-a"));
   await fixture.db
     .update(actors)

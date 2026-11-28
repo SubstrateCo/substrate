@@ -2,14 +2,6 @@ import type { TurnKind } from "../harness-runtime/runtime.ts";
 import type { InboxSource } from "./turns.ts";
 import type { AgentSessionKind } from "./wakes.ts";
 
-// The turn input the desktop renders. Deterministic: items are sorted and every body is fenced.
-//
-// <turn time="ISO" local_time="ISO with offset" weekday="Friday" timezone="Europe/Berlin" session="dm" kind="interactive" attempt="1">
-// <changes>…only when present…</changes>
-// <item id="…" source="owner_message" author="Name" author_kind="owner" conversation="…" thread="…" message="…">…</item>
-// <reminder>Only in an interactive turn with an owner message: publish with reply.</reminder>
-// </turn>
-
 /** system marks items the runtime wrote, such as routine ticks and resume notes. */
 export type EnvelopeAuthorKind = "owner" | "member" | "agent" | "system";
 

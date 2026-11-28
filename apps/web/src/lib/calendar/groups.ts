@@ -10,12 +10,10 @@ import { providerLabels } from "./labels";
 export interface CalendarGroup {
   key: string;
   label: string;
-  /** The account's provider. Null for calendars whose account was removed. */
   provider: CalendarProvider | null;
   calendars: CalendarView[];
 }
 
-/** The account's email, or "Google account" when the provider did not share one. */
 export function calendarAccountName(account: Pick<CalendarAccountView, "email" | "provider">) {
   return account.email ?? `${providerLabels[account.provider]} account`;
 }
@@ -28,10 +26,6 @@ function sortCalendars(calendars: readonly CalendarView[]) {
   );
 }
 
-/**
- * Calendars under the account they sync from, in the settings' account order, with each
- * account's primary calendar first. Calendars whose account was removed come last.
- */
 export function groupCalendarsByAccount(
   settings: Pick<CalendarSettingsView, "accounts" | "detachedCalendars">,
 ): CalendarGroup[] {

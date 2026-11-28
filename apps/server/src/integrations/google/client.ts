@@ -13,18 +13,15 @@ import { z } from "zod";
 
 export type GoogleFetch = (url: string, init: RequestInit) => Promise<Response>;
 
-/** A JSON request body. */
 type GoogleJson = string | number | boolean | null | GoogleJson[] | { [key: string]: GoogleJson };
 
 export interface GoogleClient {
-  /** Parses the response with `schema`; a mismatch throws the schema's error. */
   get<T>(url: string | URL, schema: z.ZodType<T>): Promise<T>;
   /** Retries only rate limits: Google did not run a rate-limited request. */
   post<T>(url: string | URL, body: GoogleJson, schema: z.ZodType<T>): Promise<T>;
 }
 
 const requestTimeoutMs = 30_000;
-/** Retries after the first attempt, for rate limits and, on reads, server errors. */
 export const googleMaxRetries = 3;
 const baseDelayMs = 500;
 const maxDelayMs = 30_000;
@@ -52,7 +49,6 @@ const errorBody = z
   .transform((body) => body.error)
   .catch({ code: null, reasons: [] });
 
-/** What a failed response says about itself: its status, `Retry-After`, and Google's reasons. */
 interface GoogleFailure {
   status: number;
   retryAfter: string | null;
@@ -60,7 +56,6 @@ interface GoogleFailure {
   reasons: string[];
 }
 
-/** Only Google APIs receive the bearer token. */
 function assertGoogleApiURL(url: string | URL): URL {
   const parsed = new URL(url);
   const host = parsed.hostname;
@@ -83,7 +78,6 @@ export function retryAfterMs(header: string | null, now = Date.now()): number | 
   return Number.isNaN(date) ? null : Math.max(0, date - now);
 }
 
-/** Maps a failed response to a typed error. */
 function classifyGoogleFailure(product: GoogleProduct, failure: GoogleFailure) {
   const { status } = failure;
   const has = (candidates: Set<string>) => failure.reasons.some((reason) => candidates.has(reason));
@@ -98,27 +92,20 @@ function classifyGoogleFailure(product: GoogleProduct, failure: GoogleFailure) {
   return new GoogleUnavailable(`provider_http_${status}`, "The Google request failed.", status);
 }
 
-/** A server error may have run the request, so only reads retry it. */
 function retryable(error: GoogleError, method: string) {
   if (error instanceof GoogleRateLimited) return true;
   const serverError = error instanceof GoogleUnavailable && (error.status ?? 0) >= 500;
   return serverError && method === "GET";
 }
 
-/** Exponential backoff with jitter (50–100% of the step), or a longer `Retry-After`. */
 function retryDelay(error: GoogleError, retry: number, random: () => number) {
   const backoff = Math.min(maxDelayMs, baseDelayMs * 2 ** retry) * (0.5 + random() / 2);
   const requested = error instanceof GoogleRateLimited ? (error.retryAfterMs ?? 0) : 0;
   return Math.max(backoff, requested);
 }
 
-/**
- * A JSON client for one product's calls with one access token. It classifies failures into the
- * errors in `./errors` and never logs tokens or response bodies.
- */
 export function createGoogleClient(options: {
   token: string;
-  /** Names the product in a scope failure. */
   product: GoogleProduct;
   fetch?: GoogleFetch;
   sleep?: (ms: number) => Promise<void>;
@@ -177,7 +164,6 @@ export function createGoogleClient(options: {
         const last = retry >= googleMaxRetries;
         if (!(error instanceof GoogleError) || last || !retryable(error, method)) throw error;
         const delay = retryDelay(error, retry, random);
-        // A long requested wait belongs to the caller's schedule, not to this request.
         if (delay > maxDelayMs) throw error;
         await sleep(delay);
       }

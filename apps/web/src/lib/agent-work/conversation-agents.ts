@@ -7,16 +7,9 @@ import type {
 export interface ConversationAgent {
   agentId: string;
   name: string;
-  /** The agent is a member now. Only members get general status lines, such as "Needs you". */
   member: boolean;
 }
 
-/**
- * The owner's agents with work in one conversation. An agent that left still has its turns,
- * requests, and live status here, so membership alone does not decide what shows. Every input
- * is already owner-scoped: members list agent IDs only for the viewer's own agents, and the
- * server returns only the owner's work.
- */
 export function conversationAgents(input: {
   conversationId: string;
   members: readonly { agentId: string; name: string }[];

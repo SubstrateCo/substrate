@@ -10,7 +10,6 @@ import { Pressable } from "@/components/ui/pressable";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ChevronRight, Plus } from "lucide-react";
 
-/** One collapsible status group in the task list. */
 export function TaskStatusGroup({
   id,
   status,
@@ -20,14 +19,12 @@ export function TaskStatusGroup({
   onCreate,
   children,
 }: {
-  /** A unique prefix for the group's element ids. */
   id: string;
   status: TaskStatus;
   count: number;
   open: boolean;
   onToggle: () => void;
   onCreate?: (status: TaskStatus) => void;
-  /** The group's task rows. */
   children: ReactNode;
 }) {
   const label = taskStatusLabels[status];

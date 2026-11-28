@@ -1,4 +1,3 @@
-/** Page-wide input that every avatar shares, behind one set of listeners. */
 interface PageSignals {
   lastActivity: number;
   pointer: { x: number; y: number } | null;
@@ -39,7 +38,6 @@ function onFocus(event: FocusEvent) {
 const PASSIVE = { passive: true, capture: true } as const;
 const ACTIVITY_EVENTS = ["keydown", "wheel", "scroll", "touchstart", "pointerdown"] as const;
 
-/** Starts listening while at least one avatar needs page signals. */
 export function acquirePageSignals(): () => void {
   users++;
   if (users === 1) {

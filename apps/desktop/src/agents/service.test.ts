@@ -14,7 +14,6 @@ import { join } from "node:path";
 import type { z } from "zod";
 
 const backend = "https://api.example.com";
-/** A well-formed local tool call. Tests use it where no runtime is available to answer it. */
 const handoff = { objectives: "Ship it.", openWork: "", references: [] };
 const unscopedLocalCall: LocalToolRequest = {
   tool: "save_handoff",
@@ -53,12 +52,10 @@ function change(domain: RealtimeDomain): RealtimeUpdate {
   };
 }
 
-/** Lets background work run, for checks that something did not happen. */
 async function flush() {
   for (let index = 0; index < 40; index++) await new Promise((resolve) => setImmediate(resolve));
 }
 
-/** Opens the real store once and holds it at the gate; counts closes of that store. */
 function heldOpen(pending: ReturnType<typeof gate>) {
   let held = false;
   let closed = 0;
@@ -69,7 +66,6 @@ function heldOpen(pending: ReturnType<typeof gate>) {
       if (held) return store;
       held = true;
       await pending.wait();
-      // Everything except close delegates to the real store.
       const counted: AgentWorkStore = Object.create(store, {
         close: {
           value: () => {
@@ -90,16 +86,13 @@ afterEach(async () => {
   cleanup = undefined;
 });
 
-/** The service on a real store with a fake backend that counts requests per path. */
 async function serviceFixture(
   overrides: Pick<Parameters<typeof createAgentWorkService>[0], "openStore" | "createRuntime"> = {},
 ) {
   await mkdir(join(tmpdir(), "opencode"), { recursive: true });
   const root = await mkdtemp(join(tmpdir(), "opencode", "agent-work-service-"));
   const requests: string[] = [];
-  /** Waiters for the next request to a path. */
   const waiters: { path: string; resolve: () => void }[] = [];
-  /** Paths that answer UNAUTHENTICATED once, as when the session ended. */
   const deniedOnce = new Set<string>();
   let sessionStatus = 200;
   let organizationId = "org-1";
@@ -110,7 +103,6 @@ async function serviceFixture(
   const closedOrganizations: string[] = [];
   const registeredOrganizations: string[] = [];
   const syncedOrganizations: string[] = [];
-  /** Turns the next claim returns. */
   const claims: z.core.util.JSONType[] = [];
   const ok = (data: z.core.util.JSONType) => Response.json({ success: true, data });
   const serviceOptions = {
@@ -185,13 +177,11 @@ async function serviceFixture(
     closedOrganizations,
     registeredOrganizations,
     syncedOrganizations,
-    /** Resolves at the next request to path. */
     requested(path: string) {
       const request = Promise.withResolvers<void>();
       waiters.push({ path, resolve: request.resolve });
       return request.promise;
     },
-    /** Resolves at the next session invalidation. */
     invalidated() {
       const invalidation = Promise.withResolvers<void>();
       const unsubscribe = authority.onChange(() => {
@@ -235,12 +225,10 @@ test("calls cannot open agent work before start or after stop", async () => {
   await expectUnavailable(f.service);
 });
 
-/** Keep live-turn behavior real while testing the service's session and lifecycle boundary. */
 async function liveServiceFixture() {
   const runtime = await runtimeFixture();
   let created = false;
   const f = await serviceFixture({
-    // The first runtime is the fixture's; later ones are real.
     createRuntime(...args) {
       if (created) return createAgentWorkRuntime(...args);
       created = true;
@@ -314,7 +302,6 @@ test("an agents hint during slow verification promptly stops a moved live turn",
   const pending = f.holdSession();
   const read = f.service.call("homedAgents");
   await pending.entered;
-  // The move ends the server lease; the hint's sync stops the turn here.
   f.runtime.control.release(turn.turnId);
   f.service.onRealtime(change("agents"));
   pending.release();
@@ -491,7 +478,6 @@ test("agent work reuses the verified session until a session, access, organizati
   await flush();
   expect(f.sessionChecks()).toBe(1);
 
-  // Renderer reads and agent-work hints use the session that was already verified.
   for (let index = 0; index < 3; index++) {
     await f.service.call("homedAgents");
     f.service.onRealtime(change("agent-work"));
@@ -539,7 +525,6 @@ test("a server call denied with UNAUTHENTICATED verifies the session again", asy
   f.deniedOnce.add("/api/v1/agent-work/host/sync");
   const invalidated = f.invalidated();
   f.service.onRealtime(change("agent-work"));
-  // Agent-work hints run the host cycle after a short window.
   await advanceTimersAsync(300);
   await invalidated;
   expect(f.deniedOnce.size).toBe(0);
@@ -556,7 +541,6 @@ test("a claimed turn of an agent the cached catalog does not list reads the cata
   const before = f.catalogReads();
   expect(before).toBeGreaterThan(0);
 
-  // The server adopts unhomed agents at claim, so the cached catalog may not list this one.
   const sessionId = "00000000-0000-4000-8000-0000000000e1";
   f.claims.push({
     turn: {

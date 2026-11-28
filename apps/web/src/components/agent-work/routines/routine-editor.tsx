@@ -45,7 +45,6 @@ const frequencies = [
   { value: "custom", label: "Custom" },
 ] as const satisfies readonly { value: Frequency; label: string }[];
 
-/** Creates or edits a routine in a dialog. A save applies from the next run. */
 export function RoutineEditor({
   editing,
   initial,
@@ -55,15 +54,12 @@ export function RoutineEditor({
   onCancel,
   onRestoreFocus,
 }: {
-  /** The routine's current name, when editing. */
   editing?: string;
   initial: RoutineDraft;
   pending: boolean;
-  /** Reviewed copy for a failed save. */
   error?: Error | string | null;
   onSave: (draft: RoutineDraft) => void;
   onCancel: () => void;
-  /** Focus the control that opened the editor, because no trigger wraps this dialog. */
   onRestoreFocus: () => void;
 }) {
   const id = useId();
@@ -103,7 +99,6 @@ export function RoutineEditor({
     errors[name] && (
       <FieldError id={`${fieldId(name)}-error`} errors={[{ message: errors[name] }]} />
     );
-  // The time zone is the field right below, so the summary does not repeat it.
   const summary = schedule.frequency === "custom" ? null : `${describeSchedule(cron)}.`;
   return (
     <FormDialog
@@ -207,7 +202,6 @@ export function RoutineEditor({
   );
 }
 
-/** The fields for one frequency: a cron expression, or a weekday and a time. */
 function ScheduleFields({
   schedule,
   onChange,
@@ -240,8 +234,8 @@ function ScheduleFields({
         <div className="grid min-w-0 gap-4 sm:grid-cols-3">
           <SelectField
             label="On"
-            value={String(schedule.weekday)}
-            onChange={(value) => onChange({ weekday: Number(value) })}
+            value={String(schedule.cronWeekday)}
+            onChange={(value) => onChange({ cronWeekday: Number(value) })}
             options={weekdayNames.map((day, index) => ({ value: String(index), label: day }))}
           />
           {time}

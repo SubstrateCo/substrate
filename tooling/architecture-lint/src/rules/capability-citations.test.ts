@@ -11,12 +11,10 @@ ruleTester.run("capability-citations", capabilityCitations, {
       "/**\n * Evidence from sdk 1.0 (dist/types.d.ts):\n * - steer: SessionPromptInput has `delivery` (:4179).\n * - usage: result usage (sdk.d.ts:6037-6041).\n */",
       "steer: true, usage: true, compact: false",
     ),
-    // One bullet can cover several flags.
     capabilities(
       "/**\n * - steer, usage: the inbox API\n *   (types.d.ts:115).\n */",
       "steer: true, usage: true",
     ),
-    // Only AdapterCapabilities objects are checked.
     "const flags: Flags = { steer: true };",
   ],
   invalid: [

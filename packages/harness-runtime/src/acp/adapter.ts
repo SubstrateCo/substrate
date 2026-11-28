@@ -29,10 +29,6 @@ import { acpToolServer, type AcpToolServer } from "./mcp-provider.ts";
 import { setTimeout } from "node:timers/promises";
 
 export interface AcpAdapterDeps extends AcpConnectDeps {
-  /**
-   * After setup, how long to wait for the first available_commands_update, so the
-   * capabilities the host records at open already show compact.
-   */
   commandsWaitMs?: number;
 }
 
@@ -46,7 +42,6 @@ interface LiveTurn {
   interrupted: boolean;
 }
 
-/** host: the lease's MCP-over-ACP declaration; without it the lease goes over HTTP. */
 function acpMcpServers(context: AdapterContext, host?: AcpMcpServerAcp): AcpMcpServer[] {
   const servers: AcpMcpServer[] = [];
   if (host) servers.push(host);
@@ -73,7 +68,6 @@ function userServer(server: HarnessMcpServer): AcpMcpServer {
   };
 }
 
-/** servers: the session's MCP server names, so server.tool titles read as MCP tools. */
 function toolTitle(
   update: Extract<AcpUpdate, { type: "tool" }>,
   servers: readonly string[],
@@ -86,16 +80,13 @@ function toolTitle(
   return toolCallLabel(call, servers, host);
 }
 
-/** Maps one ACP session onto host turns. */
 class AcpSession {
   private readonly requests = new PendingRequests();
-  /** Requests waiting for the host, by request ID; answers holds parsed responses. */
   private readonly open = new Map<string, AcpClientRequest<unknown>>();
   private readonly answers = new Map<string, unknown>();
   private readonly commands = new Set<string>();
   private readonly started = new Set<string>();
   private readonly finished = new Set<string>();
-  /** Updates that arrived before session/new answered with the session ID. */
   private early: { sessionId: string; update: AcpUpdate }[] | undefined = [];
   private commandsSeen = Promise.withResolvers<void>();
   private live: AcpLiveConnection | undefined;
@@ -108,7 +99,6 @@ class AcpSession {
   private closed = false;
   private text = "";
   private messageId: string | undefined;
-  /** The lease's tools served over `mcp/message`, when the agent takes MCP-over-ACP. */
   private tools: { server: AcpToolServer; registration: AcpMcpRegistration } | undefined;
 
   constructor(private readonly context: AdapterContext) {}
@@ -221,7 +211,6 @@ class AcpSession {
       // SAFETY: respond stores only the result of this request's own parse.
       return this.answers.get(requestId!) as R;
     } catch {
-      // The agent withdrew the request, or it timed out: the host's prompt is stale.
       // oxlint-disable-next-line typescript/no-unnecessary-condition -- disconnect() sets closed while the request waits; the narrowing from the early return is stale.
       if (requestId && !this.closed)
         this.context.emit({ type: "request.closed", requestId }, this.scope());
@@ -239,7 +228,6 @@ class AcpSession {
     const connection = live.connection;
     const capabilities = connection.capabilities;
     const { context } = options;
-    // Prefer MCP-over-ACP when the agent advertises it: no loopback port or bearer token.
     const endpoint = context.lease?.endpoint;
     if (endpoint && capabilities.mcp.acp && connection.provideMcpServer) {
       const server = acpToolServer(endpoint);
@@ -325,7 +313,6 @@ class AcpSession {
     this.confirmModel(model);
   }
 
-  /** Stops serving the lease over ACP. The lease itself belongs to the host. */
   async releaseTools() {
     const tools = this.tools;
     this.tools = undefined;
@@ -339,7 +326,6 @@ class AcpSession {
     ]);
   }
 
-  /** The connection ended without disconnect: the agent exited or closed its output. */
   private lost() {
     if (this.closed) return;
     this.closed = true;
@@ -460,7 +446,6 @@ class AcpSession {
   }
 }
 
-/** Starts the agent, opens or resumes its session, and returns the host's adapter. */
 export async function createAcpAdapter(
   options: AcpConnectOptions,
   deps: AcpAdapterDeps = {},

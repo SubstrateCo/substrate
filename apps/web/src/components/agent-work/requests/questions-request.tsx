@@ -26,7 +26,6 @@ function typingTarget(target: EventTarget | null) {
   );
 }
 
-/** The option a plain number key chooses, unless the owner is typing. */
 function shortcutOption(event: KeyboardEvent<HTMLDivElement>, question: Question) {
   const modified = [event.altKey, event.ctrlKey, event.metaKey, event.shiftKey].some(Boolean);
   if (modified) return undefined;
@@ -40,10 +39,6 @@ function nextButtonLabel(last: boolean, skipping: boolean) {
   return last ? "Submit" : "Next";
 }
 
-/**
- * Mount one panel per request, keyed by request ID, so drafts belong to that request. Number
- * keys choose an option only while focus is inside this panel, and the owner moves on with Next.
- */
 export function QuestionsRequest({
   payload,
   pending,
@@ -64,7 +59,6 @@ export function QuestionsRequest({
   const answered = questionAnswer(draft).length > 0;
   const ready = questionReady(question, draft);
   const skipping = !answered && question.optional === true;
-  // Focus moves to the new question once it shows.
   const goTo = (next: number) => {
     setStep(next);
     focusAfterRender(() => promptRef.current);
@@ -87,7 +81,6 @@ export function QuestionsRequest({
     choose(option.label);
   };
   return (
-    // The card around this shows the title.
     <div className="group/question grid gap-3" onKeyDown={onKeyDown}>
       <QuestionPrompt
         question={question}
@@ -191,7 +184,6 @@ function QuestionActions({
   ready: boolean;
   skipping: boolean;
   nextLabel: string;
-  /** How many options have a number key. */
   shortcuts: number;
   onBack: () => void;
   onNext: () => void;

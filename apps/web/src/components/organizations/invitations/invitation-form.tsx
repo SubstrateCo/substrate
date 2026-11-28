@@ -21,8 +21,6 @@ export type InvitationRoleOption = {
   description: string;
 };
 
-// On wide screens the fields share one subgrid: labels, then controls, then errors and hints.
-// The button sits on the control row, so an error under the email never moves it.
 const subgridField = "min-w-0 @2xl:row-span-3 @2xl:grid @2xl:grid-rows-subgrid";
 const emailColumn = "@2xl:col-span-6";
 const roleColumn = "@2xl:col-span-3";
@@ -33,7 +31,6 @@ export function InvitationForm({
   disabled,
   onInvite,
 }: {
-  /** The roles the viewer may invite with, starting with the default. Never empty. */
   roles: readonly InvitationRoleOption[];
   sending: boolean;
   disabled: boolean;
@@ -42,7 +39,6 @@ export function InvitationForm({
   const id = useId();
   const inviteButton = useRef<HTMLButtonElement>(null);
   const [selectedRole, setRole] = useState<OrganizationRole>("member");
-  // Owner invitations grant full control, so they are confirmed first.
   const [ownerInvite, setOwnerInvite] = useState<string>();
   const validation = useNativeValidation();
   const roleOption = roles.find((option) => option.value === selectedRole) ?? roles[0]!;
@@ -104,7 +100,6 @@ export function InvitationForm({
             </SelectContent>
           </Select>
         </Field>
-        {/* Before the button in the DOM, so a stacked form keeps the hint under the role. */}
         <FieldDescription
           id={`${id}-role-description`}
           className="@2xl:col-span-12 @2xl:row-start-4"

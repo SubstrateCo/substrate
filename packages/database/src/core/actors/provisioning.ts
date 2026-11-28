@@ -23,7 +23,6 @@ async function isMember(tx: DatabaseExecutor, input: { organizationId: string; u
   return membership !== undefined;
 }
 
-// Trusted provisioning only: call from authenticated onboarding or organization-admin workflows.
 export function createActor(db: DatabaseExecutor, input: ActorInput) {
   return db.transaction(async (tx) => {
     if (input.type === "human" && !(await isMember(tx, input)))
@@ -56,7 +55,6 @@ export function createActor(db: DatabaseExecutor, input: ActorInput) {
 
 async function createOrReadActor(db: DatabaseExecutor, input: ActorInput) {
   try {
-    // createActor's nested transaction rolls back the entity and grant on an identity conflict.
     return await createActor(db, input);
   } catch (error) {
     const constraint =
@@ -80,9 +78,6 @@ async function createOrReadActor(db: DatabaseExecutor, input: ActorInput) {
   }
 }
 
-// Trusted session/credential identity only. Never accept the owner from tool input. An existing
-// actor of a live, enabled agent whose owner is a member returns from one lock-free statement;
-// a missing actor uses the unique identity constraint. Callers still check the actor is active.
 export async function ensureUserAgentActor(
   db: DatabaseExecutor,
   input: { organizationId: string; userId: string; userAgentId: string },
@@ -144,7 +139,6 @@ export async function ensureUserAgentActor(
   });
 }
 
-// Trusted auth hooks can run more than once. The unique identity constraint arbitrates creation.
 export function ensureHumanActor(
   db: DatabaseExecutor,
   input: { organizationId: string; userId: string },
@@ -160,9 +154,6 @@ export function ensureHumanActor(
   });
 }
 
-// Creates missing actors in multi-row statements. The unique identity constraints arbitrate
-// concurrent provisioning: a losing row is skipped and its unused entity removed, so the caller
-// re-reads the winner. Humans get owner access to their own actor, as in createActor.
 async function insertMissingActors(
   tx: DatabaseExecutor,
   organizationId: string,
@@ -198,13 +189,10 @@ async function insertMissingActors(
   return { created, raced: unused.length > 0 };
 }
 
-// Bulk ensureHumanActor in constant statements. Every user must be a member; otherwise the
-// batch fails as a whole and rolls back.
 export function ensureHumanActors(
   db: DatabaseExecutor,
   input: { organizationId: string; userIds: string[] },
 ) {
-  // Acquire unique identity locks in the same order across overlapping batches.
   const userIds = [...new Set(input.userIds)].sort();
   if (!userIds.length) return Promise.resolve([]);
   return db.transaction(async (tx) => {
@@ -232,8 +220,6 @@ export function ensureHumanActors(
   });
 }
 
-// Reads take one statement when every enabled agent already has an actor here. Missing actors
-// use the unique identity constraint without locking membership or agent configuration.
 export async function ensureOwnedAgentActors(
   db: DatabaseExecutor,
   input: { organizationId: string; userId: string },

@@ -47,7 +47,6 @@ export function createTestScopes(
 }
 
 export function createTestServices() {
-  // Construction is inert. Any test that reaches storage or SQL must provide its own fake.
   return createServices({
     // SAFETY: Construction does no I/O. Tests replace services or repositories before calling them.
     db: {} as Database,

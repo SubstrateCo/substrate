@@ -5,10 +5,6 @@ import { Text } from "@/components/ui/text";
 import { SwitchField } from "@/features/records/ui/fields";
 import { Globe } from "lucide-react-native";
 
-/**
- * Explains what happens to people outside the workspace and asks whether they may read earlier
- * messages. Show it only when someone will get an invitation.
- */
 export function ShareHistoryField({
   summary,
   checked,

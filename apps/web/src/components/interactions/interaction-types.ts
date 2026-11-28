@@ -6,9 +6,7 @@ import { Calendar, Mail, MessageSquare, Layers, NotebookPen, Phone } from "lucid
 
 export type InteractionActivity = Awaited<ReturnType<typeof getInteractionActivity>>;
 export type InteractionRow = Awaited<ReturnType<typeof getInteractionTimeline>>["items"][number];
-/** The meetings that calendar interactions came from, by interaction. */
 export type InteractionSources = Readonly<Record<string, InteractionSourceEvent>>;
-/** One shared empty value, so a table's column memo stays stable. */
 export const emptySources: InteractionSources = {};
 export type InteractionSection =
   | "dashboard"
@@ -18,7 +16,6 @@ export type InteractionSection =
   | "person"
   | "account";
 
-/** How an interaction was recorded: a tag, a table cell, and the full wording for filters. */
 export const interactionOrigins = {
   manual: { tag: "Manual", short: "Manual", long: "Logged manually" },
   message_publication: {

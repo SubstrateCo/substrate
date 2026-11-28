@@ -45,18 +45,12 @@ function routineResult(row: RoutineRow): McpOutput<"create_routine"> {
   };
 }
 
-/**
- * The agent's own routines and helpers, from the live server turn. Routines belong to the turn's
- * agent and run with its owner's access; the agent's changes wait for the owner's approval.
- * Helpers belong to the turn's session.
- */
 export function mcpAgentWorkTools(
   ctx: RepositoryContext,
   identity: SessionIdentity,
   turn: ServerTurn,
 ) {
   const { db } = ctx;
-  // Routines act for the owner, not as the agent's actor.
   const owner = { organizationId: identity.organizationId, userId: identity.userId };
   async function session() {
     const [row] = await db.select().from(agentSessions).where(eq(agentSessions.id, turn.sessionId));

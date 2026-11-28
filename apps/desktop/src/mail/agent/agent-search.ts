@@ -94,7 +94,6 @@ async function searchBox(
       );
     } catch {
       local.abort.signal.throwIfAborted();
-      // The final authority check distinguishes loss of access from a provider outage.
     }
   }
   const rows = await headers(share + 1);
@@ -105,8 +104,6 @@ async function searchBox(
   };
 }
 
-/** Opaque cursors live only in the authenticated mail session. Snapshot page state so a retry
- * can use the same cursor. Cap cached cursors and provider work, even with many mailboxes. */
 export function createInboxSearch(gmail: GmailWork) {
   const sessions = new WeakMap<LocalMail, Map<string, Cursor>>();
   return async (local: LocalMail, q: Search, check: Check): Promise<Page> => {

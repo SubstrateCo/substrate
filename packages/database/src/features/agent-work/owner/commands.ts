@@ -35,7 +35,6 @@ import { and, eq, inArray, ne, sql } from "drizzle-orm";
 
 const busy = "The agent is busy. Try again when it finishes.";
 
-/** The owner's devices, the agent's home among them, refetch their agent work. */
 function changed(db: DatabaseExecutor, identity: SessionIdentity) {
   effectsFor(db).hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
 }
@@ -64,7 +63,6 @@ export async function ownedItem(db: DatabaseExecutor, identity: SessionIdentity,
   return item;
 }
 
-/** The owner asks a live turn to end. The host ends it; its work does not resume. */
 export async function stopTurn(db: DatabaseExecutor, identity: SessionIdentity, turnId: string) {
   const turn = await ownedTurn(db, identity, turnId);
   if (!liveTurnStatuses.includes(turn.status)) throw new ConflictError("This turn has ended.");
@@ -72,11 +70,6 @@ export async function stopTurn(db: DatabaseExecutor, identity: SessionIdentity, 
   changed(db, identity);
 }
 
-/**
- * Runs a needs-attention turn again as its next attempt, leased to the agent's home device,
- * which takes it on its next sync. The folder must be free. A new reset generation makes the
- * host open a fresh native session first.
- */
 async function rerun(db: DatabaseExecutor, turn: TurnRow, now: Date, resetGeneration?: number) {
   const [agent] = await db
     .select({ enabled: userAgents.enabled })
@@ -120,7 +113,6 @@ async function rerun(db: DatabaseExecutor, turn: TurnRow, now: Date, resetGenera
     )
     .returning({ id: agentTurns.id })
     .catch((error: Error) => {
-      // A claim that took the folder first wins.
       if (violatedConstraint(error) === "agent_turns_live_folder_unique")
         throw new ConflictError(busy);
       throw error;
@@ -129,10 +121,6 @@ async function rerun(db: DatabaseExecutor, turn: TurnRow, now: Date, resetGenera
   await setSessionStatus(db, turn.sessionId, "work", now);
 }
 
-/**
- * Runs a needs-attention turn again. A turn that needs the owner only for uncertain input sends
- * those items again instead, in the session's next turn.
- */
 export async function retryTurn(
   db: DatabaseExecutor,
   identity: SessionIdentity,
@@ -174,7 +162,6 @@ export async function retryTurn(
   changed(db, identity);
 }
 
-/** Ends a needs-attention turn without running it again. Its items are dropped. */
 export async function dismissTurn(
   db: DatabaseExecutor,
   identity: SessionIdentity,
@@ -205,12 +192,10 @@ export async function dismissTurn(
     "dismiss",
     { reason: "dismissed" },
   );
-  // A helper whose turn the owner dismissed ends without a report, so its parent learns.
   await settleHelper(db, turn, "cancelled", now);
   changed(db, identity);
 }
 
-/** Grows the sessions' reset generation: the host opens a fresh native session for each. */
 async function resetSessions(
   db: DatabaseExecutor,
   ids: string[],
@@ -228,7 +213,6 @@ async function resetSessions(
     .returning({ id: agentSessions.id, resetGeneration: agentSessions.resetGeneration });
 }
 
-/** Runs a needs-attention turn again in a fresh native session. */
 export async function startFresh(
   db: DatabaseExecutor,
   identity: SessionIdentity,
@@ -241,11 +225,6 @@ export async function startFresh(
   changed(db, identity);
 }
 
-/**
- * Sends a waiting item now: it is available at once and no longer held, and the live turn in
- * its slot stops so that it runs next. That turn ends as interrupted by the owner and resumes
- * after it. Returns the turn it stops, if any.
- */
 export async function sendNow(
   db: DatabaseExecutor,
   identity: SessionIdentity,
@@ -275,7 +254,6 @@ export async function sendNow(
   return stopped?.id ?? null;
 }
 
-/** The owner sends an uncertain item again, in the next turn of its session. */
 export async function resendItem(
   db: DatabaseExecutor,
   identity: SessionIdentity,
@@ -306,7 +284,6 @@ export async function resendItem(
   changed(db, identity);
 }
 
-/** The owner decides an uncertain item needs nothing more. */
 export async function discardItem(
   db: DatabaseExecutor,
   identity: SessionIdentity,
@@ -323,10 +300,6 @@ export async function discardItem(
   changed(db, identity);
 }
 
-/**
- * Starts a new topic in a direct conversation: each of the owner's agents in it opens a fresh
- * native session before its next turn there. Returns the sessions that reset.
- */
 export async function newTopic(
   db: DatabaseExecutor,
   identity: SessionIdentity,

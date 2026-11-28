@@ -2,7 +2,6 @@ import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { foreignKey, text, uuid, type PgColumn } from "drizzle-orm/pg-core";
 
-/** The agent, its organization actor and its owner, on every agent-work control row. */
 export const agentWorkColumns = () => ({
   organizationId: text("organization_id").notNull(),
   userAgentId: uuid("user_agent_id").notNull(),
@@ -17,10 +16,6 @@ type ProvenanceColumns = {
   ownerUserId: PgColumn;
 };
 
-/**
- * The owner is the agent definition's owner, and the actor is this user agent's actor in this
- * organization. Deleting the agent or its actor deletes its work.
- */
 export function agentWorkForeignKeys(table: ProvenanceColumns, name: string) {
   return [
     foreignKey({

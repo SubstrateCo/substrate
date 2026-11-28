@@ -40,7 +40,6 @@ export type SaveAgentInput = z.input<typeof saveAgentInput>;
 /** Validated agent fields, as the route passes them to the repository. */
 export type SaveAgentValues = z.output<typeof saveAgentInput>;
 export type SaveSkillInput = z.input<typeof saveSkillInput>;
-/** A saved agent, as the catalog returns it. Its fields passed saveAgentInput when saved. */
 const agentConfiguration = z.object({
   id: z.string(),
   name: z.string(),
@@ -53,7 +52,6 @@ const agentConfiguration = z.object({
   avatar: agentAvatarCode,
 });
 export type AgentConfiguration = z.infer<typeof agentConfiguration>;
-/** Where and when an agent runs. Kept apart from the editable configuration. */
 const agentRunSettings = z.object({
   agentId: z.string(),
   homeDevice: z

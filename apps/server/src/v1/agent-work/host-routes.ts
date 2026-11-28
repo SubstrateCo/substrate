@@ -18,7 +18,6 @@ import type { DeviceScope } from "../../shared/scope-types";
 import type { HostService } from "./host-service";
 import { Hono } from "hono";
 
-/** /agent-work/host/*: every call resolves the host through the device scope. */
 export function createHostRoutes(host: HostService, scopes: Scopes) {
   return new Hono<ScopeEnv<DeviceScope>>()
     .post("/host/claim", v("json", hostClaimInput), scopes.device("json"), async (c) =>

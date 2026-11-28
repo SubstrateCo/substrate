@@ -31,10 +31,7 @@ export function crmManagementRepository(context: RepositoryContext) {
         .orderBy(asc(actors.entityId));
     },
     async grants(entityId: string) {
-      // Accounts and deals are roots, so the grants listed are their own.
       await context.requireAccess(entityId, "owner", { type: ["account", "deal"] });
-      // Only current explicit human grants are listed. Admin access remains an effective role,
-      // not a synthetic grant, and departed/disabled/deleted people have no directory entry.
       return db
         .select({ actorEntityId: entityGrants.actorEntityId, level: entityGrants.level })
         .from(entityGrants)

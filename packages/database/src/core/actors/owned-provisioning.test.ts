@@ -52,8 +52,6 @@ test("owned provisioning has constant read cost for cold and warm batches", asyn
     expect(statements.filter((query) => /^insert\b/i.test(query))).toHaveLength(0);
   }
   console.log("owned provisioning SELECT counts:", JSON.stringify(measurements));
-  // A cold batch checks membership, enabled profiles and existing identities.
-  // A warm batch is one read.
   expect(measurements).toEqual([
     { count: 1, coldReads: 4, warmReads: 1 },
     { count: 8, coldReads: 4, warmReads: 1 },

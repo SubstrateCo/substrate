@@ -22,7 +22,6 @@ const createProject: WorkspaceApiRequest = {
   input: { requestId: crypto.randomUUID(), projectId: crypto.randomUUID(), title: "Launch" },
 };
 
-/** The server rejects a call whose organization is not the session's active one. */
 const workspaceDenied: WorkspaceApiResult = {
   success: false,
   error: {
@@ -78,7 +77,6 @@ test("a call after a workspace switch tells the agent to start a new run", async
       message: "Workspace changed. Start a new agent run in this workspace.",
     },
   });
-  // Each call is one request: the server checks the session, so the proxy does not read it.
   expect(f.requests.map(({ url }) => url)).toEqual([
     "https://api.example.com/api/v1/mcp/call",
     "https://api.example.com/api/v1/mcp/call",
@@ -151,11 +149,6 @@ const executed: ProposalOutcome = {
   result: deleted,
 };
 
-/**
- * A proxy whose call waits for approval. states are the request's reads in order; the last one
- * repeats. The clock moves only when the proxy sleeps, so no test waits in real time. Only an
- * interactive live turn waits.
- */
 function held(
   states: { status: string; outcome: ProposalOutcome | null }[],
   serverMs = 0,

@@ -49,8 +49,6 @@ export function MessagingWorkspace({
   sheet?: boolean;
 }) {
   const { organizationId, userId } = useWorkspaceScope();
-  // One list serves every selection, so switching conversations reads nothing again. The list
-  // leaves out task discussions; a selected one is read with the list that includes it.
   const conversations = useQuery(conversationsQueryOptions(organizationId));
   const { listed, selection, selecting } = useUnlistedSelection(
     organizationId,
@@ -82,7 +80,6 @@ export function MessagingWorkspace({
   };
   const resource = resourceState(conversations);
   const visibleConversations = resource.data ?? [];
-  // The sidebar lists joined conversations. Other public channels stay reachable by link and search.
   const sidebarConversations = visibleConversations
     .filter((conversation) => conversation.joined && !conversation.task)
     .map((conversation) => {
@@ -163,7 +160,6 @@ export function MessagingWorkspace({
   );
 }
 
-/** The selected conversation, why it can't open, or the loading or empty pane. */
 function WorkspaceSelection({
   selected,
   messageId,
@@ -179,7 +175,6 @@ function WorkspaceSelection({
   turnId?: string;
   source?: MessageSource;
   sheet?: boolean;
-  /** A conversation was asked for and the lists that could hold it have loaded. */
   missing: boolean;
   loading: boolean;
   onCreate: (kind: Conversation["kind"]) => void;
@@ -210,7 +205,6 @@ function WorkspaceSelection({
   return <WorkspaceEmpty onCreate={onCreate} />;
 }
 
-/** Reads a selected conversation that the list leaves out, such as a task discussion. */
 function useUnlistedSelection(
   organizationId: string,
   conversations: { data?: { id: string }[]; isSuccess: boolean; isPending: boolean },
@@ -226,7 +220,6 @@ function useUnlistedSelection(
   return { listed, selection, selecting };
 }
 
-/** The people and enabled agents the viewer can start a direct message with. */
 function useDirectMessageTargets(organizationId: string, userId: string) {
   const workspacePeople = useQuery(workspacePeopleQueryOptions(organizationId));
   const people = (workspacePeople.data ?? []).filter((person) => person.id !== userId);

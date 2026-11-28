@@ -22,10 +22,6 @@ type Group = { value: string; label?: string; items: Option[] };
 
 const unassigned: Option = { value: null, label: "Unassigned" };
 
-/**
- * A searchable list of people and agents. `trigger` is the button element, without children;
- * `children` is its content. The trigger adds the chevron.
- */
 export function AssigneePicker({
   value,
   assignees,
@@ -34,7 +30,6 @@ export function AssigneePicker({
   children,
 }: {
   value: string | null;
-  /** Who can be chosen now. */
   assignees: readonly Actor[];
   onChange: (value: string | null) => void;
   trigger: ReactElement;

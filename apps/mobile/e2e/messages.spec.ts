@@ -146,7 +146,6 @@ test("Expo web preview: admins manage private conversation metadata without open
       page.getByRole("button", { name: `Add ${workspace.name}`, exact: true }),
     ).toHaveCount(0);
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
-    // Add Sam to the channel Alex already owns, not Alex through Alex's own add-members call.
     const sharedName = workspace.conversationName;
     await page.getByRole("button", { name: `Add people to ${sharedName}`, exact: true }).click();
     await page.getByRole("button", { name: `Add ${workspace.member.name}`, exact: true }).click();

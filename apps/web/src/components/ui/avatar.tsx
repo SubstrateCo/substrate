@@ -5,12 +5,9 @@ import { cn } from "cn";
 import { Avatar as AvatarPrimitive } from "radix-ui";
 
 const avatarVariants = cva(
-  "group/avatar relative flex size-8 shrink-0 rounded-full select-none after:absolute after:inset-0 after:rounded-full after:border after:border-border after:mix-blend-darken data-[size=lg]:size-10 data-[size=sm]:size-6 dark:after:mix-blend-lighten",
+  "group/avatar relative flex size-8 shrink-0 rounded-full select-none after:absolute after:inset-0 after:rounded-full after:border after:border-border after:mix-blend-darken data-[size=lg]:size-10 data-[size=sm]:size-6 data-[size=xs]:size-5 dark:after:mix-blend-lighten",
   {
     variants: {
-      // One rule for heads: a person is a circle with a neutral fill (`default`; `user` only
-      // sets smaller initials); an agent is a rounded square (`agent`); an organization is a
-      // rounded-square tile that is not an Avatar. No accent fills. Initials follow `size`.
       variant: {
         default: "",
         user: "*:data-[slot=avatar-fallback]:text-xs",
@@ -28,7 +25,7 @@ function Avatar({
   variant = "default",
   ...props
 }: React.ComponentProps<typeof AvatarPrimitive.Root> & {
-  size?: "default" | "sm" | "lg";
+  size?: "default" | "xs" | "sm" | "lg";
 } & VariantProps<typeof avatarVariants>) {
   return (
     <AvatarPrimitive.Root
@@ -59,7 +56,7 @@ function AvatarFallback({
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
       className={cn(
-        "flex size-full items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground group-data-[size=sm]/avatar:text-xs",
+        "flex size-full items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground group-data-[size=sm]/avatar:text-xs group-data-[size=xs]/avatar:text-xs",
         className,
       )}
       {...props}

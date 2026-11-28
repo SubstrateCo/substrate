@@ -22,7 +22,6 @@ export function ensureTaskDiscussion(
       .from(messagingConversations)
       .where(eq(messagingConversations.taskEntityId, taskId));
     if (existing) return existing.id;
-    // An archived task keeps its discussion but cannot start one.
     await requireUnarchived(ctx, [taskId]);
     const [creator] = await ctx.db
       .select({ userId: sql<string>`coalesce(${actors.userId}, ${userAgents.userId})` })

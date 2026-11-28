@@ -10,29 +10,20 @@ import { rendererLocalSchemas, type LocalHarnessMethod } from "@substrate/contra
 
 import type { z } from "zod";
 
-/**
- * Renderer-local methods for MCP servers and working folders. Main keeps them in local storage,
- * not agent folders.
- */
 type MainLocalMethod = "saveMcpServer" | "deleteMcpServer" | "chooseWorkspace" | "clearWorkspace";
-/** Renderer-local methods that the harness worker serves from the agent folder. */
 export type NativeLocalMethod = Exclude<LocalHarnessMethod, MainLocalMethod>;
 
-/** An agent's user-added MCP servers in the account's local storage, per organization. */
 export interface LocalMcpServers {
   list(organizationId: string, agentId: string): Promise<HarnessMcpServer[]>;
   save(organizationId: string, agentId: string, server: HarnessMcpServer): Promise<void>;
   delete(organizationId: string, agentId: string, id: string): Promise<void>;
 }
 
-/** An agent's working folder in the account's local storage, per organization. */
 export interface LocalWorkspaces {
   get(organizationId: string, agentId: string): Promise<string | null>;
-  /** Null returns the agent to its own folder. Its sessions then move to a new epoch. */
   set(organizationId: string, agentId: string, path: string | null): Promise<void>;
 }
 
-/** The agent is not homed on this desktop, so its skills and MCP servers are not edited here. */
 export class AgentNotHomedHere extends Error {
   constructor() {
     super("Edit this agent's skills and MCP servers on its home desktop.");
@@ -40,17 +31,12 @@ export class AgentNotHomedHere extends Error {
   }
 }
 
-/**
- * Skills and MCP servers stay on the agent's home desktop, which is the only copy the agent uses.
- * Throws unless agentId is in the verified catalog and homed on this desktop.
- */
 export function requireHomedHere(catalog: AgentCatalog, agentId: string) {
   if (!catalog.agents.some((agent) => agent.id === agentId)) throw new Error("Agent not found.");
   const settings = catalog.runSettings.find((entry) => entry.agentId === agentId);
   if (!settings?.homeDevice?.current) throw new AgentNotHomedHere();
 }
 
-/** Renderer input for the worker, scoped to the verified organization. Throws when invalid. */
 export function prepareLocalInput(
   method: "saveSkill",
   value: IpcValue,
@@ -83,7 +69,6 @@ export function prepareLocalInput(
   return { ...rendererLocalSchemas[method].parse(value), organizationId };
 }
 
-/** The agent and server of a renderer save. A new server takes its name as its stable ID. */
 export function prepareMcpServerSave(value: IpcValue) {
   const { agentId, ...server } = rendererLocalSchemas.saveMcpServer.parse(value);
   const id = harnessIdSchema.parse(server.id ?? server.name);

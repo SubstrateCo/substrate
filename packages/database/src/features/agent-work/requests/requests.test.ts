@@ -65,7 +65,6 @@ test("a blocking request opens once, the first answer wins, and the home device 
   expect(
     await rejection(work.respondToRequest(request.id, { type: "approval", optionId: "allow" })),
   ).toBeInstanceOf(ConflictError);
-  // A blocking answer goes to the waiting callback, not to a new turn.
   expect(await wakesFor(request.id)).toEqual([]);
 
   expect(await device.requestAnswers()).toEqual([
@@ -191,7 +190,6 @@ test("approving a proposal runs the exact call once, even when approved twice at
   expect(posted.map((message) => [message.body, message.originTurnId])).toEqual([
     ["Weekly summary", (await contextOf(turn)).turnId],
   ]);
-  // The outcome keeps the receipt and the tool's own output, as the call would have returned it.
   expect(approved[0]!.outcome).toEqual({
     status: "executed",
     receipt: { kind: "message", id: posted[0]!.id, conversationId: channel.id, threadId: null },
@@ -240,22 +238,17 @@ test("an executed proposal is listed in the conversation it posted to, for its o
     reply(target.id, "Update"),
     dmTurn(dm.id, "unattended"),
   );
-  // Before approval the proposal belongs only to the conversation it came from.
   const work = await ownerAgentWork(f.db, owner);
   expect(await work.listConversationRequests(target.id)).toEqual([]);
   const { outcome } = (await work.approveProposal(proposalId)).result;
   const listed = await work.listConversationRequests(target.id);
   expect(listed.map((view) => [view.id, view.proposal?.outcome])).toEqual([[proposalId, outcome]]);
-  // The card stays where it came from; here it is only a backlink.
   expect(listed[0]!.place).toMatchObject({ access: "visible", conversationId: dm.id });
-  // The conversation's work carries the same requests, also when no session posts there.
   expect((await work.conversationWork(target.id)).requests).toEqual(listed);
 
-  // A member of the target conversation sees nothing of Alice's proposal.
   await bob.sendMessage(target.id, "Thanks");
   const bobWork = await ownerAgentWork(f.db, { userId: "bob", organizationId: f.orgA });
   expect(await bobWork.listConversationRequests(target.id)).toEqual([]);
-  // After leaving the target, the owner gets nothing for it either.
   await alice.leaveConversation(target.id);
   expect(await work.listConversationRequests(target.id)).toEqual([]);
 });
@@ -302,7 +295,6 @@ test("a proposal cannot name a record the agent cannot read", async () => {
   expect(await rejection(propose("reply", reply(secret.id, "Hi"), turn))).toBeInstanceOf(
     AccessDeniedError,
   );
-  // Any ID in the input is checked, not only the record the call changes.
   const own = await f.forActor(f.alice).projects.create({ name: "Work" });
   const task = await f.forActor(f.alice).tasks.create({
     projectEntityId: own.entityId,
@@ -400,7 +392,6 @@ test("after the owner leaves, a request is a placeholder without IDs, text or pr
     ...turn,
     kind: "unattended",
   });
-  // From the DM, which stays visible, to a target the owner will leave.
   const fromDm = await propose(
     "reply",
     reply(target.id, "Secret target body"),
@@ -441,7 +432,6 @@ test("an approval runs only while the target is as it was proposed", async () =>
       turn,
     );
   const update = await complete();
-  // The owner edits the task after the agent proposed.
   await f.forActor(f.alice).tasks.update(task.entityId, { priority: "high" });
   const stale = { status: "failed" as const, error: staleProposalError };
   const work = await ownerAgentWork(f.db, owner);
@@ -453,7 +443,6 @@ test("an approval runs only while the target is as it was proposed", async () =>
   expect(row).toMatchObject({ status: "not_started", priority: "high" });
   expect(await wakesFor(update)).toEqual([{ source: "approval_result", sessionKey: turn.key }]);
 
-  // A channel that became private has a different audience than the agent proposed for.
   const channel = await alice.createConversation({ kind: "channel", name: "general" });
   const post = await propose("reply", reply(channel.id, "Hello"), turn);
   await f.db
@@ -468,7 +457,6 @@ test("an approval runs only while the target is as it was proposed", async () =>
       .where(eq(messagingMessages.conversationId, channel.id)),
   ).toEqual([]);
 
-  // An unchanged target still runs.
   const fresh = await complete();
   expect((await work.approveProposal(fresh)).result.status).toBe("executed");
   const [done] = await f.db.select().from(tasks).where(eq(tasks.entityId, task.entityId));
@@ -487,7 +475,6 @@ test("an approval fails when the target changes after its last check, before its
     { requestId: crypto.randomUUID(), taskId: task.entityId, changes: { title: "Done" } },
     dmTurn(dm.id, "unattended"),
   );
-  // The owner's edit commits on another connection right after the approval reads the task.
   // SAFETY: the descriptor holds the real method, which the spy below replaces.
   const read = Object.getOwnPropertyDescriptor(RepositoryContext.prototype, "requireAccess")!
     .value as RepositoryContext["requireAccess"];

@@ -26,8 +26,6 @@ export function OrganizationAppsProvider({
     !!settings.data && ready && appEnabled(settings.data.enabledApps, app);
   useEffect(() => {
     if (signature === undefined || signature === applied) return;
-    // Keep optional workspaces unmounted until old reads are gone. Otherwise enabling an app
-    // can start a new read that the cache cleanup immediately cancels.
     let active = true;
     const cleanup =
       applied === undefined ? Promise.resolve() : clearAppData(client, organizationId!, userId);

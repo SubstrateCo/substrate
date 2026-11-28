@@ -7,9 +7,7 @@ const pressableVariants = cva(
     variants: {
       focus: {
         default: "",
-        // For a target that fills a row, so the ring stays inside the row's edge.
         inset: "focus-visible:ring-inset",
-        // For the title target of a whole card: the ring covers the nearest positioned ancestor.
         stretched:
           "after:absolute after:inset-0 after:rounded-lg focus-visible:ring-0 focus-visible:after:ring-2 focus-visible:after:ring-ring/50",
       },

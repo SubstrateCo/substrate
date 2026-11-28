@@ -29,19 +29,14 @@ export interface ControllerInput {
   eyes: EyeStyle;
   world: World;
   ambient: AmbientLevel;
-  /** Ms of page inactivity, while waiting, before it gets drowsy. 0 never sleeps. */
   sleepAfter: number;
-  /** Ms it stays drowsy before it falls asleep. */
   drowsyFor: number;
   speaking: boolean;
-  /** Speech loudness from 0 to 1; wins over `speaking`. */
   level: number | null;
 }
 
 export interface Environment {
-  /** Time of the last page activity (pointer, keys, scrolling), in ms. */
   lastActivity: number;
-  /** Direction of something worth looking at, from -1 to 1 on each axis. */
   look: { x: number; y: number } | null;
 }
 
@@ -73,14 +68,12 @@ const POKES_FOR_DIZZY = 4;
 const POKE_WINDOW_MS = 2500;
 const STROKE_FLIPS = 4;
 const STROKE_WINDOW_MS = 1200;
-/** A body change turns the avatar around; the outline morphs once its face is out of sight. */
 const MORPH_DELAY_MS = 330;
 
 interface ActiveMotion {
   name: Motion;
   start: number;
   params: MotionParams;
-  /** Gestures someone asked for are never cut short by automatic motions. */
   requested: boolean;
 }
 
@@ -98,10 +91,6 @@ interface EyeSwap {
   openedAt: number;
 }
 
-/**
- * Turns a mood, gestures and pointer input into animation frames. It has no DOM access and
- * takes the clock as an argument, so the same inputs always give the same frames.
- */
 export class AvatarController {
   private input: ControllerInput;
   private readonly noise: Noise;
@@ -125,7 +114,6 @@ export class AvatarController {
   private readonly floatPhase: number;
   private lastFrame: number | null = null;
   private cachedBody: string | null = null;
-  /** Offsets the blob's wobble so blobs on one page do not wobble in step. */
   private readonly blobOffset: number;
 
   constructor(seed: number, input: ControllerInput, now: number) {
@@ -140,12 +128,10 @@ export class AvatarController {
     this.floatPhase = this.random() * Math.PI * 2;
     this.nextAmbient = now + ambientDelay(input.mood, this.random) * 1000;
     this.eyeSwap = { current: "open", next: null, start: 0, closeMs: 0, openedAt: -Infinity };
-    // Critically damped: the outline must finish changing before the face comes back round.
     const progress = new Spring(1, { stiffness: 300, damping: 35 });
     this.morph = { from: bodyRadii(input.body, 0), to: input.body, progress, startAt: now };
   }
 
-  /** The mood on screen, after sleep and reactions. */
   get currentMood(): Mood {
     return this.mood;
   }
@@ -165,12 +151,10 @@ export class AvatarController {
     this.input = input;
   }
 
-  /** Plays a gesture someone asked for. */
   play(name: Motion, now: number, params: MotionParams = { x: 0, y: 0 }): void {
     this.motion = { name, start: now, params, requested: true };
   }
 
-  /** Plays an automatic motion unless a requested gesture is still running. */
   private playAuto(name: Motion, now: number): void {
     if (this.motion?.requested) return;
     this.motion = { name, start: now, params: { x: 0, y: 0 }, requested: false };
@@ -180,7 +164,6 @@ export class AvatarController {
     this.springs[channel].velocity += velocity;
   }
 
-  /** A poke at `x`, `y` (from -1 to 1 across the avatar). */
   poke(x: number, y: number, now: number): void {
     this.pokes = this.pokes.filter((time) => now - time < POKE_WINDOW_MS);
     this.pokes.push(now);
@@ -190,19 +173,16 @@ export class AvatarController {
       return;
     }
     this.play("poke", now, { x, y });
-    // Pushed back into the distance, and tipped away from the finger.
     this.kick({ channel: "z", velocity: -1.4 });
     this.kick({ channel: "roll", velocity: x * 2 });
     this.reaction = { mood: "happy", start: now + 450, until: now + 1700 };
   }
 
-  /** The pointer over the avatar (from -1 to 1), or `null` when it leaves. */
   setHover(point: { x: number; y: number } | null, now: number): void {
     if (point && this.hover) this.trackStroke(point.x - this.hover.x, now);
     this.hover = point;
   }
 
-  /** Stroking is a quick back-and-forth over the avatar. It makes it happy, then loving. */
   private trackStroke(dx: number, now: number): void {
     const stroke = this.stroke;
     stroke.lastX += dx;
@@ -230,7 +210,6 @@ export class AvatarController {
     return out;
   }
 
-  /** The outline only changes while the body morphs or wobbles, so it is built only then. */
   private bodyPath(t: number): string {
     const progress = this.morph.progress;
     const close = Math.abs(progress.value - 1) < 2e-3 && Math.abs(progress.velocity) < 2e-2;
@@ -300,7 +279,6 @@ export class AvatarController {
     return e < 1 ? 1 - Math.sin(e * Math.PI) * 0.95 : 1;
   }
 
-  /** Swapping eye kinds closes the eyes, swaps, then opens them, so shapes never pop. */
   private eyeFactor(kind: EyeKind, now: number): number {
     const swap = this.eyeSwap;
     if (kind !== swap.current && kind !== swap.next) {
@@ -327,7 +305,6 @@ export class AvatarController {
     return syllables * words;
   }
 
-  /** Advances the animation to `now` (ms). */
   frame(now: number, env: Environment): Frame {
     const dt =
       this.lastFrame === null ? 0 : Math.min(0.05, Math.max(0, (now - this.lastFrame) / 1000));
@@ -350,14 +327,12 @@ export class AvatarController {
     else this.kick(pick.kick);
   }
 
-  /** A still frame of the current mood, for `animated={false}` and reduced motion. */
   still(now: number, env: Environment): Frame {
     this.updateMood(now, env);
     this.moodStart = now - 600;
     const target = this.targetPose(now, env);
     for (const key of POSE_KEYS) this.springs[key].settle(target[key]);
     this.morph.progress.settle(1);
-    // The cached outline may be the old body; a still frame jumps straight to the new one.
     this.cachedBody = null;
     this.motion = null;
     this.eyeSwap = {

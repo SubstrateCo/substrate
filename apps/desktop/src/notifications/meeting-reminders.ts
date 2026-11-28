@@ -11,9 +11,7 @@ import { systemClock, type CancelTimer, type Clock } from "./timers.ts";
 const minute = 60_000;
 const pastWindow = 15 * minute;
 const futureWindow = 12 * 60 * minute;
-/** A card stays at most this long after the meeting starts. */
 const startedLifetime = 10 * minute;
-/** A meeting first seen later than this after its start gets no card, such as after a wake. */
 const lateLimit = 5 * minute;
 const snoozeAfterStart = minute;
 const heartbeat = 30_000;
@@ -28,14 +26,12 @@ interface Meeting {
   expiresAt: number;
   calendarName: string;
   color: string | null;
-  /** The allowlisted conference URL, or null. */
   joinURL: string | null;
 }
 
 export interface CalendarEventTarget {
   organizationId: string;
   eventId: string;
-  /** The meeting's local date, YYYY-MM-DD. */
   date: string;
 }
 
@@ -71,11 +67,6 @@ function meeting(event: CalendarFeedEvent): Meeting {
   };
 }
 
-/**
- * Posts a card before each of the viewer's meetings in the active organization, then updates it
- * when the meeting starts. Like message notifications, every card comes from the viewer's current,
- * access-checked calendar feed; a new session or organization clears everything.
- */
 export function createMeetingReminders(options: {
   read(
     organizationId: string,
@@ -94,9 +85,7 @@ export function createMeetingReminders(options: {
   let organizationId: string | null = null;
   let sessionKey = "";
   let meetings = new Map<string, Meeting>();
-  /** Card ID → the last card sent to the center, serialized. */
   const shown = new Map<string, string>();
-  /** IDs that had a card in this session, so a snooze can bring back a late card. */
   const seen = new Set<string>();
   const createdAt = new Map<string, number>();
   let work = Promise.resolve();
@@ -159,7 +148,6 @@ export function createMeetingReminders(options: {
     return now < item.startsAt ? "upcoming" : "started";
   }
 
-  /** Brings every card in line with the clock, then waits for the next change. */
   function evaluate() {
     due?.();
     due = undefined;
@@ -206,7 +194,6 @@ export function createMeetingReminders(options: {
   }
 
   function beat() {
-    // Catches wall-clock changes that a single long timer would miss.
     evaluate();
     pulse = clock.setTimeout(beat, heartbeat);
   }
@@ -227,13 +214,11 @@ export function createMeetingReminders(options: {
       const item = meeting(event);
       next.set(item.id, item);
     }
-    // A removed, cancelled, declined, or moved meeting loses its card.
     for (const id of shown.keys()) if (!next.has(id)) hide(id);
     meetings = next;
     evaluate();
   }
 
-  /** Rereads the calendar. Reads run one at a time and drop results from an older session. */
   function refresh(): Promise<void> {
     evaluate();
     const id = organizationId;
@@ -272,7 +257,6 @@ export function createMeetingReminders(options: {
 
   function receive(event: RealtimeUpdate): Promise<void> {
     if (event.type === "status") {
-      // A transient disconnect keeps the cards; a rejected session clears them.
       if (event.status === "forbidden") disconnect();
       return Promise.resolve();
     }
@@ -300,7 +284,6 @@ export function createMeetingReminders(options: {
   center.register("meeting", {
     join(notification) {
       const item = target(notification);
-      // Main opens only the URL it read itself, and checks it again before opening.
       const url = item && joinableConferenceURL(item.joinURL);
       if (!item || !url) return;
       options.openExternal(url);
@@ -314,7 +297,6 @@ export function createMeetingReminders(options: {
         eventId: item.entityId,
         date: localDate(item.startsAt),
       });
-      // The meeting is open in the main window, so its card is done.
       dismiss(item);
     },
     snooze(notification) {

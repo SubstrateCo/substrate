@@ -27,7 +27,6 @@ type LinkKind = (typeof linkKinds)[number];
 type Purpose = (typeof messageEntityReferences.$inferSelect)["purpose"];
 type RecordLinks = McpOutput<"get_project">["linked"];
 type MessageRecord = McpOutput<"read_thread">["root"]["records"][number];
-// Agents see link kinds named for what happened, not the stored reference purpose.
 const kinds: Record<Purpose, LinkKind> = {
   source: "origin",
   mention: "mention",
@@ -39,7 +38,6 @@ const purposes: Record<LinkKind, Purpose> = {
   attachment: "association",
 };
 
-/** The readable records each live message references, oldest reference first. */
 export async function recordsOfMessages(
   ctx: RepositoryContext,
   messageIds: string[],
@@ -141,7 +139,6 @@ function messageLinks(
   };
 }
 
-/** Entity links of a record whose other end the reader can open, newest first. */
 function recordLinks(
   ctx: RepositoryContext,
   entityId: string,
@@ -214,10 +211,6 @@ function recordLinks(
   };
 }
 
-/**
- * The newest links of a record that a record read shows. Call it only after the read has checked
- * access to the record. `exclude` leaves out record types the read already shows elsewhere.
- */
 export async function linkSummary(
   ctx: RepositoryContext,
   identity: SessionIdentity,

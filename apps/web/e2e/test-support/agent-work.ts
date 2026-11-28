@@ -11,10 +11,8 @@ import { post, type Actor } from "./fixtures";
 import { expect } from "@playwright/test";
 import { z } from "zod";
 
-/** An agent homed on a registered test desktop. Only that desktop runs its turns. */
 export type HomedAgent = { id: string; name: string; installationId: string };
 
-/** Creates an agent homed on a registered test desktop. Only the home desktop can write as it. */
 export async function createAgent(owner: Actor, name = `Research ${crypto.randomUUID()}`) {
   const installationId = crypto.randomUUID();
   const registered = await owner.request.post("/api/v1/agent-work/device/register", {
@@ -32,7 +30,6 @@ export async function createAgent(owner: Actor, name = `Research ${crypto.random
 
 const savedAgent = z.object({ data: z.object({ id: z.uuid() }) });
 
-/** Adds the owner's agent to a conversation, as the owner does from the conversation menu. */
 export async function addAgent(owner: Actor, conversationId: string, agentId: string) {
   const added = await owner.request.post("/api/v1/messaging/agents/add", {
     data: { organizationId: owner.organizationId, conversationId, agentId },
@@ -49,7 +46,6 @@ const conversationMembers = z.object({
   ),
 });
 
-/** A mention of the agent, which wakes it in a conversation where it is a member. */
 export async function agentMention(owner: Actor, conversationId: string, agentId: string) {
   const response = await owner.request.get("/api/v1/messaging/conversations", {
     params: { organizationId: owner.organizationId },
@@ -63,7 +59,6 @@ export async function agentMention(owner: Actor, conversationId: string, agentId
   return `@[agent:${member.actorId}]`;
 }
 
-/** The fields these host calls send besides the device. */
 type HostBody = Partial<
   Pick<
     HostFinishInput,
@@ -78,7 +73,6 @@ type HostBody = Partial<
   }[];
 };
 
-/** Calls a host route as the agent's home desktop. */
 async function hostCall(owner: Actor, agent: HomedAgent, path: string, data: HostBody = {}) {
   const response = await owner.request.post(`/api/v1/agent-work/${path}`, {
     headers: { "x-substrate-installation": agent.installationId },
@@ -88,7 +82,6 @@ async function hostCall(owner: Actor, agent: HomedAgent, path: string, data: Hos
   return response.json();
 }
 
-/** A live server turn that the agent's home desktop claimed and started. */
 export type AgentTurn = { agent: HomedAgent; context: TurnContext };
 
 const claimed = z.object({
@@ -103,10 +96,6 @@ const claimed = z.object({
 
 type SourceMessage = { id: string; conversationId: string; threadId: string | null };
 
-/**
- * Claims the agent's next turn as its home desktop does, then starts it and records its source
- * message for placement. Owner messages wait a short debounce before they can be claimed.
- */
 export async function claimTurn(
   owner: Actor,
   agent: HomedAgent,
@@ -139,10 +128,6 @@ export async function claimTurn(
   return { agent, context: { turnId, attempt } };
 }
 
-/**
- * Starts a live interactive turn for the agent, the way an owner's mention does. With a root,
- * the mention is a reply in that thread, so the turn's session is the thread's.
- */
 export async function startTurn(
   owner: Actor,
   agent: HomedAgent,
@@ -163,7 +148,6 @@ export async function startTurn(
   });
 }
 
-/** Finishes a live turn as its home desktop reports it. */
 export async function finishTurn(
   owner: Actor,
   turn: AgentTurn,
@@ -175,12 +159,10 @@ export async function finishTurn(
   });
 }
 
-/** Calls a server tool as the agent, the way the home desktop's MCP lease does. */
 export async function callTool<K extends ServerToolName>(
   owner: Actor,
   turn: AgentTurn,
   tool: K,
-  /** The tool input without requestId, which each call generates. */
   input: Omit<z.input<(typeof mcpTools)[K]["input"]>, "requestId">,
 ): Promise<McpOutput<K>> {
   const response = await mcpCall(owner, turn, tool, withRequestId(tool, input));
@@ -189,7 +171,6 @@ export async function callTool<K extends ServerToolName>(
   return mcpTools[tool].output.parse((await response.json()).data) as McpOutput<K>;
 }
 
-/** Calls a read-only server tool as the agent. Read tools take no requestId. */
 export async function readTool<K extends ServerToolName>(
   owner: Actor,
   turn: AgentTurn,
@@ -202,10 +183,6 @@ export async function readTool<K extends ServerToolName>(
   return mcpTools[tool].output.parse((await response.json()).data) as McpOutput<K>;
 }
 
-/**
- * Calls a server tool that waits for the owner's approval, such as a deletion. The server stores
- * the call as a proposal and fails it with APPROVAL_PENDING. Returns the proposal's request ID.
- */
 export async function proposeTool<K extends ServerToolName>(
   owner: Actor,
   turn: AgentTurn,
@@ -222,19 +199,13 @@ export async function proposeTool<K extends ServerToolName>(
 
 type ToolInput<K extends ServerToolName> = z.input<(typeof mcpTools)[K]["input"]>;
 
-/**
- * A write tool's input with the requestId each call generates, for tools that take one. The
- * agent's own-work tools, such as create_routine, take none.
- */
 function withRequestId<K extends ServerToolName>(tool: K, input: Omit<ToolInput<K>, "requestId">) {
   const withId = { requestId: crypto.randomUUID(), ...input };
-  // Strict tool inputs reject a requestId they do not take.
   const takesRequestId = mcpTools[tool].input.safeParse(withId).success;
   // SAFETY: requestId is added only where the tool's input has it; the rest is the caller's typed input.
   return (takesRequestId ? withId : input) as ToolInput<K>;
 }
 
-/** The server checks that the call comes from the device that leases the turn. */
 function mcpCall<K extends ServerToolName>(
   owner: Actor,
   turn: AgentTurn,

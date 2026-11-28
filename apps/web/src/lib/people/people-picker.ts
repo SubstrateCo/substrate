@@ -11,7 +11,6 @@ export function isEmailAddress(value: string) {
 
 const normalize = (value: string) => value.trim().toLowerCase();
 
-/** The recipient for one typed address. An address of an offered person picks that person. */
 export function recipientFor(
   text: string,
   people: readonly PickerPerson[],
@@ -26,14 +25,6 @@ export function recipientFor(
 
 const tokensOf = (text: string) => text.split(/[,;\s]+/).filter(Boolean);
 
-/**
- * Adds typed or pasted addresses, separated by commas, semicolons, or spaces. Returns the new
- * value and the text that is not a usable address, so the person can correct it.
- *
- * When more usable addresses arrive than `max` leaves room for, nothing is added and `overflow`
- * is set. The whole text comes back in `rest`, so no address is dropped and none is picked for
- * the person.
- */
 export function addTypedRecipients(
   value: readonly PickedRecipient[],
   text: string,
@@ -55,16 +46,10 @@ export function addTypedRecipients(
   return { value: [...value, ...additions], rest: rest.join(", "), overflow: false };
 }
 
-/** The most people the picker can hold, in words: "Choose one person." */
 export function limitMessage(max: number) {
   return max === 1 ? "Choose one person." : `Choose up to ${max} people.`;
 }
 
-/**
- * The field error for text still in the picker when the form is submitted. The picker adds
- * complete addresses by itself, so text left is either not an address yet or more addresses than
- * fit. Pass `limit` to name the second case.
- */
 export function unfinishedRecipientMessage(text: string, limit?: string) {
   const unfinished = text.trim();
   if (!unfinished) return undefined;
@@ -84,7 +69,6 @@ export function recipientKey(recipient: PickedRecipient) {
   return recipient.agent ? `agent:${recipient.agent.id}` : recipient.email;
 }
 
-/** Who a chosen recipient is, or null for an address that gets an invitation. */
 export function recipientActor(recipient: PickedRecipient): ActorIdentity | null {
   if (recipient.agent)
     return { kind: "agent", name: recipient.agent.name, avatar: recipient.agent.avatar };
@@ -93,7 +77,6 @@ export function recipientActor(recipient: PickedRecipient): ActorIdentity | null
   return null;
 }
 
-/** Recipients who are not one of the offered people and will receive an invitation. */
 export function invitedRecipients(value: readonly PickedRecipient[]) {
   return value.filter((recipient) => !recipient.person && !recipient.agent);
 }

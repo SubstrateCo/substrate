@@ -3,7 +3,6 @@ import type { DesktopUpdateStatus } from "@substrate/contracts/desktop/updates-i
 export type UpdateNoticeAction = "install" | "download" | "retry";
 
 export interface UpdateNoticeContent {
-  /** Changes when the notice means something new, so a dismissed notice can come back. */
   key: string;
   tone: "default" | "error";
   title: string;
@@ -11,13 +10,11 @@ export interface UpdateNoticeContent {
   action?: { kind: UpdateNoticeAction; label: string };
 }
 
-/** The notice for an update that needs the person, or undefined when there is nothing to say. */
 export function updateNoticeContent(status: DesktopUpdateStatus): UpdateNoticeContent | undefined {
   const { install, state } = status;
   if (install === "unavailable") return undefined;
   switch (state.status) {
     case "available":
-      // Automatic installations download at once and show the download instead.
       if (install !== "manual") return undefined;
       return {
         key: `available:${state.version}`,

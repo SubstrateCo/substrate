@@ -20,7 +20,6 @@ const icons = {
   skipped: CircleSlash,
 };
 
-/** What this meeting does to contacts and interactions, and the interactions it created. */
 export function CalendarEventOutcome({
   outcome,
   kind,

@@ -14,7 +14,6 @@ import { SettingsList, SettingsSection } from "@/components/layout/settings-sect
 import { providerLabels } from "@/lib/calendar/labels";
 import { CalendarDays, RotateCcw, TriangleAlert } from "lucide-react";
 
-/** The viewer's calendar accounts in one organization. */
 export function CalendarSettingsView({
   settings,
   now,
@@ -29,13 +28,9 @@ export function CalendarSettingsView({
   settings: Settings;
   now: number;
   pendingCalendarId: string | null;
-  /** The provider's consent page is opening. */
   linking: boolean;
-  /** A failed change that no dialog shows. */
   error: Error | null;
-  /** Reviewed copy for `error`. */
   errorDescription: string;
-  /** A change failed because an account no longer grants calendar access. */
   accessRequired: boolean;
   actions: CalendarAccountActions;
   onConnect: (provider: CalendarProvider) => void;

@@ -19,12 +19,10 @@ type ScreenNotificationViews = {
   >;
 };
 
-/** One card view per kind. A new kind adds its view here. */
 const screenNotificationViews: ScreenNotificationViews = {
   meeting: MeetingCard,
 };
 
-/** The view that shows a notification of its kind. */
 export function screenNotificationView(
   notification: ScreenNotification,
 ): ComponentType<ScreenNotificationViewProps> {

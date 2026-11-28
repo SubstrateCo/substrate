@@ -43,7 +43,6 @@ export function crmDealsRepository(context: RepositoryContext) {
       throw new ValidationError("The primary contact must be a participant.");
     if (new Set(value.contactEntityIds).size !== value.contactEntityIds.length)
       throw new ValidationError("Participant contacts must be unique.");
-    // Both callers proved the actor active: owner() on create, requireType on update.
     await requireDealRelations(ctx, value);
     if (options.requireActiveStage !== false) await requireStage(ctx, value.stageId);
   }
@@ -91,8 +90,6 @@ export function crmDealsRepository(context: RepositoryContext) {
         })),
       ]);
   }
-  // Call after requireType(ctx, id, "deal", true) in the same transaction. This read does not
-  // stop a concurrent change: the caller's UPDATE must match the version again (dealAt).
   async function currentDeal(ctx: RepositoryContext, id: string, version: number) {
     const [deal] = await ctx.db.select().from(crmDeals).where(target(crmDeals, id));
     if (!deal) throw new AccessDeniedError();
@@ -207,7 +204,6 @@ export function crmDealsRepository(context: RepositoryContext) {
           })
           .where(dealAt(id, previous.version))
           .returning();
-        // The row is now held by this write, so the participant rewrite cannot interleave.
         if (!row) throw dealChanged();
         await participants(ctx, id, value, retained);
         changed(ctx, id);

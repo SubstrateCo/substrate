@@ -21,7 +21,6 @@ export type RecordDraft = {
   summary?: string;
   notes?: string | null;
   accountEntityId?: string | null;
-  /** The account's name, shown in the picker before its options load. */
   accountName?: string;
   stageId?: string;
   amount?: string | null;
@@ -30,7 +29,6 @@ export type RecordDraft = {
   version?: number;
   contactEntityIds?: string[];
   primaryContactEntityId?: string | null;
-  /** The primary contact's name, shown in the picker before its options load. */
   primaryContactName?: string;
 };
 
@@ -42,7 +40,6 @@ type EditorProps = {
   onSubmit: (write: RecordWrite) => void;
 };
 
-/** Creates or edits an account, contact, or deal. */
 export function RecordEditor({
   kind,
   defaultCurrency,
@@ -56,7 +53,6 @@ export function RecordEditor({
   return <DealEditor {...props} defaultCurrency={defaultCurrency} />;
 }
 
-/** Keeps the record as opened, so a refetch does not change the version this edit expects. */
 function useOpenedRecord(record: RecordDraft | undefined) {
   return useState(record)[0];
 }
@@ -130,7 +126,6 @@ function DealEditor({
 }: EditorProps & { defaultCurrency?: string | null }) {
   const { organizationId } = useWorkspaceScope();
   const record = useOpenedRecord(openedRecord);
-  // Creators load the pipeline before they open the editor, so the first stage is ready here.
   const { options: stages } = useActiveStages(organizationId, true);
   const [accountId, setAccountId] = useState(record?.accountEntityId ?? "");
   const [contactId, setContactId] = useState(record?.primaryContactEntityId ?? "");
@@ -217,7 +212,6 @@ function DealEditor({
   );
 }
 
-/** The dialog every record editor shares; its copy follows the kind and whether it edits. */
 function RecordEditorDialog({
   kind,
   editing,

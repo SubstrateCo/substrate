@@ -5,7 +5,6 @@ import { authClient } from "@/api/auth/client";
 import { unwrap } from "@/api/auth/result";
 import { queryKeys } from "@/queries/keys";
 
-/** Renames the signed-in user. The frame reads the name from route context, so reload it too. */
 export function useUpdateProfileName() {
   const queryClient = useQueryClient();
   const router = useRouter();

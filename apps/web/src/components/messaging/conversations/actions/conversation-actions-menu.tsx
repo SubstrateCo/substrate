@@ -25,11 +25,8 @@ import { Bell, BellOff, Crown, Ellipsis, Globe, LogOut, Trash2 } from "lucide-re
 const muteChoices = ["off", "1h", "8h", "24h", "forever"] as const satisfies readonly MuteChoice[];
 const defaultLevel = "default";
 
-/** The viewer's own alert settings for one conversation. */
 export type ConversationNotificationMenu = {
-  /** The level the conversation uses when it has none of its own. */
   defaultLevel: NotificationLevel;
-  /** Null follows the default. Undefined while the settings load. */
   level: NotificationLevel | null | undefined;
   mute: MuteState | undefined;
   pending: boolean;
@@ -47,13 +44,9 @@ export function ConversationActionsMenu({
   onDelete,
   onSharing,
 }: {
-  /** The person points at or opens the menu: the time to load what only the menu shows. */
   onIntent?: () => void;
-  /** "Leave channel" or "Leave group". */
   leaveLabel?: string;
-  /** "Delete channel" or "Delete group": the item names what it destroys. */
   deleteLabel: string;
-  /** Only for members, who get alerts from the conversation. */
   notifications?: ConversationNotificationMenu;
   onLeave?: () => void;
   onTransfer?: () => void;

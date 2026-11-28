@@ -92,7 +92,6 @@ test("agent messages and task activity retain attribution and source links", asy
   const turn = await startTurn(owner, agent, channel.id, root);
   const user = await client(owner);
   await visit(user, channel.id);
-  // Interactive turns may post at the top level of the conversation they came from.
   const reply = await callTool(owner, turn, "reply", {
     body: "Agent progress report",
     to: { conversationId: channel.id },
@@ -146,14 +145,11 @@ test("the owner answers an agent's question from another window; members see onl
   });
   expect(reply.questionId).not.toBeNull();
 
-  // The first window shows the question under the agent's reply in the thread.
   const thread = await client(owner);
   await visit(thread, channel.id, "/messages", { messageId: reply.messageId });
   const pane = thread.page.getByRole("complementary", { name: "Thread" });
   const card = pane.getByRole("region", { name: "The agent has a question" });
   await expect(card.getByText("Blue or green?")).toBeVisible();
-  // While the question is open, a member sees the agent's published reply and nothing of the
-  // owner's agent work, neither in the thread nor on the Agents rail button.
   const member = await client(actors.member);
   await visit(member, channel.id, "/messages", { messageId: reply.messageId });
   const memberPane = member.page.getByRole("complementary", { name: "Thread" });
@@ -165,7 +161,6 @@ test("the owner answers an agent's question from another window; members see onl
       .getByRole("link", { name: "Agents", exact: true }),
   ).toBeVisible();
 
-  // The second window answers from Needs you, which reads only the server.
   const inbox = await client(owner);
   await visit(inbox, undefined, "/agents");
   await expect(inbox.page.getByRole("link", { name: "Agents, needs you" })).toBeVisible();
@@ -176,11 +171,9 @@ test("the owner answers an agent's question from another window; members see onl
   await expect(inbox.page.getByRole("heading", { name: "Nothing needs you" })).toBeVisible();
   await expect(inbox.page.getByRole("link", { name: "Agents", exact: true })).toBeVisible();
 
-  // The first window updates through the realtime hint.
   await expect(pane.getByText("Answered: Blue")).toBeVisible();
   await expect(card).toHaveCount(0);
 
-  // The member's open window gets no agent-work hint and shows no answer.
   await expect(memberPane.getByText(/Answered:/)).toHaveCount(0);
 });
 
@@ -200,7 +193,6 @@ test("the owner approves an agent's deletion; the task is deleted only after app
     projectId: created.entityId,
     title,
   });
-  // Every deletion waits for the owner, so the server stores the call as a proposal.
   await proposeTool(owner, turn, "delete_task", { taskId: task.id });
   const taskIds = async () =>
     (await detail(owner, created.entityId)).tasks.map((entry) => entry.entityId);
@@ -209,7 +201,6 @@ test("the owner approves an agent's deletion; the task is deleted only after app
   const approver = await client(owner);
   await visit(approver, undefined, "/agents");
   const proposal = approver.page.getByRole("region", { name: `${agent.name} proposes` });
-  // The preview names the exact task and its project from the owner's own reads.
   await expect(proposal.getByText("Delete a task and its subtasks")).toBeVisible();
   await expect(proposal.getByRole("link", { name: title, exact: true })).toBeVisible();
   await expect(proposal.getByRole("link", { name: created.name, exact: true })).toBeVisible();
@@ -237,7 +228,6 @@ test("the owner approves an agent's routine and reviews its work from a browser"
     threadId: null,
   });
   const name = `Morning summary ${crypto.randomUUID()}`;
-  // A routine the agent writes waits for the owner's approval before it runs.
   await callTool(owner, turn, "create_routine", {
     name,
     prompt: "Summarize yesterday's open threads.",
@@ -246,9 +236,7 @@ test("the owner approves an agent's routine and reviews its work from a browser"
   });
   await finishTurn(owner, turn, { status: "completed", outcome: "silent" });
 
-  // The browser runs no agent, so routines and activity come from the server.
   const user = await client(owner);
-  // The overview lists only what needs the owner and the next runs; "Show all" opens the list.
   await visit(user, undefined, "/agents", { agentId: agent.id, settings: "overview" });
   const sheet = user.page.getByRole("dialog", { name: "Agent settings", exact: true });
   await sheet.getByRole("button", { name: "Manage routines", exact: true }).click();

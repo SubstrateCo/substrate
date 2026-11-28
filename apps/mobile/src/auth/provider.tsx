@@ -67,7 +67,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setBlockedRealtimeIdentity(null);
   }, [validateSession]);
   const revalidate = useCallback(async () => {
-    // A forbidden socket must not remount itself into an automatic retry loop.
     setBlockedRealtimeIdentity(identity);
     await validateSession();
   }, [identity, validateSession]);

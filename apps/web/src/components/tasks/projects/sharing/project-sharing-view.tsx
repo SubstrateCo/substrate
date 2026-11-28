@@ -26,14 +26,9 @@ export type AccessChange = {
   actorEntityId: string;
   name: string;
   level: PermissionLevel;
-  /** The level before the change, so a downgrade can be undone. */
   previous?: PermissionLevel;
 };
 
-/**
- * Where a failed change shows. A dialog shows its error and closes on success; a member row or
- * an Undo has no dialog, so its failure shows in a toast.
- */
 export type ErrorSurface = { kind: "dialog"; onSuccess: () => void } | { kind: "toast" };
 
 type SharingDialog =
@@ -49,10 +44,6 @@ type SharingActions = {
   onClearError: () => void;
 };
 
-/**
- * Who can open a project. Lowering access applies at once and can be undone. Raising access and
- * removing a person each ask for confirmation first.
- */
 export function ProjectSharing({
   detail,
   capabilities,

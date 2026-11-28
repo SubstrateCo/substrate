@@ -16,7 +16,6 @@ export class AddMembersError extends Error {
   }
 }
 
-/** The APIs have different authority rules; keep successful changes if a later action fails. */
 export async function addConversationRecipients(
   recipients: PickedRecipient[],
   actions: {

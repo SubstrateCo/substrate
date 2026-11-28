@@ -26,7 +26,6 @@ export interface ImageCropDialogProps {
   /** An object URL for `file`. The caller creates it and revokes it after the dialog closes. */
   src: string;
   kind: PictureKind;
-  /** The caller's upload mutation state. */
   uploading: boolean;
   uploadError?: Error | null;
   /** Starts the upload mutation. Unmount the dialog when it succeeds; on failure the crop stays. */
@@ -41,7 +40,6 @@ export interface PictureUploadContext {
   onCommit: () => void;
 }
 
-// Say what is saved and how it shows, so the round avatar mask and the square file agree.
 function cropDescription(kind: ImageCropDialogProps["kind"], mode: "fit" | "fill") {
   if (kind === "avatar")
     return "Drag or use the arrow keys to position it. People see it in a circle.";
@@ -144,7 +142,6 @@ export function ImageCropDialog({
           )}
         </DialogBody>
         <DialogFooter>
-          {/* While uploading, Cancel stops the upload; once it commits, nothing can stop it. */}
           <Button
             type="button"
             variant="outline"

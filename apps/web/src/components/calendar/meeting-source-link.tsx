@@ -9,7 +9,6 @@ import { calendarLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";
 import { CalendarDays } from "lucide-react";
 
-/** "From meeting: Pricing review", linking to the meeting an interaction came from. */
 export function MeetingSourceLink({
   source,
   className,

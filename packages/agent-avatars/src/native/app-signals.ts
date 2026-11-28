@@ -1,10 +1,7 @@
 import { AccessibilityInfo, AppState, type AppStateStatus } from "react-native";
 
-/** App-wide state that every native avatar shares, behind one set of listeners. */
 interface AppSignals {
-  /** False while the app is in the background, when avatars stop drawing. */
   foreground: boolean;
-  /** When the app last came to the foreground or someone touched an avatar. */
   lastActivity: number;
   reduceMotion: boolean;
 }
@@ -48,7 +45,6 @@ function stop() {
   subscriptions = [];
 }
 
-/** Listens to the app while at least one avatar is subscribed. */
 export function subscribeAppSignals(listener: () => void): () => void {
   listeners.add(listener);
   if (listeners.size === 1) start();
@@ -64,7 +60,6 @@ export function appSignals(): Readonly<AppSignals> {
 
 export const reduceMotion = () => signals.reduceMotion;
 
-/** A touch on any avatar counts as activity, which wakes sleeping avatars. */
 export function noteActivity(): void {
   signals.lastActivity = performance.now();
 }

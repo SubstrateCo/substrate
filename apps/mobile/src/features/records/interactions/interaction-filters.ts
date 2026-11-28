@@ -26,7 +26,6 @@ export function interactionPeriod(days: InteractionDays, now = new Date()) {
 
 export type TimelineFilterId = "type" | "period" | "source";
 
-/** The timeline query's filters. A field without a value does not restrict the timeline. */
 export function timelineFilters(value: FilterValue<TimelineFilterId>) {
   return {
     kind: oneOf(value.type, interactionKinds),
@@ -37,7 +36,6 @@ export function timelineFilters(value: FilterValue<TimelineFilterId>) {
 
 export type DirectoryFilterId = "period" | "frequency";
 
-/** The directory query's filters. A field without a value does not restrict the directory. */
 export function directoryFilters(value: FilterValue<DirectoryFilterId>) {
   return {
     days: oneOf(value.period, boundedDays) ?? ("all" as const),

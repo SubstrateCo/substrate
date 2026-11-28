@@ -5,7 +5,6 @@ import type { DatabaseExecutor } from "../../core/executor";
 import type { DeviceIdentity } from "../../core/session/device";
 import { and, eq } from "drizzle-orm";
 
-/** The owner's active agents whose home is this device, with their actor in the organization. */
 function homedAgents(
   db: DatabaseExecutor,
   identity: DeviceIdentity,
@@ -27,7 +26,6 @@ function homedAgents(
     );
 }
 
-/** A subquery of the IDs of the owner's agents that this device runs. */
 export function homedAgentIds(db: DatabaseExecutor, identity: DeviceIdentity, deviceId: string) {
   const homed = homedAgents(db, identity, deviceId).as("homed_agents");
   return db.select({ id: homed.userAgentId }).from(homed);

@@ -5,7 +5,6 @@ import { resourceState } from "@/lib/resource-state";
 import { agentStatusOptions } from "@/queries/agent-work/server";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
 
-/** The viewer's agents with their status, and the selected one. */
 export function useWorkspaceAgents(userId: string, organizationId: string, agentId?: string) {
   const catalog = useQuery(agentCatalogQueryOptions(userId));
   const catalogState = resourceState(catalog);

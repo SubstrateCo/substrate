@@ -22,10 +22,6 @@ import {
 import type { ForkOptions, UtilityProcess } from "electron";
 import type { EventEmitter } from "node:events";
 
-/**
- * Session commands fail alone after these limits; the worker and its other sessions keep
- * running. Native open and compaction can take minutes.
- */
 const commandTimeoutMs: Record<HarnessCommand["type"], number> = {
   open: 5 * 60_000,
   turn: 60_000,
@@ -35,15 +31,8 @@ const commandTimeoutMs: Record<HarnessCommand["type"], number> = {
   compact: 30 * 60_000,
   close: 60_000,
 };
-/** Any other worker request this slow means the worker hangs; it is stopped. */
 const requestTimeoutMs = 120_000;
 
-/**
- * Starts the harness utility process. Events go to onEvent; MCP calls from native harnesses go
- * to proxy (server tools) and localTools (local tools). Main validates both before answering.
- * When the process stops for any reason, onEvent receives session.closed { worker_exited } for
- * every session that was open, with its live turn.
- */
 export function createHarnessProcess(
   processes: {
     fork: (
@@ -60,16 +49,13 @@ export function createHarnessProcess(
   onEvent: (event: HarnessEvent) => void,
   proxy: WorkspaceApiProxy,
   localTools: LocalToolProxy,
-  /** Test seam. commandMs replaces every session command limit. */
   timeouts: { commandMs?: number; requestMs?: number } = {},
 ): HarnessWorker {
-  // Do not inherit backend credentials, API keys, or Electron launch overrides.
   const env = Object.fromEntries(
     [
       "PATH",
       "Path",
       "PATHEXT",
-      // The harness reads the user's login-shell PATH through it.
       "SHELL",
       "SystemRoot",
       "WINDIR",
@@ -97,7 +83,6 @@ export function createHarnessProcess(
       timer: ReturnType<typeof setTimeout>;
     }
   >();
-  /** Ends every pending request and every open session. Safe to call more than once. */
   function stopped() {
     disposed = true;
     for (const request of pending.values()) {
@@ -111,9 +96,7 @@ export function createHarnessProcess(
     for (const event of open.exited()) {
       try {
         onEvent(event);
-      } catch {
-        /* One failing listener call cannot hide the other sessions. */
-      }
+      } catch {}
     }
   }
   function answer<Request>(
@@ -182,7 +165,6 @@ export function createHarnessProcess(
       const id = ++nextID;
       const timer = command
         ? setTimeout(() => {
-            // A late answer is ignored. A late open stays in the open-session view.
             pending.delete(id);
             reject(new HarnessWorkerError("timeout"));
           }, timeouts.commandMs ?? commandTimeoutMs[command.type])
@@ -209,7 +191,6 @@ export function createHarnessProcess(
     }
   }
   const ready = send({ method: "initialize", value: accountDirectory });
-  // Attach a handler immediately; the first request still receives initialization failure.
   void ready.catch(() => {});
   return {
     request: async (method, ...[value]) => {
@@ -221,7 +202,6 @@ export function createHarnessProcess(
       if (disposed) return;
       const shutdown = send({ method: "dispose" });
       disposed = true;
-      // Events after this point are dropped, so the open sessions end now.
       closeOpenSessions();
       const deadline = setTimeout(stop, 2000);
       function stop() {

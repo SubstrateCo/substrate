@@ -47,11 +47,9 @@ import {
 
 export type MessageNavigation = {
   onOpenRecord: (target: RecordTarget) => void;
-  /** Same conversation: open the thread under this root. */
   onOpenThread?: (threadId: string) => void;
   onOpenConversation?: (target: MessagingConversationTarget) => void;
   onOpenProfile: (actorId: string) => void;
-  /** Starts a record from this message. Without it, those actions are hidden. */
   onCreateFromMessage?: (source: MessageSource) => void;
 };
 
@@ -88,7 +86,6 @@ export function MessageItem({
   const deleted = !!message.deletedAt;
   const isRoot = !message.threadId;
   const apps = useMessagingApps(organizationId);
-  // Shared and previewed text shows references as the names this viewer may see.
   const readable = deleted
     ? ""
     : displayText(partsFromBody(message.body, referenceLabels(references))).trim();
@@ -98,7 +95,6 @@ export function MessageItem({
     if (!destination) return false;
     if (destination.type !== "conversation") return true;
     const { target } = destination;
-    // A reference to this conversation itself has nowhere else to go.
     if (target.conversationId === conversationId)
       return !!target.threadId && !!navigation.onOpenThread;
     return !!navigation.onOpenConversation;
@@ -148,8 +144,6 @@ export function MessageItem({
       icon: Link2,
       onPress: () => setPanel({ kind: "link" }),
     });
-  // Copies show references as the names this viewer may see. On native, message text is not
-  // selectable because a long press opens these actions.
   if (readable)
     actions.push({
       label: "Copy text",

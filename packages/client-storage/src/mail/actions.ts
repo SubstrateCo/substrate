@@ -16,8 +16,6 @@ export function mailActions(run: RunTransaction, org: string) {
     remoteId: mailMessages.remoteId,
     threadId: mailMessages.threadId,
   };
-  /** Only update cached members of this mailbox. The full Gmail thread can include older,
-   * uncached messages; history sync reconciles its authoritative mailbox-wide unread count. */
   const applyConfirmed = (
     mailboxId: string,
     target: Target,

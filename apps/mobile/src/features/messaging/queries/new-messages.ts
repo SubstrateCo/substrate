@@ -9,10 +9,8 @@ import { messagePageSize } from "../messages/pagination";
 import type { Message, MessagingConversationTarget } from "../types";
 import type { QueryScope } from "@/queries/keys";
 
-// Pages are oldest first within a page. The first page is the newest window.
 type History = InfiniteData<Message[], string | undefined>;
 
-/** The history that ends at the newest message. A history opened around a message ends there. */
 export const latestHistoryKey = (
   scope: QueryScope,
   { conversationId, threadId }: MessagingConversationTarget,
@@ -30,10 +28,6 @@ function latestHistory(
     .find<History>({ queryKey: latestHistoryKey(scope, location), exact: true });
 }
 
-/**
- * Whether new messages can be added to the cached newest page without reading it again: it
- * loaded, nothing reads or invalidated it, and it has a newest message to read after.
- */
 export function canAppendNewMessages(
   client: QueryClient,
   scope: QueryScope,
@@ -49,11 +43,6 @@ export function canAppendNewMessages(
   );
 }
 
-/**
- * Reads only the messages after the newest loaded one and appends them to the newest page.
- * Resolves whether the history is current; when it is not, only a full read can bring it up to
- * date. Reads for one history share one request.
- */
 export async function appendNewMessages(
   client: QueryClient,
   scope: QueryScope,
@@ -63,7 +52,6 @@ export async function appendNewMessages(
     load,
     shouldApply = () => true,
   }: {
-    /** The new message. When the history already has it, nothing is read. */
     messageId?: string;
     load: typeof listMessages;
     shouldApply?: () => boolean;
@@ -93,17 +81,13 @@ export async function appendNewMessages(
     } catch {
       return false;
     }
-    // A full page may leave a gap before its first message.
     if (newer.length >= messagePageSize || !shouldApply()) return false;
-    // A full read that started meanwhile replaced the pages. It began after the change, so
-    // appending keeps it whole: rows it has are skipped, and the others are newer than its last.
     const current = query.state.data;
     const newest = current?.pages[0];
     if (!current || !newest || client.getQueryCache().get(query.queryHash) !== query) return false;
     const older = current.pages.slice(1);
     const known = new Set(newest.map((row) => row.id));
     const added = newer.filter((row) => !known.has(row.id));
-    // Older pages start from the newest page's first message, so the newest page only grows.
     if (added.length)
       client.setQueryData<History>(query.queryKey, {
         ...current,
@@ -114,7 +98,6 @@ export async function appendNewMessages(
   return reads.track(client, query.queryHash, read);
 }
 
-// Timeline histories that show this thread's root, and with `unloaded`, ones that may show it.
 function rootHistories(
   client: QueryClient,
   scope: QueryScope,
@@ -132,11 +115,6 @@ function rootHistories(
     );
 }
 
-/**
- * How a new reply reaches the timeline: "none" when no history shows its root, "root" when
- * reading the root alone can update its reply count, and "full" when a history that may show the
- * root is being read or is already stale: that read may predate the reply.
- */
 export function replyCountUpdate(
   client: QueryClient,
   scope: QueryScope,
@@ -150,12 +128,6 @@ export function replyCountUpdate(
   return settled ? "root" : "full";
 }
 
-/**
- * Reads a thread's root alone and raises its reply count in the timeline histories that show it.
- * New replies only add to the count, so the higher count wins: a late or repeated read cannot
- * lower it. Deleting a reply sends a different hint, which reads the timeline in full. Resolves
- * whether the histories are current.
- */
 export async function refreshReplyCount(
   client: QueryClient,
   scope: QueryScope,

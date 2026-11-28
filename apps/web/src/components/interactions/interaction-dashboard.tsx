@@ -40,7 +40,6 @@ export function InteractionDashboard({
     );
   if (!activity.data) return <LoadingState label="Loading interaction activity" rows={4} />;
   const { summary } = activity.data;
-  // Opens on the latest day with interactions, so the table under the chart is not empty.
   const latestActive =
     dates
       .filter((date) => activity.data.activity.some((row) => row.day === date && row.count > 0))

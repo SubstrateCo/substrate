@@ -15,10 +15,6 @@ export type HarnessAccountState =
   | { kind: "sign-in"; methods: HarnessAuthMethod[] }
   | { kind: "signed-in"; signOut: boolean };
 
-/**
- * Sign in with the agent's only method, or choose one of several. Primary inside the model picker,
- * outline beside other settings.
- */
 function SignInButton({
   label,
   methods,
@@ -69,7 +65,6 @@ function SignInButton({
   );
 }
 
-/** In the model picker, in place of the model list of a harness that needs sign-in. */
 export function PickerSignIn({
   label,
   methods,
@@ -77,7 +72,6 @@ export function PickerSignIn({
 }: {
   label: string;
   methods: HarnessAuthMethod[];
-  /** Absent outside the desktop app. */
   onSignIn?: (method: HarnessAuthMethod) => void;
 }) {
   return (
@@ -108,7 +102,6 @@ export function PickerSignIn({
   );
 }
 
-/** The agent's sign-in on this desktop, under the model picker. */
 export function HarnessAccountView({
   label,
   state,

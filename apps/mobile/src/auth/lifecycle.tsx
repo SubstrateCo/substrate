@@ -32,7 +32,6 @@ export function MobileLifecycle({
       clearPrivateQueries(queryClient);
       resetPrivateState();
     };
-    // Identity changes must clear private data before the next screen paints.
     // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [userId, organizationId, queryClient]);
 
@@ -69,7 +68,6 @@ export function MobileLifecycle({
         authClient.hydrateSession(response.data);
         if (!isCurrent(current)) return;
         focusManager.setFocused(true);
-        // The ready event that follows checks the cache again.
         await realtime.connect({ organizationId });
       } catch {
         if (!disposed && current === generation) clear();
@@ -89,10 +87,8 @@ export function MobileLifecycle({
         void realtime.disconnect();
         void revalidate().catch(() => {});
       } else if (event.type === "ready") {
-        // A reconnect may follow a missed change or revocation.
         void cache.recheck();
       } else if (event.type === "change" && event.domain === "session") {
-        // Connecting verifies the session first, and clears private data if it changed.
         void connect();
       } else if (event.type === "change" && event.domain === "access") {
         void cache.recheck();
@@ -105,7 +101,6 @@ export function MobileLifecycle({
     const appSubscription = AppState.addEventListener("change", (state) => {
       active = state === "active";
       focusManager.setFocused(false);
-      // Loaded data stays on screen; the reconnect checks it again.
       if (active) void connect();
       else {
         generation++;

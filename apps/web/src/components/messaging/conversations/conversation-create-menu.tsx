@@ -53,7 +53,6 @@ function SectionAction({
 export function ChannelCreateActions({
   onCreate,
 }: {
-  /** Called with focus on the button that opened the dialog, so closing it can return there. */
   onCreate: (kind: Conversation["kind"]) => void;
 }) {
   const { openSearch } = useWorkspaceSearch();
@@ -78,14 +77,12 @@ export function DirectMessageCreateMenu({
 }: {
   people?: PickerPerson[];
   agents?: PickerAgent[];
-  /** Called with focus on the button that opened the dialog, so closing it can return there. */
   onCreate: (kind: Conversation["kind"]) => void;
   onMessagePerson?: (person: PickerPerson) => void;
   onMessageAgent?: (agent: PickerAgent) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  // Acts after the menu has returned focus to its trigger, so a dialog restores focus there.
   const chosen = useRef<Choice | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const search = query.trim().toLowerCase();
@@ -100,7 +97,6 @@ export function DirectMessageCreateMenu({
   const agentMatches = onMessageAgent
     ? agents.filter((agent) => !search || agent.name.toLowerCase().includes(search))
     : [];
-  // The email tells two people with one name apart, or explains a match made on the address.
   const names = new Map<string, number>();
   for (const person of people) {
     const key = person.name.toLowerCase();

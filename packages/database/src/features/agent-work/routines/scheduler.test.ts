@@ -40,7 +40,6 @@ async function scheduled(input: Partial<NewRoutine> = {}, author: "owner" | "age
 
 test("a due routine queues one item in its own session and moves to its next local time", async () => {
   const x = await scheduled();
-  // 4 PM in New York, before daylight saving time starts.
   expect(x.routine.nextFireAt?.toISOString()).toBe("2026-03-07T21:00:00.000Z");
   expect(await x.fire(at("2026-03-07T20:59:00Z"))).toBe(0);
   expect(await x.fire(at("2026-03-07T21:00:05Z"))).toBe(1);
@@ -63,7 +62,6 @@ test("a due routine queues one item in its own session and moves to its next loc
     key: sessionKeys.routine(x.routine.id),
     destinationConversationId: x.dm.id,
   });
-  // The next day is after the switch to daylight saving time: still 4 PM local.
   expect(await x.row()).toMatchObject({
     lastFiredAt: at("2026-03-07T21:00:00Z"),
     nextFireAt: at("2026-03-08T20:00:00Z"),
@@ -73,7 +71,6 @@ test("a due routine queues one item in its own session and moves to its next loc
 test("missed ticks collapse into the latest, which supersedes the tick no turn took", async () => {
   const x = await scheduled();
   await x.fire(at("2026-03-07T21:00:05Z"));
-  // Two days pass without a host: one more fire, for the latest occurrence.
   expect(await x.fire(at("2026-03-09T22:00:00Z"))).toBe(1);
   expect(
     (await x.items()).map((item) => [

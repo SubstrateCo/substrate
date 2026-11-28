@@ -22,7 +22,6 @@ export function ChannelSearchResult({
   const members = item.memberCount === 1 ? "1 member" : `${item.memberCount ?? 0} members`;
   return (
     <SearchRowFrame>
-      {/* The trailing action sits inside the item, so the highlight spans it. */}
       <CommandItem
         value={item.id}
         onSelect={() => link.current?.click()}
@@ -51,7 +50,6 @@ export function ChannelSearchResult({
           members={members}
           action={
             item.membership === "joined" ? (
-              // "Joined" gives way to the Enter hint while the row is selected. The row itself opens.
               <span className="grid w-14 shrink-0 place-items-center text-xs">
                 <span className="col-start-1 row-start-1 text-muted-foreground group-data-[selected=true]/command-item:opacity-0">
                   Joined
@@ -72,7 +70,6 @@ export function ChannelSearchResult({
                 aria-label={`Join ${item.title}`}
                 pending={joining}
                 onClick={(event) => {
-                  // Joining stays on the list; only the row itself opens the channel.
                   event.stopPropagation();
                   onJoin();
                 }}

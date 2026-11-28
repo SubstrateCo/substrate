@@ -51,7 +51,6 @@ export function MailBodyContent({ body, id }: { body: MailBody; id: string }) {
   );
 }
 
-/** A meeting invitation: its details and join link, with the full message folded below. */
 function MeetingInvitation({
   detail,
   children,

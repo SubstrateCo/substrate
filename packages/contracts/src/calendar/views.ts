@@ -29,8 +29,6 @@ export type MeetingOutcome =
   | { state: "recorded" }
   | { state: "skipped"; reason: MeetingSkipReason };
 
-// Response views. Times are ISO 8601 strings.
-
 export interface CalendarView {
   entityId: string;
   provider: CalendarProvider;

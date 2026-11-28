@@ -22,12 +22,9 @@ import { messageInputs, requestPlace } from "./facts";
 import { wakeKind, wakeSessionKey } from "./wake-kind";
 import { and, eq, ne } from "drizzle-orm";
 
-/** Passive thread messages join a live turn for this long after it started. */
 const passiveWindowMs = 10 * 60_000;
-/** Passive thread batches per turn. */
 const passiveBatchBudget = 20;
 
-/** A new message. The author is a person, or an agent writing through its own actor. */
 export type MessageTrigger = {
   type: "message";
   organizationId: string;
@@ -42,7 +39,6 @@ export type MessageTrigger = {
   conversationKind: ConversationKind;
 };
 
-/** The owner decided an agent's request: an answer, or a proposal result. */
 export type RequestTrigger = {
   type: "request";
   source: "answer" | "approval_result";
@@ -58,7 +54,6 @@ export type RequestTrigger = {
   };
 };
 
-/** A routine's due occurrence, from the server scheduler. */
 type RoutineTrigger = {
   type: "routine";
   agent: AgentRef;
@@ -66,10 +61,8 @@ type RoutineTrigger = {
   scheduledAt: string;
 };
 
-/** A session that admission adds an item to. */
 type ExistingSession = { id: string; key: string; parentSessionId?: string | null } & AgentRef;
 
-/** A helper's task or parent message, in its session, or its report, in its parent's session. */
 type HelperTrigger = {
   type: "helper";
   source: "helper_task" | "helper_result";
@@ -79,13 +72,8 @@ type HelperTrigger = {
   dedupeKey: string;
 };
 
-/** Work the agent's host creates itself: an epoch handoff, or a turn's resume note. */
 export type HostTrigger = {
   type: "host";
-  /**
-   * The device that submits the item, or null when the server ends a lost turn itself, such as
-   * after its lease expired or its agent moved.
-   */
   deviceId: string | null;
   session: ExistingSession;
   body: string;
@@ -101,7 +89,6 @@ export type AdmissionTrigger =
   | HelperTrigger
   | HostTrigger;
 
-/** An agent that a trigger may give work. */
 type AdmissionAgent = {
   actorId: string;
   organizationId: string;
@@ -109,19 +96,15 @@ type AdmissionAgent = {
   ownerUserId: string;
 };
 
-/** The live turn of the agent's session for the message's thread. */
 export type ThreadTurnFacts = {
   id: string;
   kind: TurnKind;
   status: TurnStatus;
   handoff: boolean;
-  /** When the turn started, or was claimed when it has not started yet. */
   since: Date;
-  /** Passive thread batches the turn already has. */
   passiveBatches: number;
 };
 
-/** What the database knows about one candidate agent for a message. */
 export type MessageFacts = {
   agent: AdmissionAgent;
   mentioned: boolean;
@@ -130,7 +113,6 @@ export type MessageFacts = {
   threadTurn: ThreadTurnFacts | null;
 };
 
-/** One trigger and the facts about one candidate agent. `type` is the trigger's type. */
 export type AdmissionInput =
   | { type: "message"; trigger: MessageTrigger; facts: MessageFacts }
   | { type: "request"; trigger: RequestTrigger; facts: { place: TurnPlace | null } }
@@ -171,7 +153,6 @@ function messageKind(trigger: MessageTrigger, facts: MessageFacts) {
 
 const passiveStatuses: readonly TurnStatus[] = ["assigned", "running", "waiting"];
 
-/** The passive thread_context item for the agent's live thread turn, if the message joins it. */
 function threadContext(
   trigger: MessageTrigger,
   facts: MessageFacts,
@@ -277,24 +258,6 @@ function existingSession(session: ExistingSession): EnsureSessionInput | null {
     : { key: session.key, kind: key.kind };
 }
 
-/**
- * Decides whether a trigger gives one agent work, and which item. Pure: every rule that creates
- * agent work is here.
- *
- * - The agent's own messages never give it work.
- * - Only the owner's own messages start the agent's work. The owner's message admits an
- *   owner_message item for the first matching kind in agentTriggerPrecedence (mention, then DM,
- *   then an untargeted follow-up in a thread it joined). A disabled kind stops it; it does not
- *   fall back.
- * - Any other message in a thread, from a person or another agent, is passive context: a
- *   thread_context item that joins the agent's live interactive turn of that thread, while the
- *   thread follow-up trigger is on, within 10 minutes of the turn's start and 20 batches. It
- *   never starts a turn.
- * - The owner's answer or proposal result always admits an item in the request's session.
- * - Routine occurrences and helper tasks and reports are admitted in their sessions.
- * - Work the host submits, epoch handoffs and resume notes, is admitted only from the agent's
- *   home device. The server's own resume notes for lost turns need no device.
- */
 export function decideAdmission(input: AdmissionInput): AdmissionDecision {
   switch (input.type) {
     case "message":
@@ -407,7 +370,6 @@ async function inputsFor(
   }
 }
 
-/** A newer occurrence of a routine replaces its older ticks that no turn took yet. */
 async function supersedeOlderTicks(db: DatabaseExecutor, item: ItemRow) {
   if (item.source !== "routine") return;
   const older = await db
@@ -428,12 +390,6 @@ async function supersedeOlderTicks(db: DatabaseExecutor, item: ItemRow) {
   );
 }
 
-/**
- * Gathers facts for each trigger, decides with decideAdmission, and creates the admitted items,
- * with their sessions on first use. Runs in the caller's transaction. An item that already
- * exists for the agent and dedupe key is kept. Returns the new items and data-less realtime
- * hints for their owners, to publish after commit.
- */
 export async function admit(
   db: DatabaseExecutor,
   triggers: AdmissionTrigger[],

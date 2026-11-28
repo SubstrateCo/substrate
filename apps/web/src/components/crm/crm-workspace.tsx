@@ -69,7 +69,6 @@ export function CrmWorkspace({
   );
 }
 
-/** The open section. A deal opens in a sheet over its list; an account replaces the list. */
 function CrmContent({ section, recordId }: { section: CrmSection; recordId?: string }) {
   if (section === "settings") return <CrmSettings />;
   if (section === "deals" || !recordId) return <RecordCollection key={section} kind={section} />;

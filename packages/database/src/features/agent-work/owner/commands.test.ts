@@ -14,7 +14,6 @@ import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
 
-/** Alice's agent running a DM turn on its home desktop, and Alice's own agent-work API. */
 async function running() {
   const x = await hostFixture(f);
   await x.alice.sendMessage(x.dm.id, "Start");
@@ -24,7 +23,6 @@ async function running() {
   const owner = await ownerAgentWork(f.db, x.owner);
   const bob = await ownerAgentWork(f.db, { userId: "bob", organizationId: f.orgA });
   const turnId = claimed!.turn.id;
-  /** The turn needs the owner, as after a crash, still holding its batch. */
   const attention = (reason: TurnAttentionReason = "unfinished_tool") =>
     f.db
       .update(agentTurns)
@@ -36,7 +34,6 @@ async function running() {
         finishedAt: new Date(),
       })
       .where(eq(agentTurns.id, turnId));
-  /** A second owner message that the turn took with steer and that ended uncertain. */
   const uncertain = async () => {
     await x.alice.sendMessage(x.dm.id, "Also this");
     const steered = await x.run((tx) =>
@@ -49,7 +46,6 @@ async function running() {
       ),
     );
     const item = steered.items[0]!;
-    // The turn ends without evidence that the harness read the steered item.
     const finished = await host.finish(turnId, {
       attempt: 1,
       status: "completed",
@@ -72,12 +68,10 @@ test("the owner stops a live turn; another person cannot, and an ended turn is a
   expect(await rejection(x.bob.stopTurn(x.turnId))).toBeInstanceOf(AccessDeniedError);
   const stopped = await x.owner.stopTurn(x.turnId);
   expect(stopped.result.turn).toMatchObject({ status: "stopping", interruption: "stop" });
-  // The owner's devices, the agent's home among them, refetch.
   expect(stopped.hints).toContainEqual({
     audience: realtimeKeys.user("alice"),
     domain: "agent-work",
   });
-  // The host learns of the stop on its next report.
   expect((await x.host.progress(x.turnId, { attempt: 1, consumedItemIds: [] })).result.status).toBe(
     "stopping",
   );
@@ -118,7 +112,6 @@ test("retry waits while another turn holds the agent's slot", async () => {
     .where(eq(agentTurns.id, other.id));
   expect(await rejection(x.owner.retryTurn(x.turnId))).toBeInstanceOf(ConflictError);
   expect(await rejection(x.owner.startFresh(x.turnId))).toBeInstanceOf(ConflictError);
-  // Nothing changed: the session was not reset by the refused start-fresh.
   expect((await x.turnRow(x.turnId)).status).toBe("needs_attention");
 });
 
@@ -185,7 +178,6 @@ test("send now makes a held item available and interrupts the turn in its slot",
 test("resend and discard settle uncertain items; the turn settles when none is left", async () => {
   const x = await running();
   const itemId = await x.uncertain();
-  // An item that is not uncertain cannot be resent or discarded.
   const [batch] = x.claimed.items;
   expect(await rejection(x.owner.resendItem(batch!.id))).toBeInstanceOf(ConflictError);
   const { result } = await x.owner.discardItem(itemId);

@@ -55,7 +55,6 @@ function main() {
   const desktopScheme = identity.scheme;
   const bundled = app.isPackaged || app.commandLine.hasSwitch("bundled-renderer");
   const rendererURL = bundled ? bundledApplicationURL : applicationURL;
-  /** @param {string} url */
   const target = (url: string) => navigationTarget(url, rendererURL);
 
   const errorPageURL = new URL(
@@ -71,7 +70,6 @@ function main() {
   );
   app.setName(identity.name);
   if (process.platform === "win32") app.setAppUserModelId(identity.appId);
-  // Keep each environment's lock and local state under its own data root.
   const smokeTest = app.commandLine.hasSwitch("desktop-smoke-test");
   const testID = smokeTest ? process.env.SUBSTRATE_TEST_ID : undefined;
   if (testID && !/^[a-zA-Z0-9-]+$/.test(testID)) throw new Error("Invalid desktop test ID.");
@@ -98,9 +96,7 @@ function main() {
   let services: ReturnType<typeof composeDesktop> | undefined;
   let tray: Tray | undefined;
   let attentionSession: ReturnType<typeof createAttentionSession> | undefined;
-  // Closing the window hides it so agents keep running. Quit from the tray or the app menu.
   let quitting = false;
-  // A login launch starts in the tray.
   const loginArguments = process.defaultApp
     ? [
         process.platform === "win32"
@@ -133,12 +129,9 @@ function main() {
     },
     desktopScheme,
   );
-  /** @type {BrowserWindow | undefined} */
   let mainWindow: BrowserWindow | undefined;
-  /** @type {string[]} */
   const pendingDestinations: string[] = [];
 
-  /** @param {string[]} values */
   function acceptLinks(values: string[]) {
     for (const value of values) {
       const destination = resolveDesktopLink(value, rendererURL, desktopScheme);
@@ -156,7 +149,6 @@ function main() {
 
   function navigatePending() {
     if (!mainWindow || !pendingDestinations.length) return;
-    // A full navigation refreshes session and workspace context for the destination.
     const destination = pendingDestinations.pop();
     pendingDestinations.length = 0;
     if (destination) void mainWindow.loadURL(destination).catch(() => {});
@@ -203,7 +195,6 @@ function main() {
     mainWindow?.focus();
   }
 
-  // The tray keeps the app reachable while its window is hidden and agents run.
   function createTray() {
     const trayIcon =
       process.platform === "darwin"
@@ -225,7 +216,6 @@ function main() {
     console.log(`${identity.name} is already running. Focusing the existing window.`);
     app.quit();
   } else {
-    // One dispatcher owns workspace links and auth callbacks. Better Auth owns PKCE and exchange.
     authClient.setupMain({ getWindow: () => mainWindow, scheme: false, bridges: true, csp: false });
     if (!smokeTest) {
       if (process.defaultApp)
@@ -299,7 +289,6 @@ function main() {
           authFetch: (path, options) => authClient.$fetch(path, options),
           installationId: installation,
         });
-        // Smoke tests drive a single window, so they run without the overlay.
         const screenNotifications: ScreenNotifications | undefined = smokeTest
           ? undefined
           : setupScreenNotifications({
@@ -337,14 +326,11 @@ function main() {
           emit: (channel, value) => emitToRenderer(mainWindow, channel, value, rendererURL),
           showNotification: ({ title, body, silent, flash }, onClick) => {
             if (!Notification.isSupported() || mainWindow?.isFocused()) return () => {};
-            // The text follows the account's preview setting. Hidden, the default, keeps private
-            // content out of the operating system's notification history.
             const notification = new Notification({ title, body, silent });
             notification.on("click", () => {
               void onClick().catch(() => {});
             });
             notification.show();
-            // Flash the taskbar or bounce the dock. "idle" waits until the user is away.
             const away = powerMonitor.getSystemIdleTime() >= 10;
             const frame = mainWindow;
             if (frame && (flash === "always" || (flash === "idle" && away))) {
@@ -483,7 +469,6 @@ function main() {
           prepareInstall: shutdownForUpdate,
         }).start();
         app.on("activate", () => {
-          // The hidden overlay is a window too, so check for the main window itself.
           if (!mainWindow) createWindow();
           else mainWindow.show();
         });

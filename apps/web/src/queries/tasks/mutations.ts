@@ -34,7 +34,6 @@ export function useTasksMutation(organizationId: string) {
 type ProjectData = Awaited<ReturnType<typeof getProject>>;
 type TaskUpdate = Extract<TasksWrite, { action: "updateTask" }>;
 
-/** Replace one task's editable fields in a cached project. */
 function patchProjectTask(detail: ProjectData, input: TaskUpdate): ProjectData {
   const { title, description, status, priority, assigneeActorEntityId, dueDate } = input;
   const fields = Object.fromEntries(
@@ -50,10 +49,6 @@ function patchProjectTask(detail: ProjectData, input: TaskUpdate): ProjectData {
   };
 }
 
-/**
- * Inline task edits. The cached project changes at once, so a second edit made before the first
- * one finishes starts from the new values instead of overwriting them.
- */
 export function useTaskUpdate(organizationId: string, projectEntityId: string) {
   const client = useQueryClient();
   const key = queryKeys.project(organizationId, projectEntityId);
@@ -107,8 +102,6 @@ export function invalidateTasksWrite(client: QueryClient, input: TasksWrite, id:
       ...queryKeys.searches(organizationId).map((queryKey) => client.resetQueries({ queryKey })),
     ]);
   if (input.action === "archiveProject" || input.action === "restoreProject")
-    // Project lists and details, discussion composers, backlinks, and pickers all show the
-    // archive state, so every one of them refreshes.
     return Promise.all([
       client.invalidateQueries({ queryKey: queryKeys.tasks(organizationId) }),
       client.invalidateQueries({ queryKey: queryKeys.conversations(organizationId) }),
@@ -116,7 +109,6 @@ export function invalidateTasksWrite(client: QueryClient, input: TasksWrite, id:
       staleSearches(client, organizationId),
     ]);
   if (input.action === "addTaskLink" || input.action === "removeTaskLink")
-    // The other task may be in another cached project, and both tasks get a history row.
     return Promise.all([
       client.invalidateQueries({ queryKey: queryKeys.projectDetails(organizationId) }),
       client.invalidateQueries({ queryKey: queryKeys.activity(organizationId) }),

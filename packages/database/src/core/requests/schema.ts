@@ -13,8 +13,6 @@ export const requestOperations = [
 ] as const;
 export type RequestOperation = (typeof requestOperations)[number];
 
-// One row per retried write: the actor's request ID, a fingerprint of its input, and the entity it
-// created or changed. Retries return that entity; a different input under the same ID conflicts.
 export const idempotentRequests = pgTable(
   "idempotent_requests",
   {
@@ -25,7 +23,6 @@ export const idempotentRequests = pgTable(
     operation: text("operation").$type<RequestOperation>().notNull(),
     requestId: uuid("request_id").notNull(),
     fingerprint: text("fingerprint").notNull(),
-    // NULL only inside the transaction that claimed the request and has not recorded it yet.
     entityId: uuid("entity_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },

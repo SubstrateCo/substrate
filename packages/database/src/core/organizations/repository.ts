@@ -11,7 +11,6 @@ import { and, eq, gt, sql } from "drizzle-orm";
 
 export function organizationRepository(context: RepositoryContext, identity: SessionIdentity) {
   return {
-    // The session already verified this membership, as for people().
     apps: async (): Promise<AppSettings> => ({
       organizationId: identity.organizationId,
       enabledApps: await enabledApps(context, identity.userId),
@@ -20,7 +19,6 @@ export function organizationRepository(context: RepositoryContext, identity: Ses
       appRepository(context, identity).update(apps),
     updateUserApp: (input: Parameters<ReturnType<typeof appRepository>["updateUserApp"]>[0]) =>
       appRepository(context, identity).updateUserApp(input),
-    /** The organization's name and logo, with the viewer's own role in it. */
     async summary() {
       const [row] = await context.db
         .select({
@@ -40,7 +38,6 @@ export function organizationRepository(context: RepositoryContext, identity: Ses
       if (!row) throw new AccessDeniedError();
       return row;
     },
-    /** The people who are members of the organization. Only members may read them. */
     async people() {
       return context.db
         .select({ userId: user.id, name: user.name, email: user.email, image: user.image })
@@ -48,10 +45,6 @@ export function organizationRepository(context: RepositoryContext, identity: Ses
         .innerJoin(user, eq(user.id, member.userId))
         .where(eq(member.organizationId, identity.organizationId));
     },
-    /**
-     * A pending, unexpired invitation to this organization, with the viewer's own role. Other
-     * organizations' invitations are denied like missing ones, so their existence is not revealed.
-     */
     async pendingInvitation(invitationId: string) {
       const [row] = await context.db
         .select({ id: invitation.id, role: invitation.role, viewerRole: member.role })

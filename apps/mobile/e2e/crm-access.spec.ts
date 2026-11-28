@@ -35,7 +35,6 @@ test("Expo web preview: CRM direct sharing and responsible-owner changes stay di
     await page.getByRole("button", { name: "Share", exact: true }).click();
     const grant = detail.getByRole("button", { name: workspace.member.name, exact: true });
     await expect(grant).toContainText("Can view");
-    // Sharing grants access; it must not silently change responsibility.
     await expect(owner).toBeVisible();
     await captureScreenshot(page, info, `${kind}-direct-access-saved`);
     await grant.click();
@@ -83,7 +82,6 @@ test("Expo web preview: CRM direct sharing and responsible-owner changes stay di
     await expect(changedOwner).toBeVisible();
     await changedOwner.scrollIntoViewIfNeeded();
     await captureScreenshot(page, info, `${kind}-responsible-owner-persisted`);
-    // Reassignment must not elevate the teammate's direct grant.
     await expect(
       detail.getByRole("button", { name: workspace.member.name, exact: true }),
     ).toContainText("Can view");

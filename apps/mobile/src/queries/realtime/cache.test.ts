@@ -174,7 +174,6 @@ test("hints for another workspace and repeated hints refresh nothing more", asyn
   cache.receive(hint);
   await settle();
   expect(invalidated(unread)).toBe(true);
-  // A fresh read clears the staleness; the same hint again must not mark it stale.
   client.setQueryData(unread, []);
   cache.receive(hint);
   await settle();
@@ -198,11 +197,9 @@ test("an access recheck keeps mounted data on screen and drops unmounted data", 
 
   void cache.recheck();
 
-  // The mounted view is read again; until then it keeps its rows.
   expect(reading.getCurrentResult().data).toEqual([{ id: "c1" }]);
   expect(reading.getCurrentResult().fetchStatus).toBe("fetching");
   expect(client.getQueryData(unmounted)).toBeUndefined();
-  // A disabled view is not read again, so its old value cannot stay.
   expect(idle.getCurrentResult().data).toBeUndefined();
   for (const unsubscribe of stop) unsubscribe();
 });

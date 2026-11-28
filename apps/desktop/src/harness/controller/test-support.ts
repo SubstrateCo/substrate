@@ -28,7 +28,6 @@ const sessionRef = {
   resumed: false,
 };
 
-/** The agent the fixture's worker serves, for catalogs that need it. */
 export const catalogAgent: AgentConfiguration = {
   id: "agent-1",
   name: "Agent",
@@ -40,26 +39,19 @@ export const catalogAgent: AgentConfiguration = {
   avatar: "100000",
 };
 
-/** The sign-in that the fixture's worker reports. */
 export const signInId = "6f1c2b9e-3d4a-4f5b-8c7d-9e0f1a2b3c4d";
 
 export function fixture(
   beforeScan?: () => Promise<void>,
   storedMcpServers: HarnessMcpServer[] = [],
   options: {
-    /** The catalog's agents. */
     agents?: AgentConfiguration[];
-    /** Catalog agents homed on another desktop. The others are homed on this one. */
     homedElsewhere?: string[];
     failExecute?: HarnessErrorCode;
-    /** Holds every execute command except interrupt until its promise resolves. */
     holdExecute?: () => Promise<void>;
     localToolHandler?: LocalToolProxy;
-    /** What the worker answers for signIn and readSignIn, before main parses it. */
     signInState?: Partial<HarnessSignInState>;
-    /** The accounts root. Tests that check working folders pass a real directory. */
     accountsDirectory?: string;
-    /** The folder the owner picks in the native dialog. Null: they cancel. */
     pickedWorkspace?: string | null;
   } = {},
 ) {
@@ -73,7 +65,6 @@ export function fixture(
   const directories: string[] = [];
   let disposed = 0;
   let membership = true;
-  /** network: requests throw. server: the backend answers 503. */
   let outage: "network" | "server" | undefined;
   let catalogFails = false;
   let localTools: LocalToolProxy | undefined;
@@ -120,9 +111,7 @@ export function fixture(
     },
   };
   const authority = new DesktopSessionAuthority(connection);
-  /** Local MCP servers by organization and agent. */
   const mcpServers = new Map<string, HarnessMcpServer[]>([["org-1/agent-1", storedMcpServers]]);
-  /** Local working folders by organization and agent. */
   const workspaces = new Map<string, string>();
   const controller = createHarnessController({
     ...connection,

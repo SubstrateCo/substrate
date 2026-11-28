@@ -1,6 +1,5 @@
 import { cn } from "cn";
 
-/** A calendar's color as a small dot beside its name. The name always carries the meaning. */
 export function CalendarColorDot({
   color,
   className,

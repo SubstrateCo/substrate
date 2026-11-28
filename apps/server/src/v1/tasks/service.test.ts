@@ -97,11 +97,9 @@ test("sharing checks the project type without a project read, publishes hints, a
     });
   queries.length = 0;
   expect(await share(project.entityId)).toEqual({ success: true, data: { id: project.entityId } });
-  // The access check reads the type, so no separate project read runs.
   expect(queries.filter((query) => query.includes('from "projects"'))).toEqual([]);
   expect(publish).toHaveBeenCalledWith(
     expect.arrayContaining([{ audience: realtimeKeys.actor(f.orgA, f.bob), domain: "access" }]),
-    // The hints were stored with the write, so the publisher can remove them once sent.
     expect.objectContaining({ id: expect.any(String) }),
   );
   expect(await f.accessLevel(f.bob, project.entityId)).toBe("edit");

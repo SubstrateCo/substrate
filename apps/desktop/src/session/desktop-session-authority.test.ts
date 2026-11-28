@@ -60,7 +60,6 @@ test("invalidation rejects an old verification and drops the catalog cache", asy
   gate.resolve();
   await rejects(old, /Session changed\./);
   expect((await authority.verify()).organizationId).toBe("org");
-  // The first read may use the cookie cache. Reads after an invalidation must bypass it.
   expect(cookieCache[0]).toBeNull();
   expect(cookieCache.length).toBeGreaterThan(1);
   expect(cookieCache.slice(1).every((value) => value === "true")).toBe(true);

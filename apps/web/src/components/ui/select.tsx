@@ -35,7 +35,6 @@ const selectTriggerVariants = cva(
       },
       variant: {
         default: "",
-        // A value that reads as text until hovered, such as a task's status in its inspector.
         ghost:
           "border-transparent bg-transparent hover:bg-row-hover aria-expanded:bg-row-hover dark:bg-transparent dark:hover:bg-row-hover",
       },

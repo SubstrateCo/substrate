@@ -18,7 +18,6 @@ export const taskAttachmentsOptions = ({
       listTaskAttachments({ organizationId, projectEntityId, taskEntityId }, signal),
   });
 
-/** The files of the message the task was created from, when the viewer can open that message. */
 export const taskSourceAttachmentsOptions = ({
   organizationId,
   projectEntityId,

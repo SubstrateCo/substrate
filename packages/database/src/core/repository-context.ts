@@ -37,7 +37,6 @@ type AtLeast = {
   owner: "owner";
 };
 declare const authorizedAt: unique symbol;
-/** Read after requireAccess(entityId, minimum) granted the level in this transaction. */
 export type Authorized<T, Minimum extends PermissionLevel> = T & {
   readonly [authorizedAt]: AtLeast[Minimum];
 };
@@ -48,7 +47,6 @@ export interface EntityAccess {
 export type AuthorizedAccess<Minimum extends PermissionLevel> = Authorized<EntityAccess, Minimum>;
 
 export interface AccessOptions {
-  /** The entity must have this type, or one of these types; any other entity is denied. */
   type?: EntityType | readonly EntityType[];
 }
 
@@ -71,19 +69,15 @@ export class RepositoryContext {
     });
   }
 
-  // Reads need no collector. A write without one fails in effectsFor instead of dropping hints.
   get effects() {
     return effectsFor(this.db);
   }
 
-  // An open transaction is joined, not given a savepoint: no caller keeps using a transaction
-  // after a repository call in it fails. Callers that do must open their own savepoint.
   async transaction<T>(work: (context: RepositoryContext) => Promise<T>) {
     if (is(this.db, PgTransaction)) return work(this);
     return this.db.transaction((tx) => work(new RepositoryContext(tx, this.scope)));
   }
 
-  // The active actor with a live entity. The aliases keep it safe inside queries on either table.
   private activeActor(actorEntityId: string) {
     return {
       entityOn: and(
@@ -114,15 +108,10 @@ export class RepositoryContext {
     return actor;
   }
 
-  /**
-   * The scope's person is an owner or admin of the organization, read now. An agent acts as its
-   * owner unless `human` requires the scope's own actor to be the person.
-   */
   async requireOrganizationAdmin({ human = false }: { human?: boolean } = {}) {
     if (!(await this.isOrganizationAdmin({ human }))) throw new AccessDeniedError();
   }
 
-  /** requireOrganizationAdmin as a boolean, for callers that report their own error. */
   async isOrganizationAdmin({ human = false }: { human?: boolean } = {}) {
     const active = this.activeActor(this.scope.actorEntityId);
     const [actor] = await this.db
@@ -136,11 +125,7 @@ export class RepositoryContext {
     return !!actor?.admin && (!human || actor.type === "human");
   }
 
-  // The entities with the actor's level and each container's version, in one statement. A
-  // disabled app hides nothing here, so a reader learns that the app is off, not that the record
-  // is missing.
   private async readAccess(entityIds: string[], minimum: PermissionLevel, options: AccessOptions) {
-    // Fail closed: an unknown level would otherwise compare as granted.
     if (!Object.hasOwn(permissionRank, minimum)) throw new AccessDeniedError();
     const ids = [...new Set(entityIds)];
     if (!ids.length) return [];
@@ -186,11 +171,6 @@ export class RepositoryContext {
     return accesses;
   }
 
-  /**
-   * The live entity and the actor's level on it, in one statement and without locks. A revocation
-   * that commits after this read does not stop the caller's write. Structural changes use
-   * requireStructuralAccess.
-   */
   async requireAccess<Minimum extends PermissionLevel>(
     entityId: string,
     minimum: Minimum,
@@ -200,7 +180,6 @@ export class RepositoryContext {
     return access!;
   }
 
-  // requireAccess for several entities in one statement.
   async requireAccessAll<Minimum extends PermissionLevel>(
     entityIds: string[],
     minimum: Minimum,
@@ -211,12 +190,6 @@ export class RepositoryContext {
     return rows.map(({ entity, level }) => ({ entity, level }) as AuthorizedAccess<Minimum>);
   }
 
-  /**
-   * requireAccess for a structural change: grants, ownership, moves and deletion. It also claims
-   * the change by compare-and-set on the container's access version, so structural changes to
-   * one container run one at a time and the loser gets a ConflictError. Read the state that the
-   * change depends on after this call: it then includes every earlier structural change.
-   */
   async requireStructuralAccess<Minimum extends PermissionLevel>(
     entityId: string,
     minimum: Minimum,
@@ -226,7 +199,6 @@ export class RepositoryContext {
     return access!;
   }
 
-  // requireStructuralAccess for several entities. Containers are claimed in ID order.
   async requireStructuralAccessAll<Minimum extends PermissionLevel>(
     entityIds: string[],
     minimum: Minimum,
@@ -287,8 +259,6 @@ export class RepositoryContext {
     );
   }
 
-  // A root entity owned by the actor's person, or shared with every member for a member-edited
-  // type. Children use createChildEntity.
   async createEntity(entityType: EntityType) {
     await requireAppsEnabled(this, requiredAppsForEntityType(entityType));
     await this.requireActiveActor();
@@ -306,9 +276,7 @@ export class RepositoryContext {
     return entity!;
   }
 
-  // The child takes the parent's container, so a child of a child shares the root container.
   async createChildEntity(entityType: EntityType, parent: AuthorizedAccess<"edit">) {
-    // requireAccess already checked the parent's apps.
     const parentApps = requiredAppsForEntityType(parent.entity.entityType);
     await requireAppsEnabled(
       this,
@@ -325,29 +293,19 @@ export class RepositoryContext {
     return entity!;
   }
 
-  /**
-   * The error for a direct read that found no row under `readable` or `accessLevel`: the same
-   * error requireAccess gives, so a disabled app reads as AppDisabledError. It runs only when the
-   * read fails, so the read itself stays one statement.
-   */
   async deny(
     entityId: string,
     minimum: PermissionLevel = "view",
     options: AccessOptions = {},
   ): Promise<never> {
     await this.requireAccess(entityId, minimum, options);
-    // Access holds, so the row is missing for another reason, such as a stale ID.
     throw new AccessDeniedError();
   }
 
-  // List filter: the entity in `entityId` is readable at `minimum`. Runs one visibility CTE.
-  // With `type`, the entity must have that type, and only that type's sharing rule is checked.
   readable(entityId: SQLWrapper, minimum: PermissionLevel = "view", type?: EntityType) {
     return readableCondition(this.scope, entityId, minimum, type);
   }
 
-  // The actor's level on the entity in `entityId`, or NULL. Walks up from each row, so use it
-  // for a few rows, not a whole table.
   accessLevel(entityId: SQLWrapper) {
     return entityAccessLevel(this.scope, entityId);
   }

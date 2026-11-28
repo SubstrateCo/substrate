@@ -21,7 +21,6 @@ export const projects = pgTable(
     name: text("name").notNull(),
     description: text("description").default("").notNull(),
     image: text("image"),
-    // An archived project and its tasks are read-only until restored.
     archivedAt: timestamp("archived_at", { withTimezone: true }),
     archivedByActorEntityId: uuid("archived_by_actor_entity_id"),
   },

@@ -1,8 +1,3 @@
-/**
- * The version-neutral seam between the ACP client and one ACP protocol version. A driver owns
- * the wire: its SDK entrypoint, schemas and method names. connection.ts, peer.ts and adapter.ts
- * use only the types in this file, so a v2 driver can be added without touching them.
- */
 import type { JsonValue } from "../json.ts";
 import type {
   AcpAuthMethod,
@@ -12,11 +7,8 @@ import type {
 } from "./api.ts";
 import type { McpServerAdapter } from "@agentclientprotocol/sdk/experimental/mcp-server";
 
-/** Newline-delimited JSON bytes to and from the agent process. */
 export interface AcpTransport {
-  /** Bytes the client writes to the agent (its stdin). */
   output: WritableStream<Uint8Array>;
-  /** Bytes the agent writes to the client (its stdout). */
   input: ReadableStream<Uint8Array>;
 }
 
@@ -34,7 +26,6 @@ export type AcpMcpServer =
       args: string[];
       env: { name: string; value: string }[];
     }
-  /** Served by this client over `mcp/message`. Only from AcpDriverConnection.provideMcpServer. */
   | AcpMcpServerAcp;
 
 export interface AcpMcpServerAcp {
@@ -49,23 +40,17 @@ export interface AcpMcpServerAcp {
  */
 export type AcpMcpHandler = McpServerAdapter["handler"];
 
-/** An MCP server this client serves on one connection. */
 export interface AcpMcpRegistration {
-  /** Put this in the session's mcpServers. */
   readonly declaration: AcpMcpServerAcp;
   /** Later requests fail with -33001; active requests are cancelled. */
   dispose(): Promise<void>;
 }
 
-/** Fields every session setup request carries. */
 export interface AcpSessionSetup {
   cwd: string;
-  /** Extra workspace roots. Send only when capabilities.additionalDirectories. */
   additionalDirectories?: string[];
   mcpServers: AcpMcpServer[];
-  /** Appended to the agent's own instructions. Send only when capabilities.systemPrompt.append. */
   systemPrompt?: string;
-  /** Initial values, sent only when the agent advertises session.options. */
   configOptions?: { id: string; value: AcpConfigValue }[];
 }
 
@@ -76,17 +61,14 @@ export interface AcpSessionOpened {
 
 export type AcpToolStatus = "pending" | "in_progress" | "completed" | "failed";
 
-/** One session/update, reduced to what the client acts on. */
 export type AcpUpdate =
   | { type: "text"; text: string; messageId?: string }
   | {
       type: "tool";
       toolCallId: string;
-      /** True for the first announcement of a tool call. */
       created: boolean;
       title?: string;
       kind?: string;
-      /** Programmatic tool name, when the agent reports it. */
       name?: string;
       rawInput?: unknown;
       status?: AcpToolStatus;
@@ -96,30 +78,20 @@ export type AcpUpdate =
   | { type: "commands"; names: string[] }
   | { type: "config"; options: AcpConfigOption[] };
 
-/**
- * A request from the agent that needs an answer from the user. data is the native request
- * params; the host forwards it unchanged in request.opened.
- */
 export interface AcpClientRequest<R> {
   kind: "permission" | "input";
-  /** Absent for requests outside a session, such as request-scoped elicitation. */
   sessionId?: string;
   data: unknown;
-  /** The no-ask answer: unattended turns and requests without a live turn. */
   deny(): R;
-  /** The answer after an interrupt or disconnect. */
   cancelled(): R;
-  /** Parses the host's response. Throws HarnessError("invalid-response") for a bad shape. */
   parse(response: JsonValue | undefined): R;
 }
 
-/** Callbacks a driver calls for agent-initiated traffic. Set before initialize. */
 export interface AcpDriverHandlers {
   update(sessionId: string, update: AcpUpdate): void;
   request<R>(request: AcpClientRequest<R>, signal: AbortSignal): Promise<R>;
 }
 
-/** A new value for a config option, matching the option's type. */
 type AcpConfigValue = { type: "select"; value: string } | { type: "boolean"; value: boolean };
 
 export interface AcpPromptResult {
@@ -134,13 +106,11 @@ export interface AcpPromptResult {
  */
 export type AcpSteerOutcome = "injected" | "promptRequired" | (string & {});
 
-/** An initialized connection that speaks exactly one protocol version. */
 export interface AcpDriverConnection {
   readonly protocolVersion: AcpProtocolVersion;
   readonly agentInfo?: { name: string; version: string };
   readonly capabilities: AcpPeerCapabilities;
   readonly authMethods: AcpAuthMethod[];
-  /** Resolves when the connection ends for any reason. */
   readonly closed: Promise<void>;
   newSession(setup: AcpSessionSetup, signal: AbortSignal): Promise<AcpSessionOpened>;
   loadSession(
@@ -164,7 +134,6 @@ export interface AcpDriverConnection {
   ): Promise<AcpConfigOption[]>;
   prompt(sessionId: string, text: string): Promise<AcpPromptResult>;
   cancel(sessionId: string): Promise<void>;
-  /** Only when capabilities.steering is not "none". */
   steer(sessionId: string, text: string): Promise<AcpSteerOutcome>;
   authenticate(methodId: string, signal: AbortSignal): Promise<void>;
   logout(signal: AbortSignal): Promise<void>;
@@ -176,7 +145,6 @@ export interface AcpDriverConnection {
    * implements it with McpOverAcpProvider from its own SDK entrypoint.
    */
   provideMcpServer?(name: string, handler: AcpMcpHandler): AcpMcpRegistration;
-  /** Ends the connection. Pending requests reject with error, or a disconnected error. */
   close(error?: Error): void;
 }
 

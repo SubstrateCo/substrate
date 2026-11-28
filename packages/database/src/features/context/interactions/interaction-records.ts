@@ -178,7 +178,6 @@ export async function interactionProfileDetail(
     projectEntityId: null,
     contactEntityId: null,
   }));
-  // requireContact implies view access on a contact: member-edited, no app, active member.
   const linked = await linkedRecords(context, entityId, access);
   return {
     ...profile,

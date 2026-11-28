@@ -330,7 +330,6 @@ export function AccountDetailView({
   );
 }
 
-/** The create-deal form with its own request state, so it can open from lists and records. */
 export function NewDeal({
   organizationId,
   account,

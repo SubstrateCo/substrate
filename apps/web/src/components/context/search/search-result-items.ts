@@ -15,7 +15,6 @@ type SearchHit = {
   contactEntityId?: string | null;
 };
 
-/** The search hits that the enabled apps can open, each with the link that opens it. */
 export function searchResultItems<T extends SearchHit>(
   hits: T[],
   organizationId: string,

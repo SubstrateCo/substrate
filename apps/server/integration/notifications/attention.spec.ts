@@ -35,7 +35,6 @@ test("attention is private to the signed-in account and includes inactive worksp
   });
   expect(sent.ok()).toBe(true);
   expect(await summary()).toBe(before + 1);
-  // Switching away cannot hide this workspace's unread message.
   await workspace(member);
   expect(await summary()).toBe(before + 1);
   expect((await request.get("/api/v1/attention")).status()).toBe(401);

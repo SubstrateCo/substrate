@@ -12,11 +12,6 @@ import { turnPlace, type ServerTurn } from "./turn";
 export const approvalPendingMessage =
   "This call waits for your owner's approval. Do not retry it or work around it. Your owner approves or declines exactly this call, and the result arrives as a new item in a later turn.";
 
-/**
- * Stores a tool call as a proposal for the owner, instead of running it. The call must be one
- * the agent could run now, on records it can read. Returns the proposal's request ID. The
- * caller has checked the turn, so the card shows in the turn's own place.
- */
 export async function proposeToolCall(
   ctx: RepositoryContext,
   identity: SessionIdentity,

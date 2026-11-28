@@ -60,7 +60,6 @@ function uploadStatus(item: AttachmentDraft) {
 }
 type DraftListProps = { uploads: AttachmentUploads; disabled?: boolean };
 
-/** The files chosen for a task, one under another with a large preview. */
 export function AttachmentDraftList({ uploads, disabled }: DraftListProps) {
   return (
     <>
@@ -83,7 +82,6 @@ export function AttachmentDraftList({ uploads, disabled }: DraftListProps) {
   );
 }
 
-/** The files chosen in the composer, in one scrolling row of small previews. */
 export function ComposerDraftStrip({ uploads, disabled }: DraftListProps) {
   return (
     <>

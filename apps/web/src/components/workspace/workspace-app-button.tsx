@@ -21,12 +21,9 @@ export function WorkspaceAppButton({
   label: string;
   icon: LucideIcon;
   to: NonNullable<LinkProps["to"]>;
-  /** The app shortcut that opens this app. */
   shortcut: ShortcutId;
   unread?: boolean;
-  /** What the dot means, read after the label. */
   unreadLabel?: string;
-  /** Primary for unread notifications; warning for work that needs the person. Red is for errors. */
   dotTone?: "primary" | "warning";
 }) {
   const hotkey = useShortcut(shortcut);
@@ -36,7 +33,6 @@ export function WorkspaceAppButton({
         <Button variant="rail" size="icon-lg" className="relative" asChild>
           <Link
             to={to}
-            // The workspace search param belongs to deep links, not to which app is open.
             activeOptions={{ includeSearch: false }}
             activeProps={{ "aria-current": "page" }}
             aria-label={unread ? `${label}, ${unreadLabel}` : label}

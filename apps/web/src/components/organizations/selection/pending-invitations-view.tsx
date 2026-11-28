@@ -17,7 +17,6 @@ export type PendingInvitation = {
   expired: boolean;
 };
 
-/** Invitations the user can answer before choosing or creating a workspace. */
 export function PendingInvitations({
   invitations,
   error,
@@ -28,7 +27,6 @@ export function PendingInvitations({
   invitations: PendingInvitation[];
   error?: Error | null;
   onRetry: () => void;
-  /** The invitation being declined, while it is declined. */
   decliningId?: string;
   onDecline: (invitation: PendingInvitation) => void;
 }) {
@@ -46,7 +44,6 @@ export function PendingInvitations({
           onRetry={onRetry}
         />
       )}
-      {/* Rows line up with the workspace list below: the same avatar column, no frame per row. */}
       {invitations.length > 0 && (
         <ul aria-label="Your invitations" className="-mx-2.5 space-y-0.5">
           {invitations.map((invitation) => {

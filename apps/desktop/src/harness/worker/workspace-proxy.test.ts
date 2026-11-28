@@ -24,7 +24,6 @@ test("a call that main answers at the end of the approval wait gets main's answe
   const posted: number[] = [];
   const proxy = createWorkspaceProxy(({ id }) => posted.push(id));
   const call = proxy.request(request);
-  // The owner decides at the end of the wait, and the server call took a few seconds more.
   jest.advanceTimersByTime(approvalWaitMs + 5_000);
   proxy.receive({ apiResponse: posted[0]!, result: decided });
   expect(await call).toEqual(decided);

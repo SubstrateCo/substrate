@@ -49,8 +49,6 @@ export function ThreadPane({
   const resource = resourceState(replies);
   const replyRows = rows.filter((message) => message.id !== threadId);
   const empty = !!resource.data && !replyRows.length && !history.hasPrevious;
-  // As in the conversation pane, a reply counts as read only once the newest one is in view. A
-  // thread with no replies has nothing below the root to miss.
   const [latestVisible, setLatestVisible] = useState(false);
   useConversationRead(
     organizationId,
@@ -110,7 +108,6 @@ export function ThreadPane({
   );
 }
 
-/** The context of the thread root. Reuse the conversation's page when it holds the root. */
 function useRootContext(
   organizationId: string,
   conversationId: string,

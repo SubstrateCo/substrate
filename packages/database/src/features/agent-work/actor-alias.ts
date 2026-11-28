@@ -4,10 +4,6 @@ import type { SessionIdentity } from "../../core/session/identity";
 import { ValidationError } from "../../errors";
 import { and, eq } from "drizzle-orm";
 
-/**
- * The actor a tool input names: "me" is the calling agent, "owner" is its owner's own actor in
- * this organization. An ID, null and undefined pass through.
- */
 export async function resolveActor<T extends string | null | undefined>(
   ctx: RepositoryContext,
   identity: SessionIdentity,

@@ -402,7 +402,6 @@ test("cleanup that overlaps a publication cannot remove the published attachment
   });
   await published.promise;
   const storage = createStorageRepository(f.db, attachmentReferences);
-  // The cleanup starts while the publication is open, so it does not see the attachment.
   const pruning = storage.pruneUnusedFiles(new Date());
   await Bun.sleep(50);
   release.resolve();
@@ -543,7 +542,6 @@ test("source message files follow message access, not task access", async () => 
     ],
   });
 
-  // Bob can open the task but not the private channel, so he sees no source and no file.
   await f
     .forActor(f.alice)
     .permissions.grant({ entityId: project.entityId, actorEntityId: f.bob, level: "view" });
@@ -552,7 +550,6 @@ test("source message files follow message access, not task access", async () => 
     source: null,
     attachments: [],
   });
-  // Sharing the file with the task is explicit, and only for readers of the message.
   const share = { ...target, messageId: report.id, attachmentId: report.attachments[0]!.id };
   await f
     .forActor(f.alice)
@@ -562,11 +559,9 @@ test("source message files follow message access, not task access", async () => 
   );
   const attach = async () =>
     (await (await repositories(scope())).files.addTaskFromMessage(share)).result.changed;
-  // A repeat finds the same file already attached.
   expect([await attach(), await attach()]).toEqual([true, false]);
   expect((await files().listTask(bob, target)).map((item) => item.fileId)).toEqual([file.id]);
 
-  // A deleted source message takes its files with it.
   await chat.deleteMessage(report.id);
   expect((await source()).attachments).toEqual([]);
 });

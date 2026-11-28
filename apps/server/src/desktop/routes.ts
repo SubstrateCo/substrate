@@ -16,7 +16,6 @@ export function createDesktopRoutes(service: DesktopService) {
     .get("/release", (c) => respond(c, service.release()))
     .get(
       "/download",
-      // Without a platform, older links keep getting the Windows installer.
       zValidator(
         "query",
         z.object({ platform: z.enum(["windows", "mac"]).default("windows") }),

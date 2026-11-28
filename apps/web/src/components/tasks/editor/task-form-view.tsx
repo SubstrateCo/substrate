@@ -26,7 +26,6 @@ function useTaskForm({
   assignees: ProjectDetail["actors"];
   pending: boolean;
   onSubmit: (draft: TaskDraft) => void;
-  /** Whether the title or description differs from the task's, after each edit. */
   onDirtyChange?: (dirty: boolean) => void;
 }) {
   return useForm({
@@ -66,7 +65,6 @@ export type TaskEditorForm = ReturnType<typeof useTaskForm>;
 const errorDescription =
   "Couldn’t save this task. Check its fields and make sure the assignee still has project access.";
 
-/** Ctrl+Enter (Cmd+Enter on macOS) saves from any field. */
 function isSaveShortcut(event: KeyboardEvent<HTMLElement>) {
   return event.key === "Enter" && (event.ctrlKey || event.metaKey);
 }
@@ -78,11 +76,6 @@ type TaskFormProps = {
   error?: Error | null;
 };
 
-/**
- * Creates a task in a dialog, or edits a task's title and description inline. Status, priority,
- * assignee, and due date of an existing task are edited in place, so the inline form keeps their
- * latest values when it saves.
- */
 export function TaskForm({
   task,
   onCancel,
@@ -126,7 +119,6 @@ export function TaskForm({
   );
 }
 
-/** The title and description fields both forms share. */
 function TaskTextFields({ form }: { form: TaskEditorForm }) {
   const id = useId();
   return (
@@ -159,7 +151,6 @@ function TaskTextFields({ form }: { form: TaskEditorForm }) {
   );
 }
 
-/** A new task's fields, rendered into the caller's dialog. */
 function TaskCreateForm({
   detail,
   onSubmit,
@@ -206,7 +197,6 @@ function TaskCreateForm({
   });
 }
 
-/** Edits a task's title and description in place; Escape cancels. */
 function TaskInlineEditForm({
   detail,
   task,

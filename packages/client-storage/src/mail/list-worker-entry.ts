@@ -2,7 +2,6 @@ import type { ListRequest } from "./list-worker.ts";
 import { openMailReads } from "./reads.ts";
 import { parentPort, workerData } from "node:worker_threads";
 
-// Worker data comes only from mailListWorker, after desktop main verifies the workspace.
 const { path, org }: { path: string; org: string } = workerData;
 const reads = openMailReads(path, org);
 parentPort!.on("message", async (message: ListRequest) => {

@@ -97,7 +97,6 @@ test("reply placeholders skip fast responses and appear for slow responses", asy
     } finally {
       await held.release();
     }
-    // Flush query notifications without advancing through a minimum spinner duration.
     await flushUntil(user.page, () =>
       user.page.getByText(`${root.body} reply`, { exact: true }).isVisible(),
     );

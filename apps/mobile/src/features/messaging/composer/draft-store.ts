@@ -1,12 +1,10 @@
 import type { ReferenceLabels } from "../references/token-draft";
 import type { SendRequest } from "./send-request";
 
-/** What survives leaving a conversation: the text, its reference labels, and a send in flight. */
 export type StoredDraft = { body: string; labels: ReferenceLabels; request?: SendRequest };
 
 export const emptyDraft: StoredDraft = { body: "", labels: {} };
 
-/** One draft per user, workspace, conversation, and thread. */
 export function draftKey(
   userId: string,
   organizationId: string,
@@ -16,10 +14,6 @@ export function draftKey(
   return `${userId}:${organizationId}:${conversationId}:${threadId ?? "main"}`;
 }
 
-/**
- * Drafts live in memory only, like the web composer's. They survive navigation, not an app
- * restart, and private-state resets clear them on sign-out, workspace switch and access loss.
- */
 export function createDraftStore() {
   const drafts = new Map<string, StoredDraft>();
   const listeners = new Map<string, Set<() => void>>();

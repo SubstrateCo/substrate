@@ -65,7 +65,6 @@ test("deletion, partial updates, moves, and task-location reads enforce live acc
     }),
   );
   await rejected(await write(member, move));
-  // An editor can delete tasks but cannot delete the project.
   const disposable = await create(owner, {
     action: "createTask",
     projectEntityId: source,

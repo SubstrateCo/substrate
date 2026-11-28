@@ -45,7 +45,6 @@ export function TurnTimelineLoading() {
   );
 }
 
-/** The turn's canonical events, in order. Requests render through the container. */
 export function TurnTimeline({
   entries,
   renderRequest,

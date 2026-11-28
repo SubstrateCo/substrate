@@ -29,7 +29,6 @@ interface MessagingProfile {
   external: boolean;
   email: string | null;
   image: string | null;
-  /** Set for an agent. Agents have no picture. */
   avatar: AgentAvatarCode | null;
   role: string | null;
   directConversationId: string | null;
@@ -40,8 +39,6 @@ interface MessagingProfile {
   } | null;
 }
 
-// The actor with what the viewer may learn about it: contact details of fellow workspace members,
-// and an agent's definition and owner. The caller decides what to reveal.
 async function profileActor(db: DatabaseExecutor, scope: SessionIdentity, actorEntityId: string) {
   const personMember = alias(member, "person_member");
   const personUser = alias(user, "person_user");
@@ -88,9 +85,6 @@ async function profileActor(db: DatabaseExecutor, scope: SessionIdentity, actorE
   return { ...rest, person: membership ? { email: email!, image, role: role! } : null };
 }
 
-// A viewer may see an actor's profile only through a conversation they can see, when the actor
-// wrote in it, is a live agent member of it, or is an active workspace actor with access to it.
-// Before a local agent writes or joins, only its owner can resolve it; it sees what its owner sees.
 async function requireProfileContext(
   db: DatabaseExecutor,
   scope: SessionIdentity,
@@ -170,7 +164,6 @@ async function requireProfileContext(
   if (!conversation) throw new AccessDeniedError();
 }
 
-// The caller has authenticated the session scope and resolved the viewer's actor.
 export async function messagingProfile(
   tx: DatabaseExecutor,
   scope: SessionIdentity,
@@ -184,7 +177,6 @@ export async function messagingProfile(
   const base = { id: actor.entityId, type: actor.type, name };
   const self = actor.entityId === viewerActorEntityId;
   if (actor.type === "human") {
-    // Only fellow members of the viewer's workspace show contact details and role.
     const image = managedPicture.safeParse(person?.image ?? null);
     return {
       ...base,
@@ -201,7 +193,6 @@ export async function messagingProfile(
       agent: null,
     };
   }
-  // Agent configuration stays private to the agent's owner. Its avatar is public.
   const owned = !!definition && definition.ownerId === scope.userId;
   return {
     ...base,

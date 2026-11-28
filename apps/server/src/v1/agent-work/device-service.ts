@@ -23,8 +23,6 @@ export function createDeviceService({ publish }: { publish: CommittedPublisher }
     },
     deviceHeartbeat(this: void, scope: UserScope, input: z.output<typeof deviceHeartbeatInput>) {
       return serviceResult(async () => {
-        // The installation scope checked that input.installationId is this desktop's. The touch
-        // also renews the leases of the turns this desktop runs.
         await publish(await scope.owner.devices.touch(input.installationId));
         return {};
       });

@@ -3,7 +3,6 @@ import type { ComponentProps } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "cn";
 
-/** Inline text link for guest and setup pages: quiet at rest, underlined on hover. */
 export function AuthLinkAnchor({ className, ...props }: ComponentProps<"a">) {
   return (
     <a
@@ -16,10 +15,6 @@ export function AuthLinkAnchor({ className, ...props }: ComponentProps<"a">) {
   );
 }
 
-/**
- * Secondary navigation on guest and setup pages, such as "Workspaces". Use it in
- * `AuthFrame` actions, which mute it beside Sign out.
- */
 export function AuthNavLinkAnchor(props: ComponentProps<"a">) {
   return (
     <Button asChild variant="ghost">

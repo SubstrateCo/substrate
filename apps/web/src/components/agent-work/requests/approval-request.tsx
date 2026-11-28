@@ -18,12 +18,10 @@ export function ApprovalRequest({
   onRespond,
 }: {
   payload: Approval;
-  /** The option being sent, if any. Every choice waits while one is sent. */
   pendingOptionId?: string;
   onRespond: (optionId: string) => void;
 }) {
   const pending = pendingOptionId !== undefined;
-  // Approve and decline stay visible. Other choices, such as "Always allow", go in a menu.
   const styled = [
     ...payload.options.filter((option) => option.style === "approve"),
     ...payload.options.filter((option) => option.style === "deny"),
@@ -33,7 +31,6 @@ export function ApprovalRequest({
     ? payload.options.filter((option) => option.style === "neutral")
     : payload.options.slice(2);
   const sendingMore = more.find((option) => option.id === pendingOptionId);
-  // The card around this shows the title.
   return (
     <div className="grid gap-2.5">
       {payload.detail && (

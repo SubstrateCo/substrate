@@ -14,7 +14,6 @@ import { harnessBridge } from "@/lib/desktop/bridges";
 import { harnessModelsQueryOptions } from "@/queries/agents/models";
 import { toast } from "sonner";
 
-/** Starts a sign-in for a harness with one of its advertised methods. */
 export type StartSignIn = (harness: HarnessKind, method: HarnessAuthMethod) => void;
 
 function accountState(
@@ -28,11 +27,6 @@ function accountState(
   return { kind: "hidden" };
 }
 
-/**
- * Sign-in and sign-out for the agent's harness on this desktop. children receive a launcher, so
- * the model picker can start a sign-in for the harness it shows; the dialog lives here, outside
- * the picker's popover.
- */
 export function HarnessAccount({
   agentId,
   harness,

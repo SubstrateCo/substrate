@@ -50,7 +50,6 @@ test("any member can correct an interaction, but only its author or an admin can
   );
 
   await bob.contactInteractions.deleteInteraction(byBob.entityId);
-  // Alice is an organization owner, so she deletes interactions she did not write.
   await alice.contactInteractions.deleteInteraction(byAlice.entityId);
   for (const id of [byAlice.entityId, byBob.entityId])
     expect(await rejection(alice.contactInteractions.get(id))).toMatchObject({

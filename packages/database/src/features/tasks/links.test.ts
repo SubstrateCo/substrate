@@ -38,7 +38,6 @@ test("a link reads from both tasks and stores one row for each direction rule", 
   });
   expect(relates!.kind).toBe("related_to");
   expect(relates!.source!.entityId < relates!.target!.entityId).toBe(true);
-  // The same pair, named from the other task, is the same link.
   expect(await rejection(alice.tasks.addLink(second.entityId, "blocks", open.entityId))).toEqual(
     new ValidationError("These tasks already have this link."),
   );
@@ -94,7 +93,6 @@ test("concurrent opposite block links between two tasks keep exactly one link", 
     results.flatMap((result) => (result.status === "rejected" ? [result.reason] : [])),
   ).toEqual([new ValidationError("This link would make the tasks block each other.")]);
   expect(await fixture.db.select().from(entityLinks)).toHaveLength(1);
-  // The loser wrote no history: each task records one added link.
   expect(
     (await fixture.db.select().from(taskActivity)).filter((row) =>
       row.action.startsWith("Link added"),
@@ -104,7 +102,6 @@ test("concurrent opposite block links between two tasks keep exactly one link", 
 
 test("adding a link needs edit on the task and view on the other task", async () => {
   const { alice, bob, shared, open, second, secret } = await twoProjects();
-  // Bob cannot reach the hidden project from either side.
   expect(
     await rejection(bob.tasks.addLink(open.entityId, "blocks", secret.entityId)),
   ).toBeInstanceOf(AccessDeniedError);
@@ -144,7 +141,6 @@ test("a reader without access to the other task sees a link with no task details
     title: "Secret",
     projectName: "Hidden",
   });
-  // Bob can edit his side, so he can remove the link without seeing the other task.
   await bob.tasks.removeLink(open.entityId, link.id);
   expect(await fixture.db.select().from(entityLinks)).toEqual([]);
 });

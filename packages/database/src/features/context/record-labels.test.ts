@@ -128,7 +128,6 @@ test("labels name each kind of record the reader can open, with its project or c
 });
 
 test("hidden records, other organizations' records and unknown IDs are left out", async () => {
-  // Alice's private work, which Bob, a member without grants, cannot open.
   const alice = f.forActor(f.alice);
   const secret = await alice.projects.create({ name: "Secret plan" });
   const hiddenTask = await alice.tasks.create({
@@ -138,7 +137,6 @@ test("hidden records, other organizations' records and unknown IDs are left out"
   const bob = f.forActor(f.bob);
   const own = await bob.projects.create({ name: "Mine" });
   const ownTask = await bob.tasks.create({ projectEntityId: own.entityId, title: "Visible" });
-  // Alice, an organization owner, can open both tasks, so she can link them.
   await alice.tasks.addLink(hiddenTask.entityId, "blocks", ownTask.entityId);
   const halfHidden = await linkBetween(hiddenTask.entityId, ownTask.entityId);
   const privateChannel = await f
@@ -146,7 +144,6 @@ test("hidden records, other organizations' records and unknown IDs are left out"
     .createConversation({ kind: "channel", name: "secret-room", private: true });
   const privateMessage = await f.messaging("alice").sendMessage(privateChannel.id, "Secret body");
 
-  // Another organization's records, people and pipeline.
   const outside = f.forActor(f.outsider, f.orgB);
   const otherProject = await outside.projects.create({ name: "Other org" });
   const otherContact = await outside.contacts.create({ displayName: "Outside contact" });
@@ -168,7 +165,6 @@ test("hidden records, other organizations' records and unknown IDs are left out"
   ];
   const items = await (await f.forSession("bob")).context.recordLabels(ids);
   expect(items).toEqual([]);
-  // The owner sees their own records under the same rules.
   const aliceItems = await (await f.forSession("alice")).context.recordLabels(ids);
   expect(aliceItems.map((item) => item.id)).toEqual([
     secret.entityId,

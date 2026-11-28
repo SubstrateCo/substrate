@@ -12,7 +12,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { listPhase } from "@/lib/resource-state";
 import { ChevronDown } from "lucide-react";
 
-// Show the newest events first; older ones stay one click away.
 const collapsedCount = 5;
 
 export function TaskActivity({
@@ -29,13 +28,10 @@ export function TaskActivity({
   error?: Error | null;
   onRetry: () => void;
   label?: string;
-  /** Replaces the list, such as when the record's activity is unavailable. */
   notice?: ReactNode;
-  /** A control that loads older pages, after the rows. */
   more?: ReactNode;
 }) {
   const [open, setOpen] = useState(true);
-  // Kept here: the collapsed content unmounts, and reopening keeps the expanded list.
   const [expanded, setExpanded] = useState(false);
   return (
     <Collapsible asChild open={open} onOpenChange={setOpen}>

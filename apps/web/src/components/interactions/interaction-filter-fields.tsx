@@ -5,7 +5,6 @@ import { CalendarRange, Inbox, MessageSquare, Repeat, Target, UserRound } from "
 
 type Field = OptionFilterField<InteractionFilterId>;
 
-/** The required activity period. The dashboard has no all-time view. */
 export function periodField({ allTime }: { allTime: boolean }): Field {
   return {
     id: "period",
@@ -21,7 +20,6 @@ export function periodField({ allTime }: { allTime: boolean }): Field {
   };
 }
 
-/** Whose interactions the dashboard counts. */
 export const loggedByField: Field = {
   id: "loggedBy",
   label: "Logged by",
@@ -45,7 +43,6 @@ export const typeField: Field = {
   }),
 };
 
-/** How interactions were recorded. Meetings are a source only while the calendar app is on. */
 export function originField({ calendar }: { calendar: boolean }): Field {
   return {
     id: "origin",
@@ -70,7 +67,6 @@ export const frequencyField: Field = {
   options: [{ value: "repeat", label: "2+ interactions" }],
 };
 
-/** Which of an organization's interactions count: its contacts' or only those linked to it. */
 export const scopeField: Field = {
   id: "scope",
   label: "Scope",

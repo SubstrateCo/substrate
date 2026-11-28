@@ -37,7 +37,6 @@ test("unified Next merges uneven mailboxes without gaps, duplicate threads or re
         nickname: null,
         protectedGrant: "grant",
       });
-      // Both mailboxes reuse the same remote IDs. Two entries tie at every timestamp.
       const mail = (i: number): SyncedMail => ({
         remoteId: String(i),
         threadId: i < 2 ? "same-thread" : String(i),
@@ -168,14 +167,12 @@ test("a page with a few free slots still reads a batch of IDs, not one per round
     view: "inbox",
     search: "",
     before: 20_000,
-    // Earlier reads reached the 48th cached conversation, and Gmail has more.
     sources: [{ mailboxId: "box", before: 20_000, token: "next", through: 10_000 - 47 }],
     seen: [],
   };
   const page = await nextMailPage(
     q,
     [{ id: "box", status: "idle" }],
-    // 48 of 50 slots are filled; the mailbox may still hold older mail.
     async () => ({ items: Array.from({ length: 48 }, (_, i) => shown(i)), hasMore: false }),
     async (mailboxId, _source, limit) => {
       limits.push(limit);

@@ -2,10 +2,8 @@ import { ItemFooter } from "@/components/ui/item";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Blocks, Sparkles, type LucideIcon } from "lucide-react";
 
-/** What agents get from one app: MCP tools and the Substrate skill that explains them. */
 export type AppAgentSupport = { mcp: boolean | "read-only"; skill?: string };
 
-/** The footer of an app tile: icons that name what they mean on hover or focus. */
 export function AppAgentSupportFooter({ app, support }: { app: string; support: AppAgentSupport }) {
   if (!support.mcp && !support.skill) return null;
   return (

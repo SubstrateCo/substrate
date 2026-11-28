@@ -25,7 +25,6 @@ import {
 import {
   runItemCommand,
   runTurnCommand,
-  startNewTopic,
   type ItemCommand,
   type TurnCommand,
 } from "@/api/agent-work/work";
@@ -35,10 +34,6 @@ export type RequestAction =
   | { kind: "approve"; requestId: string; action: ProposalAction | null }
   | { kind: "decline"; requestId: string };
 
-/**
- * Answers and proposal decisions, as one mutation, so its state is always the latest attempt.
- * They go to the server, so any owner device can make them.
- */
 export function requestActionMutationOptions(
   client: QueryClient,
   userId: string,
@@ -56,7 +51,6 @@ export function requestActionMutationOptions(
         return requests.approveProposal({ data: { organizationId, requestId } });
       return requests.declineProposal({ data: { organizationId, requestId } });
     },
-    // A conflict means another device answered first. Refresh to show that answer.
     onSettled: (_data, _error, input) =>
       invalidateTargets(
         client,
@@ -75,10 +69,6 @@ export function useRequestAction(userId: string, organizationId: string) {
   return useMutation(requestActionMutationOptions(useQueryClient(), userId, organizationId));
 }
 
-/**
- * Work commands and routine changes go to the server, so any owner device can send them. A
- * conflict means the work changed first, so every outcome refreshes the owner's work.
- */
 export function workMutationOptions(client: QueryClient, userId: string, organizationId: string) {
   const targets = agentWorkInvalidations(userId, organizationId, { kind: "agent-work" });
   return <TInput, TResult>(mutationFn: (input: TInput) => Promise<TResult>) =>
@@ -103,7 +93,6 @@ const itemCommand = (organizationId: string, command: ItemCommand) => (itemId: s
 export const useSendNow = (userId: string, organizationId: string) =>
   useWorkAction(userId, organizationId, itemCommand(organizationId, "send-now"));
 
-/** For an item the home desktop couldn't confirm the agent received. */
 export const useResendItem = (userId: string, organizationId: string) =>
   useWorkAction(userId, organizationId, itemCommand(organizationId, "resend"));
 
@@ -128,11 +117,6 @@ const attentionCommands: Record<
   discard: { target: "item", command: "discard" },
 };
 
-/**
- * The actions for a turn that needs attention, as one mutation, so its state is always the
- * latest attempt. ids are the turn for retry, dismiss, and start fresh, or the uncertain items
- * for resend and discard; the attempt fails if any of them fails.
- */
 export function useAttentionAction(userId: string, organizationId: string) {
   return useWorkAction(
     userId,
@@ -150,15 +134,8 @@ export function useAttentionAction(userId: string, organizationId: string) {
   );
 }
 
-/** @public The New topic control is hidden for now; keep this for when it returns. */
-export const useNewTopic = (userId: string, organizationId: string) =>
-  useWorkAction(userId, organizationId, (conversationId: string) =>
-    startNewTopic({ data: { organizationId, conversationId } }),
-  );
-
 export function useRoutineActions(userId: string, organizationId: string) {
   const options = workMutationOptions(useQueryClient(), userId, organizationId);
-  // Editors check each field first; parsing here guards the route contract.
   return {
     create: useMutation(
       options((input: CreateRoutineInput) =>
@@ -174,7 +151,6 @@ export function useRoutineActions(userId: string, organizationId: string) {
     remove: useMutation(
       options((routineId: string) => deleteRoutine({ data: { organizationId, routineId } })),
     ),
-    /** Approves exactly the revision the owner saw. */
     approve: useMutation(
       options(({ routineId, revision }: { routineId: string; revision: number }) =>
         approveRoutine({ data: { organizationId, routineId, revision } }),

@@ -28,8 +28,6 @@ export function SharingSettings({ organizationId }: { organizationId: string }) 
   const inbox = useQuery(sharingInboxOptions(organizationId));
   const { value: selected, open, close, restoreFocus } = useStateDialog<string>();
   const blocked = isAccessFailure(conversations.error) || isAccessFailure(inbox.error);
-  // Lost access discards the open dialog for good, so it can't reopen if access returns. Closing
-  // during render resets it before the blocked render could show it.
   if (blocked && selected !== undefined) close();
   const selectedConversation = conversations.data?.find((row) => row.id === selected);
   const retry = () => {
@@ -231,7 +229,6 @@ const sharedStatusLabels: Record<SharedConversationStatus, string> = {
   invited: "Invited",
 };
 
-// The server names only conversations the viewer may open. Undefined means a placeholder.
 function sharedConversationName(conversation: SharedConversation) {
   if (conversation.displayName) return conversation.displayName;
   if (conversation.accessible)

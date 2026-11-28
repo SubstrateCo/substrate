@@ -2,10 +2,6 @@ import type { ReactNode } from "react";
 
 import type { ListPhase } from "@/lib/resource-state";
 
-/**
- * One list body: the loading, error, or empty view in place of the rows, or the rows. After a
- * failed refresh, `stale` (a `StaleNotice`) shows above the cached rows.
- */
 export function ListBody<T>({
   phase,
   loading,

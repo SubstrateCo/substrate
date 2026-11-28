@@ -91,7 +91,6 @@ test("cancelling a message search skips excerpt reference lookups", async () => 
   const context = createContextService(db, { userId: "alice", organizationId: f.orgA });
   const result = context.search({ query: "Find", kind: "message" }, controller.signal);
   expect(await rejection(result)).toMatchObject({ name: "AbortError" });
-  // The workspace check and message search run; no excerpt metadata is read afterwards.
   expect(queries).toHaveLength(2);
 });
 
@@ -155,7 +154,6 @@ test("channel browse lists readable channels by name with membership and live me
     membership,
     memberCount,
   });
-  // Case-insensitive name order; the page boundary continues by name, not by ID.
   const first = await browse();
   expect(first).toEqual([channel(alpha, "joined", 2), channel(mid, "left", 1)]);
   expect(await browse(first[1]!.id)).toEqual([channel(zeta, "none", 1)]);
@@ -189,7 +187,6 @@ test("task, project and combined work search each run one statement", async () =
     kind: "project" as const,
     projectEntityId: project.entityId,
   };
-  // The workspace check, then one work statement.
   expect(await context.search({ query: "Search", kind: "task" })).toEqual(taskRows);
   expect(queries).toHaveLength(2);
   expect(queries[1]).not.toContain('FROM "projects"');
@@ -272,14 +269,12 @@ test("work and CRM search share one statement and keep each type's filters and a
   expect(entityStatements()).toHaveLength(1);
   for (const table of ["tasks", "projects", "contacts", "crm_accounts", "crm_deals"])
     expect(entityStatements()[0]).toContain(`FROM "${table}"`);
-  // The merged page is limited after sorting all types by ID.
   expect(await search("alice", { query: "Pipeline", limit: 2 })).toEqual(expected.slice(0, 2));
   for (const row of expected) {
     queries.length = 0;
     expect(await search("alice", { query: "Pipeline", kind: row.kind })).toEqual([row]);
     expect(entityStatements()).toHaveLength(1);
   }
-  // Every member edits contacts and their interactions; other records need grants.
   const shared = expected.filter(
     (row) => row.kind === "contact" || row.kind === "contact_interaction",
   );
@@ -325,7 +320,6 @@ test("searching several kinds returns each kind's first page in the requested or
       limit: 2,
     }),
   ).toEqual(expected);
-  // Tasks and projects come from one statement.
   expect(queries.filter((query) => /FROM "(tasks|projects)"/.test(query))).toHaveLength(1);
 });
 
@@ -333,7 +327,6 @@ test("a several-kind search with text ranks matches before limiting and puts the
   await f.db.update(user).set({ emailVerified: true });
   const alice = f.forActor(f.alice);
   const project = await alice.projects.create({ name: "Bobsled board" });
-  // Weakest first, so creation order cannot explain the result.
   for (const title of ["Kebobs", "Book a bob review", "Bobcat release", "Bob"])
     await alice.tasks.create({ projectEntityId: project.entityId, title });
   const chat = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
@@ -349,7 +342,6 @@ test("a several-kind search with text ranks matches before limiting and puts the
     conversationId: channel.id,
     limit: 3,
   });
-  // Exact, then prefix, then word-start matches. Ties between kinds keep the requested order.
   expect(rows.map((row) => [row.kind, row.title])).toEqual([
     ["task", "Bob"],
     ["task", "Bobcat release"],
@@ -373,12 +365,10 @@ test("short fields match substrings, and words match by prefix", async () => {
   const context = createContextService(f.db, { userId: "alice", organizationId: f.orgA });
   const ids = async (query: string, kind: "project" | "conversation" | "message") =>
     (await context.search({ query, kind })).map((row) => row.id);
-  // Substrings of names, including LIKE wildcards taken literally and one-character queries.
   for (const query of ["terl", "100%", "N_V2", "Q"])
     expect(await ids(query, "project")).toEqual([project.entityId]);
   expect(await ids("0_%", "project")).toEqual([]);
   expect(await ids("ARKET", "conversation")).toEqual([channel.id]);
-  // Descriptions and message bodies match words and word prefixes, not inner substrings.
   expect(await ids("budg rev", "project")).toEqual([project.entityId]);
   expect(await ids("udget", "project")).toEqual([]);
   expect(await ids("dash, ship!", "message")).toEqual([message.id]);
@@ -404,7 +394,6 @@ test("identifiers, versions and addresses are found by the same text or by any o
     "v1.2.3",
     "sam@example.com",
     "it's note-7",
-    // Parts after punctuation are words of their own.
     "3456",
     "note 7",
     "example.com",
@@ -467,7 +456,6 @@ test("person search in a task discussion lists people with task access who are n
     actorEntityId: f.bob,
     level: "view",
   });
-  // Bob sees the discussion through the task, not through membership.
   expect(
     await f.db
       .select()

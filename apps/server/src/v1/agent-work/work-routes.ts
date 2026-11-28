@@ -16,10 +16,6 @@ import type { ScopeEnv, Scopes } from "../../shared/scope";
 import type { WorkService } from "./work-service";
 import { Hono } from "hono";
 
-/**
- * The owner's agent work under /agent-work, from any of the owner's devices. Every route is
- * workspace scoped and reaches only the caller's own agents.
- */
 export function createWorkRoutes(work: WorkService, scopes: Scopes) {
   const command = <P extends string>(path: P) =>
     [path, v("param", workParams), v("json", workCommandInput), scopes.workspace("json")] as const;

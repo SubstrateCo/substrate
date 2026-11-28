@@ -12,7 +12,6 @@ import {
 } from "./proposal-target";
 import { describe, expect, test } from "bun:test";
 
-// Stored inputs are tool inputs, so record IDs are UUIDs.
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const ids = {
   general: id(1),
@@ -50,7 +49,6 @@ const label = (
   conversationId: place.conversationId ?? null,
 });
 
-// What the server returns for the viewer: only records they can open.
 const labels = new Map(
   [
     label(ids.general, "conversation", "General"),
@@ -237,7 +235,6 @@ describe("update-task calls", () => {
     expect(proposalTargetLoading(proposalTarget(action, lookups))).toBe(false);
   });
 
-  // The agent acts with its owner's access, so approving a change to a hidden record cannot work.
   test("approval is blocked while any named record is hidden from the owner", () => {
     const changes = { title: "New" };
     const visible = proposalTarget(call("update_task", { taskId: ids.copy, changes }), lookups);
@@ -354,7 +351,6 @@ describe("CRM calls", () => {
     expect(contact).toMatchObject({ record: { link: { to: "/interactions" } } });
   });
 
-  // The stored call names the kind; a record of another kind is not the one it names.
   test("a record of another kind than the call names is hidden", () => {
     const target = proposalTarget(
       call("archive_crm_record", { kind: "account", entityId: ids.renewal, archived: true }),
@@ -390,7 +386,6 @@ describe("CRM calls", () => {
       record: { access: "visible", label: "Northwind" },
       person: { access: "visible", label: "Lee" },
     });
-    // A contact has no grants, so sharing one names nothing the call could change.
     const contact = proposalTarget(
       call("share_crm_record", { entityId: ids.ada, actorEntityId: ids.lee, level: "view" }),
       lookups,

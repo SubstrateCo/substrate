@@ -22,7 +22,6 @@ function pointOf(target: LookTarget): { x: number; y: number } | null {
   return target;
 }
 
-/** Focus on another element wins over the pointer until the pointer moves again. */
 function focusWins(svg: SVGSVGElement, focus: Element): boolean {
   const signals = pageSignals();
   return focus.isConnected && !svg.contains(focus) && signals.focusAt > signals.pointerAt;
@@ -42,7 +41,6 @@ function targetPoint(svg: SVGSVGElement, rect: DOMRect, options: LookOptions) {
   return Math.hypot(dx, dy) <= radius + rect.width / 2 ? signals.pointer : null;
 }
 
-/** Direction from the avatar to whatever it should look at, from -1 to 1 on each axis. */
 export function readLook(
   svg: SVGSVGElement,
   options: LookOptions,

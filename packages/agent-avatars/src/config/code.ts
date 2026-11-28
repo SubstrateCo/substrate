@@ -54,7 +54,6 @@ export function decodeAvatarCode(code: string): AvatarConfig | null {
   return complete({ body, color, fill, eyes, eyeColor });
 }
 
-/** Narrows a look whose choices were all found. */
 function complete(look: Partial<AvatarConfig>): AvatarConfig | null {
   const { body, color, fill, eyes, eyeColor } = look;
   if (!body || !color) return null;
@@ -71,7 +70,6 @@ function eyesReadable(config: AvatarConfig): boolean {
   return eyeSurfaceColors(config).every((surface) => contrast(eye, surface) >= 3);
 }
 
-/** Choices a person can make for an agent's look. */
 export interface AvatarChoices {
   body?: AvatarBody;
   color?: BodyColorName;

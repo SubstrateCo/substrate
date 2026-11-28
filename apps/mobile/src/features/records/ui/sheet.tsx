@@ -28,10 +28,6 @@ import { Check, Search } from "lucide-react-native";
 
 const sheetContent = "max-h-[88%] w-full gap-0 p-0";
 
-/**
- * A form in a dialog. Cancel, the close button, the overlay and the Android back button all ask
- * before they drop unsaved changes.
- */
 export function FormSheet({
   title,
   description,
@@ -112,7 +108,6 @@ export function FormSheet({
   );
 }
 
-/** A confirmation for a destructive or consequential action. It stays open while it works. */
 export function ConfirmSheet({
   title,
   description,
@@ -165,7 +160,6 @@ export type SheetAction = {
   hint?: string;
 };
 
-/** A list of actions for a record or row. */
 export function ActionSheet({
   title,
   actions,
@@ -213,7 +207,6 @@ export function ActionSheet({
 
 export type Choice<T extends string> = { value: T; label: string; description?: string };
 
-/** A searchable single-choice list. */
 export function PickerSheet<T extends string>({
   title,
   choices,
@@ -232,7 +225,6 @@ export function PickerSheet<T extends string>({
   onSelect: (value: T) => void;
   onClose: () => void;
   searchable?: boolean;
-  /** Controlled search, for lists the server filters. */
   search?: string;
   onSearch?: (value: string) => void;
   loading?: boolean;

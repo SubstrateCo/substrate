@@ -10,7 +10,6 @@ const toneIcons: Partial<Record<StatusTone, LucideIcon>> = {
   destructive: CircleAlert,
 };
 
-/** A calendar's sync state as words and an icon, so color is never the only signal. */
 export function CalendarStatusTag({ status }: { status: CalendarSyncStatus }) {
   const { label, tone } = syncStatusLabels[status];
   const Icon =

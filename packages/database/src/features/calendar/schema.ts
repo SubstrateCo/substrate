@@ -25,8 +25,6 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-// One row per organization, owner, and provider calendar. Connection and sync state live here.
-// Calendars are personal: only the owner's grant reaches them, and admins get no access.
 export const calendars = pgTable(
   "calendars",
   {
@@ -37,8 +35,6 @@ export const calendars = pgTable(
     ownerActorEntityId: uuid("owner_actor_entity_id").notNull(),
     ownerUserId: text("owner_user_id").notNull(),
     provider: text("provider").$type<CalendarProvider>().notNull(),
-    // The linked provider account. Unlinking it keeps the calendar and its history, disconnected.
-    // The repository checks that the account belongs to the owner.
     credentialAccountId: text("credential_account_id").references(() => account.id, {
       onDelete: "set null",
     }),
@@ -47,16 +43,11 @@ export const calendars = pgTable(
     color: text("color"),
     timeZone: text("time_zone"),
     isPrimary: boolean("is_primary").default(false).notNull(),
-    // Owner consent to create contacts and organization-visible interactions from meetings.
     recordsInteractions: boolean("records_interactions").default(false).notNull(),
-    // Only meetings that end at or after this time create interactions.
     interactionsFrom: timestamp("interactions_from", { withTimezone: true }).notNull(),
-    // A full sync fetches events from this time.
     syncWindowStart: timestamp("sync_window_start", { withTimezone: true }).notNull(),
     syncStatus: text("sync_status").$type<CalendarSyncStatus>().default("pending").notNull(),
-    // Google `syncToken` or Microsoft Graph `deltaLink`. Null forces a full sync.
     syncCursor: text("sync_cursor"),
-    // Each full sync increments it; events left on an older generation are gone at the provider.
     syncGeneration: integer("sync_generation").default(0).notNull(),
     nextSyncAt: timestamp("next_sync_at", { withTimezone: true }),
     lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
@@ -82,20 +73,16 @@ export const calendars = pgTable(
     ),
     check("calendars_type_check", sql`${table.entityType}::text = 'calendar'`),
     check("calendars_name_check", sql`length(trim(${table.name})) BETWEEN 1 AND 500`),
-    // A NULL credential means the provider account was unlinked. Reads then treat the calendar
-    // as disconnected, whatever its stored status, and the sync worker never claims it.
     check(
       "calendars_lease_check",
       sql`(${table.syncLeaseToken} IS NULL) = (${table.syncLeaseExpiresAt} IS NULL)`,
     ),
-    // The sync worker claims due calendars across organizations.
     index("calendars_due_idx")
       .on(table.nextSyncAt)
       .where(sql`${table.syncStatus} IN ('pending', 'active', 'error')`),
   ],
 );
 
-// One event occurrence. Its calendar is its access container.
 export const calendarEvents = pgTable(
   "calendar_events",
   {
@@ -120,7 +107,6 @@ export const calendarEvents = pgTable(
     timeZone: text("time_zone"),
     providerUpdatedAt: timestamp("provider_updated_at", { withTimezone: true }),
     syncGeneration: integer("sync_generation").notNull(),
-    // Set once the completion step has processed the meeting.
     interactionsRecordedAt: timestamp("interactions_recorded_at", { withTimezone: true }),
   },
   (table) => [
@@ -144,13 +130,11 @@ export const calendarEvents = pgTable(
     ),
     check("calendar_events_type_check", sql`${table.entityType}::text = 'calendar_event'`),
     check("calendar_events_time_check", sql`${table.endsAt} >= ${table.startsAt}`),
-    // Agenda views read a calendar's events by start time.
     index("calendar_events_agenda_idx").on(
       table.organizationId,
       table.calendarEntityId,
       table.startsAt,
     ),
-    // The completion worker claims ended meetings that it has not processed.
     index("calendar_events_completion_idx")
       .on(table.endsAt)
       .where(
@@ -159,7 +143,6 @@ export const calendarEvents = pgTable(
   ],
 );
 
-// Attendees are matched to contacts by email when read, not stored as references.
 export const calendarEventAttendees = pgTable(
   "calendar_event_attendees",
   {
@@ -186,7 +169,6 @@ export const calendarEventAttendees = pgTable(
       table.normalizedEmail,
     ),
     check("calendar_event_attendees_email_check", sql`length(trim(${table.normalizedEmail})) > 0`),
-    // A contact's meetings are found by its email identifiers.
     index("calendar_event_attendees_email_idx").on(table.organizationId, table.normalizedEmail),
   ],
 );

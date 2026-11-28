@@ -21,7 +21,6 @@ export function AgentRunSettings({
   const { userId } = useWorkspaceScope();
   const { home, triggers } = useAgentRunSettingsMutations(userId, settings.agentId);
   const { save } = useAgentMutations(userId);
-  // Show a switch's new state while it saves; the catalog refresh then confirms it.
   const shownTriggers = triggers.isPending
     ? settings.triggers.map((trigger) => ({
         ...trigger,

@@ -8,7 +8,6 @@ import type {
 
 import { z } from "zod";
 
-/** The binding of the test provider: a turn and its attempt, as a host would bind them. */
 const testBinding = z.strictObject({ turnId: z.string(), attempt: z.number().int() });
 export type TestBinding = z.infer<typeof testBinding>;
 
@@ -25,7 +24,6 @@ const tool = (
   idempotent: flags.readOnly ?? false,
 });
 
-/** A small catalog whose tools exercise each result path of the runtime. */
 const tools = {
   list_projects: tool(
     "List projects",
@@ -53,12 +51,10 @@ export const testServer = {
   instructions: "Use your harness's tool discovery and load the skills you need.",
 };
 
-/** The hint the test provider gives for an error code. */
 export const testHint = (code: string) => `Next step for ${code}.`;
 
 type Handle = (call: ToolCall<TestBinding>) => Promise<ToolCallResult>;
 
-/** A provider that records calls and answers them with handle. */
 export function testToolProvider(
   handle: Handle = async () => ({ success: true, data: { items: [], nextCursor: null } }),
 ) {

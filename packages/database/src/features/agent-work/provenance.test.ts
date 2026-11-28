@@ -34,7 +34,6 @@ test("sessions and requests name the user agent's own agent actor", async () => 
     mode: "async" as const,
     payload: { type: "proposal" as const, summary: "x" },
   });
-  // Another agent's actor, and the owner's own human actor.
   for (const actorId of [other.actorId, f.alice]) {
     expect(
       await rejection(f.db.insert(agentSessions).values(session(actorId)).execute()),
@@ -43,7 +42,6 @@ test("sessions and requests name the user agent's own agent actor", async () => 
       await rejection(f.db.insert(agentRequests).values(request(actorId)).execute()),
     ).toMatchObject(foreignKey);
   }
-  // Another person cannot own this agent's session.
   expect(
     await rejection(
       f.db
@@ -128,7 +126,6 @@ test("items and turns stay in their session's agent, and only the owner's device
     .values({ ...own, ...turn, leaseDeviceId: agent.device.id, leaseExpiresAt: now });
   await f.db.insert(agentWorkItems).values({ ...own, ...item });
 
-  // A session's thread is a root message of its own conversation.
   const channel = await alice.createConversation({ kind: "channel", name: "general" });
   const elsewhere = await alice.sendMessage(channel.id, "Root");
   expect(

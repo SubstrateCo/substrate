@@ -57,8 +57,6 @@ test("five person mentions and five task references resolve in set-based stateme
     ...taskIds.map((id) => `@[task:${id}]`),
   ].join(" ");
   const sent = await sender.sendMessage(channel.id, body);
-  // Five of each cost what one of each costs. Includes the lookup for the author's own agents, the
-  // read for people viewing the channel, and the read for members who follow every post.
   expect(queries).toHaveLength(single);
   expect(queries).toHaveLength(11);
   expect(
@@ -110,7 +108,6 @@ test("notification recipients use one conflict-safe insert-select for one or man
     );
     return {
       sent,
-      // The agent-trigger lookup is not part of notification delivery.
       reads: queries
         .slice(authors + 1)
         .filter((query) => /^\s*(select|with)/i.test(query) && !query.includes('"user_agents"'))
@@ -130,7 +127,6 @@ test("notification recipients use one conflict-safe insert-select for one or man
     userId: "outsider",
     organizationId: f.orgA,
   }).sendMessage(channel.id, "outsider", root.id);
-  // A partner membership alone must not receive notifications outside the home workspace.
   await f.db.insert(messagingParticipants).values({
     conversationId: channel.id,
     organizationId: f.orgB,
@@ -185,7 +181,6 @@ test("notification recipients use one conflict-safe insert-select for one or man
     .update(messagingConversations)
     .set({ private: true })
     .where(eq(messagingConversations.id, channel.id));
-  // Bob keeps only his workspace B membership.
   await f.db
     .update(messagingParticipants)
     .set({ leftAt: new Date() })
@@ -309,8 +304,6 @@ test("mention, reply and message alerts share one insert-select, and mentions wi
   expect(
     queries.filter((query) => /^\s*insert into "notifications".*\bselect\b/is.test(query)),
   ).toHaveLength(1);
-  // One authored a thread reply and was mentioned; the mention takes precedence. A group thread
-  // reply reaches only the thread's people, so the outsider, who is not in it, gets nothing.
   expect(
     (await f.db.select().from(notifications).where(eq(notifications.messageId, sent.id)))
       .map((row) => `${row.recipientActorEntityId}:${row.organizationId}:${row.kind}`)
@@ -338,7 +331,6 @@ test("thread recipients use one distinct conversation-scoped query and mentions 
   expect(
     queries.filter((query) => query.includes('"user_id" from "messaging_messages"')),
   ).toHaveLength(1);
-  // Bob replied five times and is notified once.
   expect(
     (await f.db.select().from(notifications).where(eq(notifications.messageId, sent.id)))
       .map((row) => `${row.recipientActorEntityId}:${row.organizationId}:${row.kind}`)

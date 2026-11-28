@@ -37,10 +37,8 @@ type AgentToolExecution = {
   };
 }[ServerToolName];
 
-/** A call stored as a proposal instead of running. requestId names the proposal. */
 export type PendingToolCall = { tool: ServerToolName; pending: { requestId: string } };
 
-// Every tool that accepts requestId can replay a stored result, so each one must recheck access.
 type ReplayableTool = {
   [K in ServerToolName]: McpInput<K> extends { requestId: string } ? K : never;
 }[ServerToolName];
@@ -71,13 +69,9 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
   reader?: FileContentReader,
 ): Promise<Extract<AgentToolExecution, { tool: K }> | PendingToolCall> {
   const definition = mcpTools[tool];
-  // Hints go to the caller's commit() collector and are published after commit.
   const { context: ctx, actor: agent, userName } = await workspaceContext(tx, identity);
-  // Check current settings before handlers or cached results can expose disabled app data.
   await requireAppsEnabled(ctx, toolApps(tool).filter(isOptionalApp));
   const actor = { id: agent.entityId, name: agent.name, type: agent.type };
-  // Every call runs in a live server turn that the calling device holds. Writes also need a
-  // turn that may publish, in places the owner can still see.
   const live = await requireLiveTurn(tx, identity, turn, identity.installationId);
   if (!definition.readOnly) {
     const blocked = writeGate(live, tool);
@@ -94,7 +88,7 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     { ...agent, userName },
     { kind: "turn", turn: live },
     reader,
-  ); // Recheck access before returning a previously created record's identifiers.
+  );
   const replayChecks: ReplayChecks = {
     async create_crm_from_message(value, previous) {
       const { conversation, message } = await requireMessage(tx, identity, value.messageId);
@@ -175,7 +169,6 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     async update_project(value) {
       await ctx.requireAccess(value.projectId, "view");
     },
-    // A deletion's result names only the IDs in its input, so a replay reveals nothing new.
     async delete_task() {},
     async delete_project() {},
     async delete_crm_interaction() {},
@@ -194,7 +187,6 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     async archive_crm_record(value) {
       await crm().get({ kind: value.kind, entityId: value.entityId });
     },
-    // These results name only the record and person in the input.
     async assign_crm_owner() {},
     async share_crm_record() {},
     async revoke_crm_access() {},
@@ -215,7 +207,6 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     async reply(_, previous) {
       await requireMessage(tx, identity, previous.messageId);
     },
-    // The helper must still belong to this turn's session.
     async start_helper(_, previous) {
       await requireHelper(tx, live.sessionId, previous.helperId);
     },
@@ -226,11 +217,8 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     : undefined;
   const fingerprint = JSON.stringify(input);
   const existing = key ? await claimToolReceipt(tx, key, fingerprint, turn) : undefined;
-  // A retry of a call that waits for the owner returns the same proposal. It names only the
-  // proposal, so it reveals nothing new.
   const stored = existing && pendingReceipt.safeParse(existing.result);
   if (stored?.success) return { tool, pending: { requestId: stored.data.approvalPending } };
-  // The call waits for the owner: store it as a proposal and commit, without running it.
   if (!existing && approvalNeeded(tool)) {
     const proposalId = await proposeToolCall(
       ctx,
@@ -244,7 +232,6 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
   }
   // SAFETY: the handler for `tool` takes McpInput<K>.
   const handler = handlers[tool] as (input: McpInput<K>) => Promise<object>;
-  // Stored and new results cross the same trust boundary, so parse them in one place.
   // SAFETY: `definition` is the registry entry for `tool`, so its schema produces McpOutput<K>.
   let result = definition.output.parse(
     existing ? existing.result : JSON.parse(JSON.stringify(await handler(input))),
@@ -266,7 +253,6 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     }
     if (tool === "create_crm_follow_up") {
       const previous = mcpTools.create_crm_follow_up.output.parse(result);
-      // Task moves and access changes invalidate cached project, parent and source projections.
       // SAFETY: the refreshed task crosses the same tool-specific output schema as a new result.
       result = definition.output.parse(await queries.getTask(previous.id)) as McpOutput<K>;
     }

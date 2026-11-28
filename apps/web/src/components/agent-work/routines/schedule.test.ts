@@ -14,7 +14,7 @@ describe("routine schedules", () => {
   });
 
   test("reads Sunday written as 7 as Sunday", () => {
-    expect(parseSchedule("0 9 * * 7")).toMatchObject({ frequency: "weekly", weekday: 0 });
+    expect(parseSchedule("0 9 * * 7")).toMatchObject({ frequency: "weekly", cronWeekday: 0 });
   });
 
   test("keeps schedules the builder can't show as custom cron", () => {

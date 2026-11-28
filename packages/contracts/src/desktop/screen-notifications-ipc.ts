@@ -2,10 +2,6 @@ import { utcTimestamp } from "../timestamps.ts";
 import type { BridgeAPI } from "./ipc.ts";
 import { z } from "zod";
 
-// Screen notifications are cards in a transparent, always-on-top overlay window. Producers live in
-// the main process; the overlay only renders cards and reports actions by ID. It never receives
-// URLs: main resolves and checks any target itself.
-
 /** Overlay → main requests. */
 export const channel = "substrate:screen-notifications";
 /** Main → overlay events. */
@@ -41,7 +37,6 @@ export const meetingNotification = z.object({
 });
 export type MeetingNotification = z.infer<typeof meetingNotification>;
 
-// Add new kinds to this union, to main's action registry, and to the overlay's view map.
 export const screenNotification = z.discriminatedUnion("kind", [meetingNotification]);
 export type ScreenNotification = z.infer<typeof screenNotification>;
 export type ScreenNotificationKind = ScreenNotification["kind"];

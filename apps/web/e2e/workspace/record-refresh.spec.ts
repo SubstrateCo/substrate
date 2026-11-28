@@ -182,8 +182,6 @@ for (const kind of ["accounts", "deals"] as const) {
     await expect(name).toBeVisible();
     await user.waitForEvent(since, (event) => event.type === "ready", "Live updates are connected");
     if (kind === "deals") {
-      // The list has its own query, which loads when the list is first shown. Load it before
-      // testing cached data.
       await page.getByRole("radio", { name: "List", exact: true }).click();
       await expect(name).toBeVisible();
       await page.getByRole("radio", { name: "Pipeline", exact: true }).click();

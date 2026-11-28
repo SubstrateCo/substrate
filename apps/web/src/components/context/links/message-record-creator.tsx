@@ -77,7 +77,6 @@ export function MessageRecordCreator({
   );
 }
 
-/** A deal needs an active stage: shown while stages load, fail, or none exist. */
 function DealStageGate({
   pending,
   error,

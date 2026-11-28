@@ -18,17 +18,12 @@ import type { CalendarProviders } from "./providers";
 
 export interface CalendarServiceDependencies {
   providers: CalendarProviders;
-  /** Starts a sync run now, so a connected or resumed calendar does not wait for the poll. */
   triggerSync: () => void;
 }
 
 const calendarAccessRequired = () =>
   new ServiceError("FORBIDDEN", "Reconnect with calendar access.", "CALENDAR_ACCESS_REQUIRED");
 
-/**
- * Maps provider failures to public errors. A missing scope or a revoked grant both ask the owner
- * to reconnect. Others stay unexpected and are logged by name.
- */
 function providerError(error: CalendarProviderError) {
   if (error instanceof CalendarAccessRequired) return calendarAccessRequired();
   const unavailable =
@@ -43,10 +38,8 @@ export function createCalendarService(
 ) {
   const { providers, triggerSync, publish } = deps;
 
-  /** Lists the calendars of one of the session user's linked accounts, from the provider. */
   async function providerCalendars(scope: WorkspaceScope, credentialAccountId: string) {
     const settings = await scope.repositories.calendar.settings();
-    // Settings lists only the session user's own linked accounts.
     const account = settings.accounts.find(
       (candidate) => candidate.credentialAccountId === credentialAccountId,
     );
@@ -83,7 +76,6 @@ export function createCalendarService(
 
     connect: (scope: WorkspaceScope, input: CalendarConnectInput) =>
       serviceResult(async () => {
-        // Names and IDs come from the provider, never from the request.
         const { calendars } = await providerCalendars(scope, input.credentialAccountId);
         const requested = new Set(input.providerCalendarIds);
         const chosen = calendars.filter((calendar) => requested.has(calendar.providerCalendarId));

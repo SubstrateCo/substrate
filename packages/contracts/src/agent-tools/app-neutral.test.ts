@@ -12,7 +12,6 @@ const toolsOf = (app: AppId) => toolNames.filter((name) => toolApps(name).includ
 const appTools = toolNames.filter((name) => toolApps(name).length > 0);
 const agent = { id: "agent-a", name: "Agent", harness: "claude" as const, organizationId: "org-a" };
 
-/** The app tools and app skills that a text names. */
 function named(text: string) {
   return [
     ...appTools.filter((name) => new RegExp(`\\b${name}\\b`).test(text)),
@@ -28,7 +27,6 @@ test("what every agent reads names no optional app, so apps can be added without
     ...Object.fromEntries(
       enabledStartupSkills([]).map((skill) => [skill.id, skill.description + skill.content]),
     ),
-    // A core tool is offered whatever apps are enabled, so it cannot point to an app's tool.
     ...Object.fromEntries(
       toolNames
         .filter((name) => toolApps(name).length === 0)
@@ -39,7 +37,6 @@ test("what every agent reads names no optional app, so apps can be added without
     named(text).map((name) => `${source} names ${name}`),
   );
   expect(naming).toEqual([]);
-  // No fixed list of the apps either: the enabled apps are listed from their guides.
   for (const guide of appGuides) expect(general.instructions).not.toContain(guide.purpose);
 });
 
@@ -48,7 +45,6 @@ test("the instructions describe exactly the enabled apps", () => {
     const text = startupInstructions(agent, [guide.app]);
     expect(text).toContain(`- ${guide.title}: ${guide.purpose}`);
     for (const input of guide.inputs) expect(text).toContain(`- ${input}`);
-    // Nothing of an app that is off: not its purpose, and none of its tools.
     for (const other of appGuides.filter((entry) => entry !== guide)) {
       expect(text).not.toContain(other.purpose);
       const foreign = toolsOf(other.app).filter((name) => !toolApps(name).includes(guide.app));
@@ -63,7 +59,6 @@ test("every optional app with tools has a guide and a skill of its own", () => {
   expect(new Set(appGuides.map((guide) => guide.skill.id)).size).toBe(appGuides.length);
   for (const guide of appGuides) {
     expect(startupSkills).toContain(guide.skill);
-    // The inputs a guide lists are inputs of that app's own tools, or of core tools it relies on.
     for (const input of guide.inputs) {
       const tool = toolNames.find((name) => name === input.split(" ").at(0));
       expect(tool).toBeDefined();

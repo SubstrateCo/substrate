@@ -115,7 +115,6 @@ describe("transitions", () => {
     const lowest = Math.min(
       ...Array.from({ length: 40 }, (_, i) => eyesVisible(avatar.frame(116 + i * 16, env(0)))),
     );
-    // The spin into "happy" turns the face out of sight for a moment.
     expect(lowest).toBeLessThan(0.2);
   });
 });
@@ -142,7 +141,6 @@ describe("space", () => {
 });
 
 describe("ambient", () => {
-  // While searching, the only ambient action is a spin, which turns the face out of sight.
   const hidesFaceWhileSearching = (ambient: ControllerInput["ambient"]) => {
     const avatar = new AvatarController(3, { ...awake, mood: "searching", ambient }, 0);
     for (let now = 0; now < 30_000; now += 16) {

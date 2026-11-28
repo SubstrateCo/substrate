@@ -68,7 +68,6 @@ export function DealDetailView({
   const access = crmRecordCapabilities({ level: detail.level, archived });
   const editable = access.canEdit;
   const stage = stages.data?.find((row) => row.id === deal.stageId);
-  // The server clears the account ID when the reader cannot open the account.
   const accountId = deal.accountEntityId;
 
   return (

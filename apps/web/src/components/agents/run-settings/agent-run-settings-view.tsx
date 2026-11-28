@@ -12,7 +12,6 @@ import { Laptop } from "lucide-react";
 
 type HomeDevice = { name: string; online: boolean; current: boolean } | null;
 
-/** "When it runs": the shared frame of the card and its loading view. */
 export function WhenItRunsCard({ children }: { children: ReactNode }) {
   return (
     <SettingsSection title="When it runs">
@@ -33,10 +32,6 @@ export function RunsOnRow({ device, action }: { device: ReactNode; action?: Reac
   );
 }
 
-/**
- * Where the agent runs, whether it is on, and which messages start it. Each switch saves at once,
- * so this card has no footer and holds no draft.
- */
 export function AgentRunSettingsView({
   enabled,
   triggers,
@@ -53,14 +48,10 @@ export function AgentRunSettingsView({
   enabled: boolean;
   triggers: readonly AgentTriggerSetting[];
   homeDevice: HomeDevice;
-  /** Only the desktop app can become an agent's home. */
   canRunHere: boolean;
   moving: boolean;
-  /** A switch's change is being saved. */
   saving: boolean;
-  /** Moving the agent to this device failed. */
   moveError?: Error | null;
-  /** Saving a switch failed. */
   saveError?: Error | null;
   onRunHere: () => void;
   onEnabledChange: (enabled: boolean) => void;

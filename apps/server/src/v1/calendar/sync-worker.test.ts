@@ -75,7 +75,6 @@ test("provider errors map to the calendar's failure outcome", () => {
     new CalendarProviderFailure("provider_http_503", "Down"),
   ])
     expect(syncFailure(error)).toEqual({ outcome: "retry", errorCode: error.errorCode });
-  // Unknown errors keep their details out of the stored code.
   expect(syncFailure(undefined)).toEqual({
     outcome: "retry",
     errorCode: "sync_failed",
@@ -97,7 +96,6 @@ test("a failing calendar is recorded and the rest of the batch still syncs", asy
   expect(log.failed).toEqual([
     { claim: "expired", outcome: "reset", errorCode: "provider_gone" },
     { claim: "revoked", outcome: "reauth_required", errorCode: "reauth_required" },
-    // An unexpected error is retried, and its message is not stored.
     { claim: "crashed", outcome: "retry", errorCode: "sync_failed" },
   ]);
   expect(log.failures.join(" ")).not.toContain("secret");
@@ -137,7 +135,6 @@ test("ended meetings are recorded after syncing, and one failure does not stop t
   });
   worker.trigger();
   await worker.idle();
-  // Meetings are recorded from events the same run committed.
   expect(order).toEqual(["commit", "meetings"]);
   expect(log.recorded).toEqual(["ended"]);
   expect(log.failures).toHaveLength(1);

@@ -11,7 +11,6 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { initials } from "@/lib/people/initials";
 import { Building2, Settings } from "lucide-react";
 
-/** Up and Down move through the menu's actions, like a menu. The theme control keeps its own arrows. */
 function moveFocusWithArrows(event: KeyboardEvent<HTMLElement>) {
   const step = { ArrowDown: 1, ArrowUp: -1 }[event.key];
   if (!step) return;

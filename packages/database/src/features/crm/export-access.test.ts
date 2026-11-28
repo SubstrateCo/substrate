@@ -18,7 +18,6 @@ test("only current owners and admins export, and contacts export does not need t
   const bob = await f.forSession("bob");
   await owner.crm.requireExportAccess();
   expect(await rejection(bob.crm.requireExportAccess())).toBeInstanceOf(PermissionRequiredError);
-  // The role is read on each call, not when the scope was created.
   await f.db.update(member).set({ role: "member,admin" }).where(eq(member.id, "bob-a"));
   await bob.crm.requireExportAccess();
   await f.db.update(member).set({ role: "member" }).where(eq(member.id, "bob-a"));

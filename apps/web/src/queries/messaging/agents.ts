@@ -4,8 +4,6 @@ import { queryKeys } from "../keys";
 import { invalidateAddedMembers } from "./mutations";
 import { addAgent, removeAgent } from "@/api/messaging/requests";
 
-// Members add or remove only their own agents. Member lists, history and the mention
-// picker's agent results all change.
 export function useConversationAgents(organizationId: string, conversationId: string) {
   const client = useQueryClient();
   const refresh = () =>

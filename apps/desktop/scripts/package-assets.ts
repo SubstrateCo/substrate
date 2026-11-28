@@ -67,11 +67,6 @@ async function installedPackage(name: string, fromDirectory: string): Promise<st
   return undefined;
 }
 
-/**
- * Copy the installed graph, preserving package-relative CLI, native, and WASM assets.
- * `exclude` names packages that are never staged, wherever they appear in the graph, along with
- * their own dependencies. Only list packages that nothing imports at module load.
- */
 export async function stageInstalledPackages(options: {
   names: readonly string[];
   fromDirectory: string;
@@ -80,7 +75,6 @@ export async function stageInstalledPackages(options: {
 }) {
   const top = options.nodeModulesDirectory;
   const excluded = new Set(options.exclude);
-  // For each node_modules directory, the package source that Node resolves for a name from there.
   const visible = new Map<string, Map<string, string>>();
   function reserve(directories: readonly string[], name: string, source: string) {
     for (const directory of directories) {
@@ -89,10 +83,6 @@ export async function stageInstalledPackages(options: {
       visible.set(directory, names);
     }
   }
-  /**
-   * Choose where Node will resolve a dependency and return its pending copy, if one is needed.
-   * @param chain node_modules directories that Node searches, nearest first.
-   */
   async function stage(
     name: string,
     from: string,
@@ -108,14 +98,12 @@ export async function stageInstalledPackages(options: {
         `Required harness dependency is not installed: ${name} (required by ${from}).`,
       );
     }
-    // Node will find this exact package in an ancestor's node_modules. Do not copy a cycle.
     if (ancestors.has(source)) return;
     const found = chain.findIndex((directory) => visible.get(directory)?.has(name));
     if (found !== -1 && visible.get(chain[found])?.get(name) === source) {
       reserve(chain.slice(0, found), name, source);
       return;
     }
-    // Hoist as high as possible, below the nearest different version.
     const level = found === -1 ? chain.length - 1 : found - 1;
     if (level < 0) throw new Error(`Conflicting harness dependency versions: ${name}.`);
     reserve(chain.slice(0, level + 1), name, source);
@@ -178,7 +166,6 @@ export async function stageInstalledPackages(options: {
     // optionalDependencies override dependencies, as they do during package installation.
     for (const dependency of Object.keys(manifest.optionalDependencies))
       dependencies.set(dependency, true);
-    // Place all direct dependencies before their own dependencies can hoist through this level.
     const pending: (() => Promise<string>)[] = [];
     for (const [dependency, isOptional] of dependencies) {
       const copy = await stage(
@@ -193,7 +180,6 @@ export async function stageInstalledPackages(options: {
     for (const copy of pending) await copy();
     return manifest.version;
   }
-  // Reserve every top-level package first so a dependency cannot take its place.
   const roots = new Map<string, string>();
   for (const name of new Set(options.names)) {
     if (excluded.has(name))

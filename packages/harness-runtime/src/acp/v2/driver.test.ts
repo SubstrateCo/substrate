@@ -24,11 +24,9 @@ function spawner(script: FakeAgentScript) {
 
 interface Driven {
   updates: AcpUpdate[];
-  /** Resolves when an update matching the predicate arrives. */
   seen(match: (update: AcpUpdate) => boolean): Promise<void>;
 }
 
-/** Records updates; requests get answer(request), or the no-ask answer. */
 function driven(
   answer: AcpDriverHandlers["request"] = async (request) => request.deny(),
 ): Driven & { handlers: AcpDriverHandlers } {
@@ -117,7 +115,6 @@ test("the turn ends with the idle state_update, carrying its stop reason and usa
     d.handlers,
   );
   const opened = await f.connection.newSession(open, AbortSignal.timeout(5000));
-  // The setup response carries the command list.
   expect(d.updates).toContainEqual({ type: "commands", names: ["compact"] });
   const result = await f.connection.prompt(opened.sessionId, "go");
   expect(result).toEqual({
@@ -140,7 +137,6 @@ test("tool calls and messages are upserts: first sight creates, null and omissio
         { toolUpdate: { toolCallId: "t2", title: "Stop", status: "cancelled" } },
         { text: "Hel", messageId: "m1" },
         { message: { id: "m1", text: "Hello" } },
-        // A rewrite the client cannot apply to text it already emitted is dropped.
         { message: { id: "m1", text: "Bye" } },
       ],
     },
@@ -211,14 +207,12 @@ test("a prompt during the turn steers it natively; without a turn nothing is sen
   await f.live.close();
 });
 
-/** A turn that waits in a permission request until the agent holds the test's steer. */
 function heldSteer(
   steer: () => Promise<AcpSteerOutcome>,
   agent: () => FakeAgent,
 ): AcpDriverHandlers["request"] {
   return async (request) => {
     void steer();
-    // The turn's prompt and the steer's prompt.
     await agent().until(
       (record) => record.calls.filter((call) => call.method === "session/prompt").length === 2,
     );
@@ -270,7 +264,6 @@ test("a held steer the agent inserts after the idle extends the turn to the next
   sessionId = (await f.connection.newSession(open, AbortSignal.timeout(5000))).sessionId;
   expect(await f.connection.prompt(sessionId, "go")).toMatchObject({ stopReason: "end_turn" });
   expect(await steered).toBe("injected");
-  // The second interval's output arrived before the turn ended.
   expect(textOf(d.updates)).toBe("firstsecond");
   await f.live.close();
 });

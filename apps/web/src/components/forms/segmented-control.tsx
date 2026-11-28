@@ -7,10 +7,6 @@ export type SegmentedOption<T extends string> = {
   icon?: LucideIcon;
 };
 
-/**
- * One choice from two to four short options, such as Light, Dark, and System. Options read as
- * radio buttons. Use line Tabs for page sections and a Select for longer lists.
- */
 export function SegmentedControl<T extends string>({
   value,
   options,
@@ -23,7 +19,6 @@ export function SegmentedControl<T extends string>({
   options: readonly SegmentedOption<T>[];
   onValueChange: (value: T) => void;
   "aria-label": string;
-  /** Show only icons. Each option keeps its label as its accessible name. */
   iconOnly?: boolean;
   disabled?: boolean;
 }) {

@@ -34,7 +34,6 @@ function optionDescription(item: {
   return parts.filter(Boolean).join(" · ") || undefined;
 }
 
-/** Splits rows into runs of one kind, in the order the kinds first appear. */
 function groupByKind<T extends { kind: ReferenceKind }>(rows: readonly T[]) {
   const groups: { kind: ReferenceKind; rows: T[] }[] = [];
   for (const row of rows) {
@@ -45,7 +44,6 @@ function groupByKind<T extends { kind: ReferenceKind }>(rows: readonly T[]) {
   return groups;
 }
 
-/** Shown above the options, which stay mounted for the composer's active option. */
 function ReferenceSearchNotice({
   phase,
   onRetry,
@@ -92,24 +90,18 @@ export function ReferencePickerView({
     kind: ReferenceKind;
     title: string;
     image?: string | null;
-    /** Agents only. */
     avatar?: AgentAvatarCode | null;
     conversationName?: string;
-    /** Tasks only: tells tasks with the same title apart. */
     projectName?: string;
     status?: TaskStatus;
   }[];
-  /** Nothing to show yet. Rows that still match stay visible while a search refreshes. */
   loading?: boolean;
   error?: Error | null;
-  /** Kinds in "All" that may have more matches than shown. */
   truncatedKinds?: readonly ReferenceKind[];
   onKindChange: (kind: ReferenceTab) => void;
   onRetry?: () => void;
   onInsert: (token: string, reference: WorkspaceReference) => void;
 }) {
-  // The option the person moved to. Until they move, the best option is selected, so it follows
-  // better results as they arrive. The owner keys this view by query, so a new query resets it.
   const [activeId, setActiveId] = useState<string>();
   const link = useContext(ReferencePickerLink);
   const ownListId = useId();
@@ -129,12 +121,10 @@ export function ReferencePickerView({
   const selected = available.at(selectedIndex);
   const selectedId = selected ? optionId(selected) : undefined;
   const onActiveOptionChange = link?.onActiveOptionChange;
-  // The selection also changes when results load or shrink, not only from keys.
   useEffect(() => {
     onActiveOptionChange?.(selectedId);
     return () => onActiveOptionChange?.(undefined);
   }, [selectedId, onActiveOptionChange]);
-  // A query with spaces that matches nothing is probably prose, so the picker steps aside.
   const noMatches = phase.status === "empty";
   const onDismiss = link?.onDismiss;
   useEffect(() => {
@@ -163,7 +153,6 @@ export function ReferencePickerView({
     },
     choose: () => {
       if (selected) insert(selected);
-      // While results load, Enter waits for them rather than sending the message.
       return !!selected || loading;
     },
     cycle: (delta) => {

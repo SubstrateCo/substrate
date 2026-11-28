@@ -42,7 +42,6 @@ export function composeDesktop(options: {
   screenNotifications?: Pick<ScreenNotifications, "center" | "store" | "activate" | "deactivate">;
   openExternal?: (url: string) => void;
   openCalendarEvent?: (target: CalendarEventTarget) => void;
-  /** Asks the owner for an agent's working folder in a native dialog. */
   pickWorkspace?: () => Promise<string | null>;
 }) {
   const authority = new DesktopSessionAuthority(options);
@@ -122,11 +121,9 @@ export function composeDesktop(options: {
     connect(input: { organizationId: string | null }) {
       notificationOrganization = input.organizationId;
       notifications.disconnect();
-      // Reminders survive the renderer's reconnects. They reset only for a new session or workspace.
       if (input.organizationId) screen?.activate();
       void meetingReminders?.connect(input.organizationId);
       socket.connect(input);
-      // Main remains active while hidden. Recover a missed publish without renderer focus.
       clearInterval(notificationRecovery);
       notificationRecovery = setInterval(() => {
         void notifications.reconcile();
@@ -152,7 +149,6 @@ export function composeDesktop(options: {
     },
     disconnectRealtime: () => {
       realtime.disconnect();
-      // Sign-out, a session change, and quit all end here.
       meetingReminders?.disconnect();
       screen?.deactivate();
     },

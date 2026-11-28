@@ -11,7 +11,6 @@ import { and, asc, count, eq } from "drizzle-orm";
 type McpServerRow = typeof agentMcpServers.$inferSelect;
 
 function serverOf(row: McpServerRow): HarnessMcpServer {
-  // Parse again on read: a row is handed to native harnesses, so it must still pass the secret screen.
   return harnessMcpServerSchema.parse(
     row.transport === "http"
       ? { id: row.id, name: row.name, transport: "http", url: row.url }
@@ -29,7 +28,6 @@ function serverOf(row: McpServerRow): HarnessMcpServer {
 const scoped = (organizationId: string, agentId: string) =>
   and(eq(agentMcpServers.organizationId, organizationId), eq(agentMcpServers.agentId, agentId));
 
-/** An agent's user-added MCP servers. Each agent of each organization has its own list. */
 export function mcpServerRepository(run: RunTransaction) {
   return {
     /** In the order the owner added them. */

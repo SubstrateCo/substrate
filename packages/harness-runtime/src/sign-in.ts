@@ -9,11 +9,8 @@ import { startTerminalLogin, type TerminalLogin } from "./acp/terminal-login.ts"
 import { HarnessError } from "./errors.ts";
 import { randomUUID } from "node:crypto";
 
-/** Output kept per sign-in. Older text is dropped; cursors still count it. */
 const outputLimit = 64 * 1024;
-/** Each read returns at most this much text. */
 const readLimit = 32 * 1024;
-/** An agent sign-in or sign-out that runs this long is stopped. */
 const agentTimeoutMs = 10 * 60_000;
 const signOutTimeoutMs = 60_000;
 
@@ -22,7 +19,6 @@ interface Login {
   harness: HarnessKind;
   type: "agent" | "terminal";
   status: HarnessSignInStatus;
-  /** Retained output; text before dropped was removed. */
   output: string;
   dropped: number;
   terminal?: TerminalLogin;
@@ -30,15 +26,12 @@ interface Login {
 }
 
 export interface SignInOptions {
-  /** The directory the agent starts in for sign-in. */
   cwd: string;
   openPeer: OpenAcpPeer;
   requireAgent: (harness: HarnessKind) => Promise<AcpLaunch>;
-  /** Test seam for terminal logins. */
   startTerminal?: typeof startTerminalLogin;
 }
 
-/** Starts and tracks sign-ins to native agents. One sign-in per harness at a time. */
 export function createSignIns(options: SignInOptions) {
   const logins = new Map<HarnessKind, Login>();
   const startTerminal = options.startTerminal ?? startTerminalLogin;
@@ -130,7 +123,6 @@ export function createSignIns(options: SignInOptions) {
           .finally(() => peer.close().catch(() => {}));
         return state(login);
       }
-      // The login command is the agent's own launch with the method's arguments.
       await peer.close().catch(() => {});
       login.terminal = startTerminal(launch, method, {
         cwd: options.cwd,

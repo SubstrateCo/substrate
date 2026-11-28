@@ -49,7 +49,6 @@ export async function checkSharingManager(
   viewer: Viewer,
 ) {
   if (viewer.agent) throw new AccessDeniedError();
-  // Only partners need the connection, and only partner DMs the visibility.
   const partner = { connected: false, visible: false };
   if (!hosts(conversation, viewer)) {
     partner.connected = await hasSharingConnection(db, conversation.id, scope.organizationId);

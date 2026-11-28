@@ -4,10 +4,6 @@ import { day, type World } from "./world.ts";
 
 const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-/**
- * A weekday a few days ahead, as the owner would say it, with the dates it can mean. The host
- * clock and UTC can be on different calendar days, so both readings pass.
- */
 function spokenDay(ahead: number) {
   const date = new Date();
   date.setDate(date.getDate() + ahead);
@@ -15,7 +11,6 @@ function spokenDay(ahead: number) {
   const local = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   date.setDate(date.getDate() - 1);
   const previous = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-  /** before: "before Friday" can mean Friday or the day before it. */
   return { name, dates: [local], before: [local, previous] };
 }
 
@@ -25,7 +20,6 @@ const deal = async (world: World, key: string) =>
   (await world.owner.crm.getDeal(world.deals[key]!)).deal;
 const seededTaskIds = (world: World) => new Set(Object.values(world.tasks));
 
-/** Tasks that did not exist before the run, in every active project. */
 async function newTasks(world: World) {
   const known = seededTaskIds(world);
   const projects = await world.owner.projects.list();
@@ -35,7 +29,6 @@ async function newTasks(world: World) {
   return all.filter((entry) => !known.has(entry.entityId));
 }
 
-/** The reply says that the app for this work is not there: not enabled, off, or not in the list of apps. */
 const appIsOff = (text: string, app: RegExp) =>
   app.test(text) &&
   /(isn't|is not|aren't|are not|not) (enabled|turned on|on\b|available)|disabled|turned off|unavailable|has no\b|only has\b|no [\w-]+( or [\w-]+)? app/.test(
@@ -60,7 +53,6 @@ const paperworkDay = spokenDay(4);
 const certificateDay = spokenDay(6);
 const kickoffDay = spokenDay(5);
 
-/** What the agent posted in a channel: top-level messages and replies in the named threads. */
 async function agentMessages(
   world: World,
   record: RunRecord,
@@ -513,7 +505,6 @@ export const scenarios: Scenario[] = [
           projects.length === 1,
           projects.map((entry) => entry.name),
         ),
-        // Travel and hotels can be one task or two.
         check(
           "adds the three or four tasks",
           created.length === 3 || created.length === 4,
@@ -961,7 +952,6 @@ export const scenarios: Scenario[] = [
       ];
     },
   },
-  // The owner names no app, or the wrong one. The agent must pick the app by what the thing is.
   {
     id: "unnamed-reminder",
     apps: ["tasks"],
@@ -1129,7 +1119,6 @@ export const scenarios: Scenario[] = [
       ];
     },
   },
-  // An app is off. The agent works with the apps that are on and does not fake the other one.
   {
     id: "crm-off-status",
     apps: ["messages", "tasks"],
@@ -1199,7 +1188,6 @@ export const scenarios: Scenario[] = [
       ];
     },
   },
-  // Long requests that cross several apps, where one part depends on another.
   {
     id: "won-deal-kickoff",
     apps: ["crm", "tasks", "messages"],
@@ -1377,7 +1365,6 @@ export const scenarios: Scenario[] = [
       ];
     },
   },
-  // Files. The answer is in an attachment, not in the message that carries it.
   {
     id: "file-log",
     apps: ["messages", "tasks"],

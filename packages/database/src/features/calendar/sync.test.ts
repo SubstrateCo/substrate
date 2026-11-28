@@ -296,7 +296,6 @@ test("unlinking the account of a connected calendar keeps it and its events, dis
   await syncCalendarEvents(f.db, calendar.entityId, [providerEvent({ providerEventId: "a" })]);
   await f.db.delete(account).where(eq(account.id, credentialAccountId));
 
-  // The stored status stays active; only the credential is gone.
   expect(await calendarRow(calendar.entityId)).toMatchObject({
     credentialAccountId: null,
     syncStatus: "active",
@@ -314,7 +313,6 @@ test("unlinking the account of a connected calendar keeps it and its events, dis
   });
   expect(claim).toBeNull();
 
-  // Connecting through a newly linked account re-attaches the calendar and restarts its sync.
   const relinked = await linkCalendarAccount(f.db, "alice");
   const {
     result: [reattached],

@@ -39,12 +39,10 @@ const history = z.object({
     .default([]),
 });
 const cursorSchema = z.discriminatedUnion("kind", [
-  // A legacy unbounded backfill resumes as a fresh recent window, never at its old page token.
   z.object({ kind: z.literal("full") }),
   z.object({
     kind: z.literal("recent"),
     after: z.string(),
-    // Older desktop versions expect this field in a saved partial batch.
     started: z.number(),
     pending: z.array(z.string().min(1)).max(mailPageSize),
   }),
@@ -75,7 +73,6 @@ class GoogleReadError extends Error {
     this.status = status;
   }
 }
-/** Only protocol status and schema field names may leave the sync worker, never response data. */
 export function syncFailureKind(error: Error | undefined) {
   if (error instanceof GoogleReadError) return `Gmail HTTP ${error.status}`;
   if (error instanceof ReconnectRequired) return "Google authorization";
@@ -93,7 +90,6 @@ function decodeBody(part: Part, encoded: string) {
   try {
     return new TextDecoder(match?.[1] ?? match?.[2]).decode(bytes);
   } catch {
-    // Unknown sender-supplied encodings must not stall the entire mailbox checkpoint.
     return bytes.toString("utf8");
   }
 }
@@ -157,7 +153,6 @@ export function gmailReader(
         ? seconds * 1000
         : Date.parse(retryAfter ?? "") - Date.now();
       const ms = Math.max(Number.isFinite(cooldown) ? cooldown : 0, backoff);
-      // Release the shared mailbox lane instead of blocking Next for the whole cooldown.
       if (ms > 30_000) throw new GoogleReadError(response.status);
       await setTimeout(ms, undefined, { signal });
     }
@@ -183,7 +178,6 @@ export function gmailReader(
           );
           encoded = z.object({ data: z.string() }).parse(result).data;
         } catch (error) {
-          // A missing MIME part is not a deleted message.
           if (error instanceof GoogleReadError && error.status === 404) return undefined;
           throw error;
         }
@@ -259,7 +253,6 @@ export function gmailReader(
     };
   }
   async function startRecent() {
-    // Take the watermark first. Changes during this bounded snapshot belong to the next sync.
     const { historyId } = z.object({ historyId: z.string().min(1) }).parse(await get("profile"));
     return chunk(historyId, Date.now(), await latestIds());
   }
@@ -287,8 +280,6 @@ export function gmailReader(
       for (const e of h.messagesDeleted ?? []) deleted.add(e.message.id);
     }
     for (const id of deleted) ids.delete(id);
-    // Commit explicit removals and refresh cached labels on every history page. Only
-    // the final page can advance the watermark or download the bounded recent window.
     if (page.nextPageToken) {
       return {
         cursor: JSON.stringify({ kind: "history", after, token: page.nextPageToken }),
@@ -314,8 +305,6 @@ export function gmailReader(
       target: Parameters<typeof changeGmailLabels>[1],
       check: () => Promise<void>,
     ) => changeGmailLabels(action, target, token, signal, check, request),
-    // The unread list excludes spam and trash, just like the local view. Listing IDs
-    // also counts older unread messages whose bodies have never been opened on this device.
     unreadIds: () => listIds({ labelIds: "UNREAD", includeSpamTrash: "false" }, Infinity),
     messageLabels: (ids: Iterable<string>) =>
       readIds(ids, async (id) => {
@@ -369,7 +358,6 @@ export function gmailReader(
             .default([]),
         })
         .parse(await get("labels"));
-      // Standard folders/flags already have their own UI. Preserve categories, custom and nested names.
       return catalog.labels
         .filter((l) => l.type === "user" || !gmailFlags.has(l.id))
         .map(({ id, name }) => ({ id, name }));

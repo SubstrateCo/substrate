@@ -36,9 +36,7 @@ export function TaskMoveDialog({
     level: destinationResource.data?.level,
     archived: !!destinationResource.data?.project.archivedAt,
   });
-  // The task inspector opens this only for a task in its loaded project.
   if (!source) return null;
-  // A task can't move under itself or its own subtasks.
   const excluded = descendantIds(source.tasks, task.entityId).add(task.entityId);
   return (
     <TaskMoveDialogView

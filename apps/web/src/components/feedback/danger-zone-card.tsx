@@ -6,11 +6,6 @@ import { SettingsCard } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
 import { Trash2, type LucideIcon } from "lucide-react";
 
-/**
- * The danger zone of a settings area: a `destructive` card with one quiet red button that asks
- * first. Delete is the default; archive passes its own icon, labels, and `destructive={false}`,
- * because it can be undone.
- */
 export function DangerZoneCard({
   title,
   actionLabel,
@@ -28,19 +23,16 @@ export function DangerZoneCard({
   onRestoreFocus,
 }: {
   title: string;
-  /** Names the record for assistive technology when the visible title is generic. */
   actionLabel?: string;
   icon?: LucideIcon;
   description: ReactNode;
   confirmTitle: string;
   confirmDescription: ReactNode;
   confirmLabel?: string;
-  /** A solid red confirm. False for an action that can be undone, such as archive. */
   destructive?: boolean;
   pending: boolean;
   error?: Error | string | null;
   errorDescription: string;
-  /** Starts the mutation. Call `onDone` once it succeeds. */
   onConfirm: (onDone: () => void) => void;
   onReset: () => void;
   onRestoreFocus?: () => void;

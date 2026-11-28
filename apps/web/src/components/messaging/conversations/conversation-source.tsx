@@ -16,7 +16,6 @@ import { accountOptions, dealOptions } from "@/queries/crm/options";
 const linkClassName =
   "underline decoration-muted-foreground underline-offset-4 hover:text-muted-foreground";
 
-/** Opens the conversation's record sheet over the pane, keeping the open thread. */
 export function RecordSheetLink({ children }: { children: string }) {
   return (
     <Link
@@ -30,10 +29,6 @@ export function RecordSheetLink({ children }: { children: string }) {
   );
 }
 
-/**
- * The CRM record the conversation was opened from. It shows only a record the viewer can read; a
- * contact opens in the workspace contact sheet, a deal or account in the conversation's sheet.
- */
 export function ConversationSource({ source }: { source: MessageSource }) {
   const crm = useOrganizationApps().enabled("crm");
   const name = useSourceName(source, crm);
@@ -56,7 +51,6 @@ export function ConversationSource({ source }: { source: MessageSource }) {
   );
 }
 
-/** The readable name of the source record, or nothing while it loads or when it is unreadable. */
 function useSourceName(source: MessageSource, enabled: boolean) {
   const { organizationId } = useWorkspaceScope();
   const deal = useQuery({
@@ -76,7 +70,6 @@ function useSourceName(source: MessageSource, enabled: boolean) {
   return contact.data?.profile.displayName;
 }
 
-/** A task discussion's task, or the deal or account the conversation was opened from. */
 export function ConversationRecordSheet({
   conversation,
   source,

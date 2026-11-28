@@ -14,7 +14,6 @@ export type RecordDetailProps = {
   onOpenConversation?: (conversationId: string, messageId?: string) => void;
 };
 
-/** The detail view for any workspace record. The shell places it in its right panel. */
 export function RecordDetail({
   organizationId,
   target,

@@ -22,7 +22,6 @@ export type RecordOwnerProps = {
   onRestoreFocus?: () => void;
 };
 
-/** Reassigns responsibility. Show it only to readers whose capabilities allow `canReassign`. */
 export function RecordOwner({ entityId, name, record, onClose, onRestoreFocus }: RecordOwnerProps) {
   const { organizationId } = useWorkspaceScope();
   const id = useId();

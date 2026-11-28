@@ -25,7 +25,6 @@ export type InteractionDraft = {
 
 const kinds = interactionKinds.map((value) => ({ value, label: interactionKindLabels[value] }));
 
-/** Logs a call, meeting or note against a contact. The contact's readers can see it. */
 export function InteractionForm({
   scope,
   contact,

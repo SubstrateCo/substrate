@@ -31,7 +31,6 @@ export function pictureMutationOptions(
     switch (target.kind) {
       case "avatar":
         await queryClient.invalidateQueries({ queryKey: queryKeys.session });
-        // The frame reads the picture from route context, so reload it too.
         await reloadRouteContext();
         return;
       case "organization-logo":

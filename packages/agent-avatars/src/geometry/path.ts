@@ -1,11 +1,9 @@
 import { profileAngle } from "./bodies.ts";
 
-/** Rounds to 2 decimals so path strings stay short. */
 export function fmt(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-/** A smooth closed path through the profile points (Catmull-Rom converted to cubic Béziers). */
 export function radialPath(radii: readonly number[], radius: number): string {
   const count = radii.length;
   const xs = Array.from<number>({ length: count });

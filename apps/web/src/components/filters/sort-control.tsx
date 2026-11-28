@@ -11,11 +11,6 @@ import { ArrowUpDown } from "lucide-react";
 
 export type SortOption<Value extends string> = { value: Value; label: string };
 
-/**
- * A list's sort order as a pill, `[↕ Sort │ Task ID]`, that opens a menu of orders. Fully
- * controlled, and separate from filters: clearing filters keeps the sort. Its name reads
- * "Sort: Task ID".
- */
 export function SortControl<Value extends string>({
   options,
   value,
@@ -33,7 +28,6 @@ export function SortControl<Value extends string>({
       <DropdownMenuTrigger asChild>
         <Pressable
           aria-label={`${label}: ${current?.label ?? "Unknown"}`}
-          // The filter pill's frame, so sort sits with the pills.
           className="flex h-7 max-w-full shrink-0 items-stretch overflow-hidden rounded-md border border-control-border bg-card text-xs hover:bg-row-hover aria-expanded:bg-row-hover"
         >
           <span className="flex items-center gap-1 px-2 text-muted-foreground">

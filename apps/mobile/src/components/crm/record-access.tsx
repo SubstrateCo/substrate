@@ -56,7 +56,6 @@ function PersonField({
   );
 }
 
-/** The person responsible for an account or deal. Responsibility does not grant access. */
 export function RecordOwnerProperty({
   scope,
   record,
@@ -94,7 +93,6 @@ function OwnerForm({
 }) {
   const directory = useRecordPeople(scope);
   const write = useCrmAccessWrite(scope);
-  // The record as first seen, so the server rejects the change if someone else moved it first.
   const [expected] = useState(record);
   const [personId, setPersonId] = useState<string | null>(null);
   const [keepRestricted, setKeepRestricted] = useState(false);
@@ -144,7 +142,6 @@ function OwnerForm({
   );
 }
 
-/** Direct access grants on an account or deal. Only access owners see and change them. */
 export function RecordSharing({
   scope,
   entityId,

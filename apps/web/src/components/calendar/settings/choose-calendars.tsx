@@ -5,7 +5,6 @@ import { isCalendarAccessRequired } from "@/api/calendar/access";
 import type { useConnectCalendars } from "@/queries/calendar/mutations";
 import { providerCalendarsOptions } from "@/queries/calendar/options";
 
-/** Loads an account's calendars from the provider and connects the chosen ones. */
 export function ChooseCalendars({
   organizationId,
   credentialAccountId,

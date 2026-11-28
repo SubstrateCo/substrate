@@ -25,7 +25,6 @@ export function desktopLocalConfiguration(
     chooseWorkspace: () => bridge.chooseWorkspace({ agentId }),
     clearWorkspace: () => bridge.clearWorkspace({ agentId }),
     async resetDefaults() {
-      // Reset writes from the latest saved agent, so sync it to the host first.
       await bridge.synchronize();
       await bridge.resetDefaults({ harness, agentId });
     },

@@ -13,7 +13,6 @@ import { and, eq } from "drizzle-orm";
 
 export type SessionRow = typeof agentSessions.$inferSelect;
 
-/** The agent, its actor in the organization, and its owner. */
 export interface AgentRef {
   organizationId: string;
   userAgentId: string;
@@ -29,7 +28,6 @@ export interface EnsureSessionInput {
   destination?: TurnPlace | null;
 }
 
-/** The provenance columns of a row, copied from its agent. */
 export const agentColumns = (agent: AgentRef): AgentRef => ({
   organizationId: agent.organizationId,
   userAgentId: agent.userAgentId,
@@ -37,18 +35,15 @@ export const agentColumns = (agent: AgentRef): AgentRef => ({
   ownerUserId: agent.ownerUserId,
 });
 
-/** The helper behind a helper session, or null for every other session. */
 export function helperIdOf(session: Pick<SessionRow, "kind" | "key">) {
   return session.kind === "helper" ? (parseSessionKey(session.key)?.id ?? null) : null;
 }
 
-/** The slot a session's turns run in: the agent's main folder, or a helper's own folder. */
 export function folderKey(session: Pick<SessionRow, "kind" | "key" | "userAgentId">) {
   const helperId = helperIdOf(session);
   return helperId ? folderKeys.helper(helperId) : folderKeys.main(session.userAgentId);
 }
 
-/** The agent's session with this key, created on first use. An existing session keeps its places. */
 export async function ensureSession(
   db: DatabaseExecutor,
   agent: AgentRef,
@@ -78,7 +73,6 @@ export async function ensureSession(
   return row;
 }
 
-/** Fires the session event, unless the session is in a state the event does not fire from. */
 export async function setSessionStatus(
   db: DatabaseExecutor,
   id: string,

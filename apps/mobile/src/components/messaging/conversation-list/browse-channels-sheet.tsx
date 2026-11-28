@@ -9,7 +9,6 @@ import { countLabel } from "@/features/messaging/format";
 import type { Conversation } from "@/features/messaging/types";
 import { EmptyState, MutationError } from "@/features/records/ui/states";
 
-/** Public channels the person can read but has not joined, with Open and Join. */
 export function BrowseChannelsSheet({
   channels,
   joiningId,

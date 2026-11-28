@@ -4,21 +4,14 @@ function countByThread(threadIds: readonly string[]) {
   return counts;
 }
 
-/**
- * Unread replies per thread root. The replies unread on opening stay marked until their thread is
- * opened here, even if another device reads them first. The open thread has no mark.
- */
 export function unreadRepliesByThread({
   opening,
   live,
   opened,
   openThreadId,
 }: {
-  /** One root ID per reply that was unread when the conversation opened. */
   opening: readonly string[];
-  /** One root ID per reply that is unread now. */
   live: readonly string[];
-  /** Threads opened since the conversation opened. */
   opened: readonly string[];
   openThreadId?: string;
 }) {

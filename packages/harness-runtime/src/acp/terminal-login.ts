@@ -2,13 +2,8 @@ import { HarnessError } from "../errors.ts";
 import { launch, stopProcess, type NativeProcess } from "../process.ts";
 import type { AcpAuthMethod, AcpLaunch } from "./api.ts";
 
-/** A terminal login that does not finish in this time is stopped. */
 const loginTimeoutMs = 15 * 60_000;
 
-/**
- * Environment keys a login method may not set: they change which program or library loads, or
- * where network traffic and TLS trust go.
- */
 const blockedEnvironment = [
   /^PATH$/,
   /^PATHEXT$/,
@@ -27,14 +22,12 @@ const blockedEnvironment = [
   /^REQUESTS_CA_BUNDLE$/,
 ];
 
-/** True when a login method may set this environment key. */
 export function allowedLoginEnvironmentKey(key: string): boolean {
   if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) return false;
   const upper = key.toUpperCase();
   return !blockedEnvironment.some((pattern) => pattern.test(upper));
 }
 
-/** The method's environment. Throws when it sets a blocked key. */
 export function loginEnvironment(method: Pick<AcpAuthMethod, "env">) {
   const env = method.env ?? {};
   for (const key of Object.keys(env))
@@ -46,31 +39,21 @@ export function loginEnvironment(method: Pick<AcpAuthMethod, "env">) {
   return { ...env };
 }
 
-// CSI, OSC (BEL or ST terminated), and single-character escapes.
 // oxlint-disable-next-line no-control-regex -- terminal escapes are control characters.
 const ansiPattern = /\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-Z\\-_]/g;
 // oxlint-disable-next-line no-control-regex -- other control characters except tab and newline.
 const controlPattern = /[\x00-\x08\x0b-\x1f\x7f]/g;
 
-/** Terminal output as plain text: no escapes, carriage returns as new lines. */
 export function stripAnsi(text: string): string {
   return text.replace(ansiPattern, "").replace(/\r\n?/g, "\n").replace(controlPattern, "");
 }
 
 export interface TerminalLogin {
-  /** Sends one line to the login command's standard input. */
   write(line: string): void;
-  /** Stops the login command. done then resolves to false. */
   cancel(): Promise<void>;
-  /** true when the login command exits with code 0. */
   done: Promise<boolean>;
 }
 
-/**
- * Runs the agent's terminal sign-in: the same launch with the method's arguments appended and its
- * environment applied. shell:false, every argument separate. Output reaches onOutput without ANSI
- * escapes, from stdout and stderr.
- */
 export function startTerminalLogin(
   agent: AcpLaunch,
   method: AcpAuthMethod,

@@ -1,4 +1,3 @@
-/** Compact elapsed or remaining time, such as 45s, 3m 05s, or 1h 02m 03s. */
 export function formatDuration(ms: number) {
   const seconds = Math.max(0, Math.floor(ms / 1000));
   const pad = (value: number) => String(value).padStart(2, "0");
@@ -8,7 +7,6 @@ export function formatDuration(ms: number) {
   return `${Math.floor(minutes / 60)}h ${pad(minutes % 60)}m ${pad(seconds % 60)}s`;
 }
 
-/** 1st, 2nd, 3rd, 4th, 11th, 21st. */
 export function ordinal(value: number) {
   const tens = value % 100;
   if (tens >= 11 && tens <= 13) return `${value}th`;

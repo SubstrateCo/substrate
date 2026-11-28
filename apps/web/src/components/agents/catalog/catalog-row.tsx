@@ -13,7 +13,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Pencil, Settings, Trash2 } from "lucide-react";
 
-/** One row of a `ConfigurationList`: the picture, name and detail, then its actions. */
 function CatalogRowLayout({
   picture,
   name,
@@ -28,7 +27,6 @@ function CatalogRowLayout({
   mono?: boolean;
 }) {
   return (
-    // The Item sits inside the list item, so the list's dividers stay on the <li>.
     <li>
       <Item className="group/row flex-nowrap">
         {picture && <ItemMedia variant="icon">{picture}</ItemMedia>}
@@ -54,7 +52,6 @@ export function CatalogRowLoading({ picture = false }: { picture?: boolean }) {
   );
 }
 
-/** A read-only row, such as a skill or server that Substrate adds on its own. */
 export function CatalogRowStatic({
   name,
   detail,
@@ -80,7 +77,6 @@ export function CatalogRow({
   disabled,
 }: {
   name: string;
-  /** Show the name as a file name, in monospace. */
   mono?: boolean;
   detail: ReactNode;
   picture?: ReactNode;

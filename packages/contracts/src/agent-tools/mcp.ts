@@ -3,7 +3,6 @@ import { z } from "zod";
 
 export { turnContextSchema, type TurnContext } from "./turn-context.ts";
 
-// The host supplies agent, organization and turn scope from a live per-turn MCP lease, not tool input.
 export const workspaceApiRequest = mcpCall;
 export type WorkspaceApiRequest = z.infer<typeof workspaceApiRequest>;
 export const workspaceApiResult = z.discriminatedUnion("success", [

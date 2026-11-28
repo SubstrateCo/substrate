@@ -17,21 +17,16 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 export type ItemRow = typeof agentWorkItems.$inferSelect;
 export type ItemEvent = keyof typeof inboxItemMachine.events;
 
-/** A human message waits this long for more messages before its turn can start. */
 export const ownerMessageDebounceMs = 500;
-/** A batch of human messages closes this long after its first message. */
 export const ownerBatchWindowMs = 2000;
 
-/** Items that can still start a turn. confirmed_unconsumed items go first in their lane. */
 export const claimableStatuses: InboxStatus[] = ["pending", "confirmed_unconsumed"];
-/** Items not yet in a finished turn. */
 export const openStatuses: InboxStatus[] = [
   "pending",
   "submitted",
   "confirmed_unconsumed",
   "uncertain",
 ];
-/** Sources that can start a turn. Passive context only joins a live one. */
 export const startingSources = inboxSources.filter(
   (source) => triggerRegistry[source].canStartTurn,
 );
@@ -40,7 +35,6 @@ export const steerableSources = inboxSources.filter((source) => triggerRegistry[
 const later = (now: Date, ms: number) => new Date(now.getTime() + ms);
 const earliest = (...dates: Date[]) => new Date(Math.min(...dates.map((date) => date.getTime())));
 
-/** Fires the event for the items that are still in one of its from states. */
 export async function setItemStatus(
   db: DatabaseExecutor,
   ids: string[],
@@ -68,7 +62,6 @@ export interface NewWorkItem {
   body?: string | null;
 }
 
-/** Adds passive thread messages to the open batch for the same turn, if one has room. */
 async function mergeThreadContext(
   db: DatabaseExecutor,
   ref: Extract<InboxSourceRef, { source: "thread_context" }>,
@@ -107,12 +100,6 @@ async function mergeThreadContext(
   return updated;
 }
 
-/**
- * Inserts an item unless the agent already has one with its dedupe key, in the lane the trigger
- * registry gives its source. Owner messages wait for more messages: each new one moves the
- * session's open batch 500 ms out, up to 2 s after its first message. Passive thread messages
- * merge into the open batch for their turn. Returns the new or merged item, or undefined.
- */
 export async function enqueue(db: DatabaseExecutor, item: NewWorkItem, now: Date) {
   const ref = item.sourceRef;
   const passive = ref.source === "thread_context";

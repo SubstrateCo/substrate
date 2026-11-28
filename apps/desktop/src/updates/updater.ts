@@ -3,7 +3,6 @@ import type {
   DesktopUpdateStatus,
 } from "@substrate/contracts/desktop/updates-ipc";
 
-/** The part of electron-updater's AppUpdater that the desktop uses. */
 export interface UpdateEngine {
   autoDownload: boolean;
   autoInstallOnAppQuit: boolean;
@@ -34,16 +33,13 @@ export function updateInstallMode(platform: NodeJS.Platform, packaged: boolean):
 }
 
 export function createDesktopUpdater(options: {
-  /** Absent when this installation cannot update. */
   engine: UpdateEngine | undefined;
   install: UpdateInstall;
   appVersion: string;
   releasePage: (version: string) => string;
   onChange: (status: DesktopUpdateStatus) => void;
-  /** Called once per version when an update needs the person: ready to install, or to download. */
   onAttention?: (state: Extract<DesktopUpdateState, { status: "available" | "ready" }>) => void;
   openExternal: (url: string) => Promise<void>;
-  /** Stops agent work and services before the installer replaces the running app. */
   prepareInstall: () => Promise<void>;
   log: (message: string, error: Error) => void;
 }) {
@@ -99,7 +95,6 @@ export function createDesktopUpdater(options: {
       if (pendingCheck) return;
       log("Desktop update failed.", error);
       if (state.status !== "downloading" && !installing) return;
-      // A failed install lets the person try again.
       installing = false;
       set({ status: "error" });
     });
@@ -108,7 +103,6 @@ export function createDesktopUpdater(options: {
   async function runCheck(manual: boolean) {
     if (!engine) return;
     const previous = state;
-    // Background checks stay quiet. Only a check the person asked for shows progress and errors.
     if (manual) set({ status: "checking" });
     try {
       const result = await engine.checkForUpdates();
@@ -125,7 +119,6 @@ export function createDesktopUpdater(options: {
   }
 
   async function check(manual: boolean) {
-    // A downloaded or downloading update is already the newest this session can install.
     const hasUpdate = state.status === "downloading" || state.status === "ready";
     if (engine && !installing && !hasUpdate) {
       pendingCheck ??= runCheck(manual).finally(() => {
@@ -139,7 +132,6 @@ export function createDesktopUpdater(options: {
   return {
     status,
     checkForUpdates: () => check(true),
-    /** Check now and then every ten minutes, without blocking startup. */
     start() {
       if (!engine || timer) return;
       void check(false);
@@ -159,7 +151,6 @@ export function createDesktopUpdater(options: {
       try {
         await options.prepareInstall();
       } catch (error) {
-        // Quitting shuts the same services down, so a failure here must not keep the old version.
         log(
           "Desktop shutdown before update failed.",
           error instanceof Error ? error : new Error(String(error)),

@@ -42,7 +42,6 @@ export const unreadCounts = (query: { organizationId: string }, signal?: AbortSi
   readResult(messaging.unread.$get({ query }, init(signal)));
 export const markConversationRead = (json: ConversationTarget & { messageId: string }) =>
   readResult(messaging.read.$post({ json }));
-/** A profile as this conversation lets the viewer see it. */
 export const getMessagingProfile = (
   query: ConversationTarget & { actorId: string },
   signal?: AbortSignal,

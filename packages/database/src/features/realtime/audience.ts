@@ -24,7 +24,6 @@ export type ReceiverIdentity = Pick<RealtimeReceiver, "userId" | "organizationId
 // SAFETY: the brand is type-only; resolveReceiver calls this after its checks pass.
 const receiver = (value: Omit<RealtimeReceiver, typeof resolved>) => value as RealtimeReceiver;
 
-// Resolves a verified user and, in a workspace, their active human actor in one statement.
 export async function resolveReceiver(
   db: DatabaseExecutor,
   identity: ReceiverIdentity,
@@ -33,8 +32,6 @@ export async function resolveReceiver(
   return resolved ?? null;
 }
 
-// Resolves each identity exactly as alone, in at most one statement for account scopes and one
-// for workspaces. Results follow the input order; a pair matches only its own row.
 export async function resolveReceivers(
   db: DatabaseExecutor,
   identities: readonly ReceiverIdentity[],
@@ -111,9 +108,6 @@ export async function resolveReceivers(
 
 export type AudienceFilter = (receiver: RealtimeReceiver) => boolean;
 
-// Resolves who may receive an audience, once per change. Only conversation and entity audiences
-// read the database: one statement, or two for a task discussion. Conversations use conversationReaders, the set form of visibleConversations: a public channel reaches its
-// own workspace, and a live, approved human participant reaches the participant's workspace. Callers pass receivers freshly returned by resolveReceiver.
 export async function audienceRecipients(
   db: DatabaseExecutor,
   audience: Readonly<RealtimeAudience>,
@@ -141,7 +135,6 @@ export async function audienceRecipients(
           members.has(JSON.stringify([receiver.userId, receiver.organizationId])));
     }
     case "entity": {
-      // The people who can read the entity, by the same rule as requireAccess, in one statement.
       const [, organizationId, entityId] = audience;
       const rows = await db.execute<{ entity_id: string }>(entityReaders(organizationId, entityId));
       const readers = new Set(rows.map((row) => row.entity_id));

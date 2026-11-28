@@ -199,7 +199,6 @@ test("a helper's task is input from its parent agent, not a helper report", () =
 });
 
 test("a message item names its workspace message ID apart from the inbox item ID", () => {
-  // Agents passed the inbox item ID as sourceMessageId, which the server cannot find.
   const item = envelopeItem(row("inbox-1", 1), {
     sessionKind: "dm",
     messages: new Map([["m1", message]]),
@@ -217,7 +216,6 @@ test("an owner message the owner can no longer see is left out", () => {
 });
 
 test("the turn carries the desktop's local date, weekday and time zone beside its UTC time", () => {
-  // 02:02 UTC on Saturday is still Friday evening in New York.
   const now = Date.parse("2026-11-28T02:02:49.000Z");
   expect(localTime(now, "America/New_York")).toEqual({
     time: "2026-11-27T21:02:49-05:00",

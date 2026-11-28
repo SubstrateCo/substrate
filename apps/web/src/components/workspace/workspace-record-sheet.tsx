@@ -15,17 +15,12 @@ type SheetRecord = { kind: "interaction"; id: string } | { kind: "contact"; id: 
 
 const sheetLabels = { interaction: "Interaction", contact: "Contact" } as const;
 
-/** The interaction wins: one opened from a contact keeps `contactId` to return to it. */
 function sheetRecord(contactId?: string, interactionId?: string): SheetRecord | null {
   if (interactionId) return { kind: "interaction", id: interactionId };
   if (contactId) return { kind: "contact", id: contactId };
   return null;
 }
 
-/**
- * A contact or interaction opened over any workspace app. An interaction opened from a contact
- * keeps `contactId`, so closing the interaction returns to the contact.
- */
 export function WorkspaceRecordSheet({
   contactId,
   interactionId,
@@ -71,7 +66,6 @@ function RecordSheetContent({ record }: { record: SheetRecord }) {
   );
 }
 
-/** With CRM, the contact opens in this sheet; without it, on the person's interactions page. */
 function ContactNameLink({ contact }: { contact: { entityId: string; name: string } }) {
   const { organizationId } = useWorkspaceScope();
   const crmEnabled = useOrganizationApps().enabled("crm");

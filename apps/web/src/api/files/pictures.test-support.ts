@@ -10,10 +10,6 @@ export interface FakeRequest {
 
 type Responder = (request: FakeRequest) => Response | Promise<Response>;
 
-/**
- * Picture APIs wired to a fake server. Each request takes the next responder in order. A
- * request with no responder left fails the test.
- */
 export function fakePictureServer(...responders: Responder[]) {
   const requests: FakeRequest[] = [];
   const fetch = Object.assign(
@@ -39,6 +35,5 @@ export function fakePictureServer(...responders: Responder[]) {
   };
 }
 
-/** Reads a recorded JSON request body. */
 export const jsonBody = (request: FakeRequest | undefined) =>
   new Response(request?.init?.body).json();

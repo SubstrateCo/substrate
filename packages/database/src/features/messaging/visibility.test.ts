@@ -5,7 +5,6 @@ import { expect, test } from "bun:test";
 
 const f = setupDatabase();
 
-// A correlated participant subquery would run once for every conversation of every organization.
 test("listing visible conversations computes the viewer's memberships once", async () => {
   const query = f.db
     .select({ id: messagingConversations.id })

@@ -13,10 +13,6 @@ import {
 import type { ActorIdentity } from "@/lib/actors/identity";
 import { UserMinus } from "lucide-react";
 
-/**
- * One person or agent with access to a record or project: avatar, name, an optional meta line,
- * the level (text, or a ghost select for a viewer who may change it), and a remove action when the viewer may remove them.
- */
 export function AccessRow({
   actor,
   meta,
@@ -27,9 +23,7 @@ export function AccessRow({
 }: {
   actor: ActorIdentity;
   meta?: ReactNode;
-  /** The level as text, such as "Can edit". */
   level: string;
-  /** Replaces the text when the viewer may change the level: a ghost `SelectTrigger`. */
   levelControl?: ReactNode;
   disabled?: boolean;
   onRemove?: () => void;

@@ -9,10 +9,6 @@ import {
 } from "../../src/index.ts";
 import type { Behaviour } from "./behaviour-panel.tsx";
 
-/**
- * Bystanders watch the hero. On the floor they stand further back; in space they hang at
- * different depths, so the far ones are smaller and softer.
- */
 const CROWD = [
   { seed: "atlas", left: "14%", depth: 0.55, floatTop: "18%" },
   { seed: "juniper", left: "82%", depth: 0.5, floatTop: "24%" },

@@ -6,9 +6,6 @@ interface Lookup {
   reject(error: Error): void;
 }
 
-// Coalesces receiver lookups that start in the same event-loop turn, such as the session
-// rechecks an access hint causes, into one batch. Each lookup gets only its own result, and
-// nothing outlives the batch. A failed or malformed batch rejects every lookup in it.
 export function coalesceReceivers(
   resolveMany: (identities: ReceiverIdentity[]) => Promise<(RealtimeReceiver | null)[]>,
   maxBatch = 100,

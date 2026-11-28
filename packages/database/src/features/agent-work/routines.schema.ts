@@ -18,8 +18,6 @@ import {
 
 const limit = (name: keyof typeof routineLimits) => sql.raw(String(routineLimits[name]));
 
-// Scheduled unattended work. The server scheduler fires a routine only while the owner approved
-// its current revision; each fire queues one routine item in the routine's session.
 export const agentRoutines = pgTable(
   "agent_routines",
   {
@@ -29,9 +27,7 @@ export const agentRoutines = pgTable(
     prompt: text("prompt").notNull(),
     cron: text("cron").notNull(),
     timezone: text("timezone").notNull(),
-    // Grows with each change to what the routine does or where it posts.
     revision: integer("revision").notNull().default(1),
-    // The revision the owner approved. Routines the agent creates start unapproved.
     approvedRevision: integer("approved_revision"),
     destinationConversationId: uuid("destination_conversation_id").notNull(),
     destinationThreadId: uuid("destination_thread_id"),
@@ -54,11 +50,9 @@ export const agentRoutines = pgTable(
       columns: [table.destinationConversationId, table.destinationThreadId],
       foreignColumns: [messagingMessages.conversationId, messagingMessages.id],
     }).onDelete("cascade"),
-    // The scheduler's due query.
     index("agent_routines_due_idx")
       .on(table.nextFireAt)
       .where(sql`${table.enabled} AND ${table.nextFireAt} IS NOT NULL`),
-    // An agent's routines: list tools and the owner's views.
     index("agent_routines_agent_idx").on(table.userAgentId, table.createdAt),
     check(
       "agent_routines_text_check",

@@ -6,12 +6,9 @@ import {
 
 import type { z } from "zod";
 
-/** One argument row. The id only keys the row in the editor; it is not saved. */
 export type McpServerArgRow = { id: string; value: string };
-/** One environment variable row. The id only keys the row in the editor; it is not saved. */
 export type McpServerEnvironmentRow = { id: string; key: string; value: string };
 
-/** One editable server: every field of both transports, so switching keeps what was typed. */
 export type McpServerDraft = {
   name: string;
   transport: HarnessMcpServer["transport"];
@@ -33,9 +30,7 @@ export type McpServerDraftErrors = {
   name?: string;
   command?: string;
   url?: string;
-  /** By row index. */
   args: Record<number, string>;
-  /** By row index. */
   environment: Record<number, string>;
 };
 
@@ -58,7 +53,6 @@ export function draftFromServer(server?: HarnessMcpServer): McpServerDraft {
   };
 }
 
-/** The stable ID of a new server: its name in lowercase words joined by hyphens. */
 export function mcpServerId(name: string) {
   return name
     .trim()
@@ -133,10 +127,6 @@ function stdioServer(
   return server;
 }
 
-/**
- * The server to save, or field errors. Empty argument and variable rows are dropped. A new
- * server's ID comes from its name and must not match another server.
- */
 export function serverFromDraft(
   draft: McpServerDraft,
   options: { id?: string; servers: readonly HarnessMcpServer[] },
@@ -147,7 +137,6 @@ export function serverFromDraft(
   const id = options.id ?? mcpServerId(draft.name);
   if (!options.id && id && options.servers.some((server) => server.id === id))
     errors.name = "Another server already has this name.";
-  // Each saved argument remembers its row, so an error lands under the right input.
   const argRows = draft.args.flatMap((arg, index) => (arg.value.trim() ? [index] : []));
   const args = argRows.map((index) => draft.args[index]!.value.trim());
   const environment: Record<string, string> = {};

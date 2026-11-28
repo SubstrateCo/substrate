@@ -51,7 +51,6 @@ function messageWorkLookups(
   requests: readonly AgentRequestView[],
   agentOf: (item: AgentWorkItemView) => string,
 ) {
-  // The first open request of each turn.
   const openRequests = new Map<string, AgentRequestView>();
   for (const request of requests)
     if (isOpenRequest(request) && !openRequests.has(request.turnId))
@@ -84,7 +83,6 @@ function uncertainItemsForTurn(turn: AgentWorkTurnView, uncertainIds: readonly s
   return uncertainIds.filter((id) => turnItems.has(id));
 }
 
-/** The first status listed for each agent. */
 function statusIndex(statuses: readonly AgentStatusView[] | undefined) {
   if (!statuses?.length) return undefined;
   const index = new Map<string, AgentStatusView>();
@@ -93,13 +91,6 @@ function statusIndex(statuses: readonly AgentStatusView[] | undefined) {
   return index;
 }
 
-/**
- * The owner's agent work in one conversation, for the channel and the thread pane. The server
- * returns work, requests and status only to the owner, on any of the owner's devices.
- *
- * Work loads whether or not the agent is still a member, so an agent that left still shows its
- * open requests and turns here.
- */
 export function ConversationAgentWork({
   conversation,
   onTranscript,
@@ -111,7 +102,6 @@ export function ConversationAgentWork({
 }) {
   const { userId, organizationId } = useWorkspaceScope();
   const { offscreen, onVisibilityChange } = useVisibleTurnStatuses();
-  // Members list agent IDs only for the viewer's own agents.
   const members = conversation.members.flatMap((member) =>
     member.type === "agent" && member.agentId
       ? [{ agentId: member.agentId, name: member.name }]
@@ -134,7 +124,6 @@ export function ConversationAgentWork({
   });
   const name = (agentId: string) =>
     agents.find((agent) => agent.agentId === agentId)?.name ?? "Agent";
-  // Agent work is the owner's, so the owner's catalog has every agent here.
   const { data: catalog } = useQuery(agentCatalogQueryOptions(userId));
   const avatarOf = (agentId: string) =>
     catalog?.agents.find((agent) => agent.id === agentId)?.avatar ?? null;
@@ -149,7 +138,6 @@ export function ConversationAgentWork({
     agentOf,
   );
   const queuedReplies = queuedReplyItems(items);
-  /** The latest work behind an agent's reply, or undefined for other messages. */
   const replyTurn = (messageId: string) =>
     outputs.has(messageId) ? placements.get(messageId)?.at(-1) : undefined;
 
@@ -212,7 +200,6 @@ export function ConversationAgentWork({
           mood: status.tone === "working" ? "working" : null,
         };
       });
-    // New topic is hidden for now; `useNewTopic` and the command stay in place.
     return <ComposerNotice lines={lines} startingTopic={false} />;
   };
 
@@ -238,7 +225,6 @@ export function ConversationAgentWork({
               })}
               {waiting.map((item) => {
                 const asReply = queuedReplies.has(item.id);
-                // The session's newest waiting message carries the queued reply row.
                 if (waits(item) && !asReply) return null;
                 const agentId = agentOf(item);
                 const sameAgent = itemsByAgent.get(agentId) ?? [];
@@ -293,7 +279,6 @@ export function ConversationAgentWork({
             )),
         badge: (messageId) => {
           const turn = replyTurn(messageId);
-          // Live work shows in the avatar's mood instead.
           if (!turn || turnMood(turn, openRequest(turn.id))) return null;
           return <WorkIndicator tone={turnTone(turn, openRequest(turn.id))} />;
         },

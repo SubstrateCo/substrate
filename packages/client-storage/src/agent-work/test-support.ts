@@ -4,7 +4,6 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-/** A store on a new SQLite file. Call cleanup when the test ends. */
 export async function openTestStore() {
   await mkdir(join(tmpdir(), "opencode"), { recursive: true });
   const root = await mkdtemp(join(tmpdir(), "opencode", "agent-work-store-"));
@@ -20,7 +19,6 @@ export async function openTestStore() {
   };
 }
 
-/** A turn attempt of a new server session. */
 export function turnRun(overrides: Partial<NewTurnRun> = {}): NewTurnRun {
   return {
     turnId: crypto.randomUUID(),

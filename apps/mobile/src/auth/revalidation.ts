@@ -1,4 +1,3 @@
-/** One uncached read closes the private boundary until authoritative state is published. */
 export function createSessionRevalidator<Session>({
   close,
   clear,

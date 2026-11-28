@@ -7,7 +7,6 @@ import { noNativeElement } from "./rules/no-native-element.ts";
 import { noRawErrorMessage } from "./rules/no-raw-error-message.ts";
 import { noTooltipOnToggleItem } from "./rules/no-tooltip-on-toggle-item.ts";
 
-/** Design-contract rules for the Substrate renderer. Messages point to apps/web/DESIGN.md. */
 export default {
   meta: { name: "design" },
   rules: {

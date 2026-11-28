@@ -223,7 +223,6 @@ describe("development seed", () => {
         .catch((error: Error) => error),
     ).toBeInstanceOf(AccessDeniedError);
 
-    // A rerun preserves edits and does not duplicate data or reset passwords.
     const [task] = await fixture.db.select().from(schema.tasks);
     await fixture.db
       .update(schema.tasks)

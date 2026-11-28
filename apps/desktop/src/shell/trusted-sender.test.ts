@@ -23,7 +23,6 @@ test("IPC rejects subframes, other windows, and untrusted origins", () => {
   ).toBe(false);
   const overlayFrame = { url: "https://desktop.example.com/overlay.html" };
   const overlay = { mainFrame: overlayFrame };
-  // Same origin, other window: each bridge accepts only the window it serves.
   expect(
     trustedSender(
       { sender: overlay, senderFrame: overlayFrame },

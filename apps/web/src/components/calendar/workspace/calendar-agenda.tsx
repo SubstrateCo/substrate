@@ -14,7 +14,6 @@ import { formatDayLabel, formatShortDate, isSameDay } from "@/lib/format/date";
 import { cn } from "cn";
 import { MapPin, Users, Video } from "lucide-react";
 
-/** Days with events, in order. Each event opens its details beside the agenda. */
 export function CalendarAgenda({
   days,
   now,
@@ -76,7 +75,6 @@ function AgendaRow({
 }: {
   event: CalendarEventSummary;
   day: Date;
-  /** The event is over; it reads quieter than what is still to come. */
   ended: boolean;
   selected: boolean;
   link: LinkProps;

@@ -275,7 +275,6 @@ test("a shared dependency is copied once at the top level and conflicting versio
   for (const from of ["nested", "outer", "outer/node_modules/nested"])
     expect(await resolved(from, "shared")).toBe("1.0.0");
   expect(await resolved("outer", "nested")).toBe("2.0.0");
-  // The nested copy keeps parser 1.x even though its parent hoisted parser 2.x.
   expect(await resolved("outer", "parser")).toBe("2.0.0");
   expect(await resolved("outer/node_modules/nested", "parser")).toBe("1.0.0");
 });

@@ -12,22 +12,10 @@ import { createRequestBridge } from "./requests.ts";
 import { createSteering } from "./steering.ts";
 import { createTurnExecutor } from "./turn-executor.ts";
 
-/** The host cycle runs at least this often: claims, stops, retries and continued turns. */
 const cycleIntervalMs = 30_000;
-/**
- * The server shows a device as online for 90 s after its last call, and leases its live turns
- * for 3 minutes. The heartbeat renews both.
- */
 const heartbeatMs = 60_000;
-/** Realtime hints within this window become one cycle. */
 const hintWindowMs = 300;
 
-/**
- * The agent host for one account and organization on the home desktop. The server owns the
- * work queue and every turn's lifecycle: the host claims turns into free slots, runs them in
- * native harness sessions, and reports their progress and end. Harness events are written to
- * the local transcript first.
- */
 export function createAgentWorkRuntime(
   base: Omit<RuntimeContext, "changed" | "progressed" | "later">,
   options: RuntimeTimers &
@@ -36,7 +24,6 @@ export function createAgentWorkRuntime(
     },
 ) {
   let stopped = false;
-  /** Shutting down: live turns end, and nothing new starts. */
   let draining = false;
   const timers = new Set<() => void>();
   let cycling: Promise<void> | undefined;
@@ -66,7 +53,6 @@ export function createAgentWorkRuntime(
     },
   };
   const org = context.organizationId;
-  // The request bridge reports through the executor, which needs the bridge itself.
   let executor: ReturnType<typeof createTurnExecutor>;
   const requests = createRequestBridge(context, {
     report: (live, state) => void executor.progress(live, { attempt: live.attempt, state }),
@@ -77,11 +63,6 @@ export function createAgentWorkRuntime(
   const steering = createSteering(context, executor);
   const localTools = createLocalTools(context, { executor });
 
-  /**
-   * One pass over the server: reports held-back turn ends, applies the server's view of this
-   * device's live turns (stops, moves, continued and retried turns, recovery after a restart),
-   * claims work into free slots, and steers waiting items into live turns.
-   */
   async function cycle() {
     await executor.reportEnds();
     await executor.reconcile(await context.host.sync(org));
@@ -113,7 +94,6 @@ export function createAgentWorkRuntime(
       .catch(() => context.log("Could not refresh agent sessions after a settings change."));
   }
 
-  /** Agent-work hints: a burst, such as the echoes of this desktop's own reports, runs once. */
   function hint() {
     hinted ??= context.later(() => {
       hinted = undefined;
@@ -155,7 +135,6 @@ export function createAgentWorkRuntime(
             void requests.deliver().catch(() => context.log("Could not deliver agent answers."));
         }, cycleIntervalMs),
       );
-      // The first cycle recovers the turns whose harness process died with the app.
       pump();
       await cycling;
     },
@@ -171,12 +150,11 @@ export function createAgentWorkRuntime(
       for (const clear of timers) clear();
       timers.clear();
       await cycling;
-      await executor.end([...executor.live.keys()], "retire", {
-        close: () =>
-          context.harness
-            .closeOrganization(org)
-            .catch(() => context.log("Could not close the organization's agent sessions.")),
-      });
+      await executor.end([...executor.live.keys()], "retire", () =>
+        context.harness
+          .closeOrganization(org)
+          .catch(() => context.log("Could not close the organization's agent sessions.")),
+      );
       dispose();
     },
     /**
@@ -209,7 +187,6 @@ export function createAgentWorkRuntime(
       state.awaitingApprovals.add(requestId);
       return () => {
         state.awaitingApprovals.delete(requestId);
-        // A held approval_result item may join the turn now.
         context.changed({ userAgentId: state.userAgentId, turnId: state.turnId });
       };
     },
@@ -260,7 +237,6 @@ export function createAgentWorkRuntime(
     },
     handleLocalTool: localTools,
 
-    // Bridge API. Main checks the account and organization before it calls these.
     async turnEvents(turnId: string, after?: number) {
       await ranHere(turnId);
       return context.store.events.list(org, turnId, after ?? 0, turnEventsPageSize);
@@ -279,7 +255,6 @@ export function createAgentWorkRuntime(
           ),
         }));
     },
-    /** For tests and diagnostics. */
     liveTurnIds: () => [...executor.live.keys()],
   };
 }

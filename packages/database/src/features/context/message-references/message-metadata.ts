@@ -25,9 +25,7 @@ import { messageEntityReferences } from "../schema";
 import { referenceArchived } from "./reference-archive";
 import { and, asc, eq, exists, inArray, isNull, isNotNull, or, sql } from "drizzle-orm";
 
-// Callers authorize every message before resolving its metadata.
 export async function messageWorkLinks(ctx: RepositoryContext, messageIds: string[]) {
-  // A task inherits its project's level, which decides removal rights.
   const projectEntityId = sql`coalesce(${tasks.projectEntityId}, ${projects.entityId})`;
   const title = sql<string>`coalesce(${tasks.title}, ${projects.name}, ${contacts.displayName}, ${crmAccounts.name}, ${crmDeals.title}, ${contactInteractions.summary})`;
   const work = await ctx.db
@@ -102,8 +100,6 @@ export async function messageWorkLinks(ctx: RepositoryContext, messageIds: strin
         eq(messageEntityReferences.entityType, "contact_interaction"),
       ),
     )
-    // A page has few references, so each walks up from its entity instead of reading the
-    // caller's whole visible set.
     .innerJoin(
       sql`LATERAL (SELECT ${ctx.accessLevel(messageEntityReferences.entityId)} AS level) work_access`,
       sql`work_access.level IS NOT NULL`,
@@ -127,7 +123,6 @@ export async function messageWorkLinks(ctx: RepositoryContext, messageIds: strin
   return byMessage;
 }
 
-// Mentioned IDs per message, and their union per conversation for messages that mention any.
 function collectMentions(
   messages: { id: string; body: string; conversationId: string }[],
   kind: "person" | "agent",

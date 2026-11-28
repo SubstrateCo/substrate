@@ -5,17 +5,12 @@ import { linkOptions } from "@tanstack/react-router";
 
 import type { AgentSettingsPage, AgentView } from "@/lib/agent-work/agent-sections";
 
-/** A task opens in its project. Pass the link to `Link`, `navigate`, or `useRecordUrl`. */
 export function workLink(organizationId: string, projectEntityId: string, taskEntityId?: string) {
   return linkOptions({
     to: "/tasks",
     search: { workspaceId: organizationId, projectId: projectEntityId, taskId: taskEntityId },
   });
 }
-/**
- * Open a readable record in its owning app; interactions open their contact's history. A calendar
- * event opens on `date` (YYYY-MM-DD) when known, and otherwise on the calendar's default day.
- */
 export function linkedWorkLink(
   organizationId: string,
   link: {
@@ -42,7 +37,6 @@ export function linkedWorkLink(
     link.entityType === "task" ? link.entityId : undefined,
   );
 }
-/** A CRM record a conversation was opened from. The conversation's pane links back to it. */
 export type MessageSource = { type: "deal" | "account" | "contact"; entityId: string };
 
 export function messageLink(
@@ -62,10 +56,6 @@ export function messageLink(
   });
 }
 
-/**
- * An agent's page, or Needs you without `agentId`. Messages is the default view; `settings` opens
- * the settings sheet on that page over the view.
- */
 export function agentLink(
   organizationId: string,
   agentId?: string,
@@ -88,7 +78,6 @@ export function agentLink(
   });
 }
 
-/** The calendar on an event's day, with the event open. `date` is YYYY-MM-DD. */
 export function calendarLink(organizationId: string, eventId?: string, date?: string) {
   return linkOptions({
     to: "/calendar",
@@ -118,10 +107,6 @@ export function contactLink(organizationId: string, recordId?: string) {
   return linkOptions({ to: "/contacts", search: { workspaceId: organizationId, recordId } });
 }
 
-/**
- * A person's profile in Interactions, which needs no optional app. It shows all time, because a
- * link from a record should show that record's interactions, however old.
- */
 export function interactionPersonLink(organizationId: string, contactEntityId: string) {
   return linkOptions({
     to: "/interactions",
@@ -134,7 +119,6 @@ export function interactionPersonLink(organizationId: string, contactEntityId: s
   });
 }
 
-/** A person opens in Contacts when CRM is on, and in their Interactions profile when it is off. */
 export function personLink(organizationId: string, contactEntityId: string, crmEnabled: boolean) {
   return crmEnabled
     ? contactLink(organizationId, contactEntityId)

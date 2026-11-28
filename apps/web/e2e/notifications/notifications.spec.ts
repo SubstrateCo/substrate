@@ -81,7 +81,6 @@ test("single and grouped notifications expand to the correct events without mark
   await expect(events).toHaveCount(0);
   await list.getByRole("button", { name: "Show 2 events", exact: true }).click();
   await expect(events.getByRole("link")).toHaveCount(2);
-  // Expansion is not a read action.
   await expect(list.getByText("2 unread", { exact: true })).toBeVisible();
 });
 
@@ -98,8 +97,6 @@ test("notifications page complete groups, filter unread, and mark groups and all
   });
   const reply = (threadId: string, body: string) =>
     post(actors.sender, "messaging/messages", { conversationId: channel.id, threadId, body });
-  // 21 threads with a reply each fill one group page and start a second. Their order does not
-  // matter, so they are created together.
   const threads = await Promise.all(
     Array.from({ length: 20 }, (_, index) =>
       post<{ id: string }>(account, "messaging/messages", {
@@ -112,7 +109,6 @@ test("notifications page complete groups, filter unread, and mark groups and all
     reply(root.id, "Page reply 0"),
     ...threads.map((thread, index) => reply(thread.id, `Page reply ${index + 1}`)),
   ]);
-  // One extra reply gives the newest row a group without testing event-page boundaries here.
   await reply(root.id, "Newest grouped reply");
   const recipient = await client(account);
   await visit(recipient, undefined, "/tasks");
@@ -124,7 +120,6 @@ test("notifications page complete groups, filter unread, and mark groups and all
   const feed = recipient.page.getByRole("region", { name: "Notifications", exact: true });
   const rows = feed.getByRole("list", { name: "Notification activity" }).getByRole("listitem");
   await expect(rows).toHaveCount(20);
-  // Each row names who acted and where, and quotes the reply.
   await expect(rows.first().getByRole("link")).toHaveAccessibleName(
     `${actors.sender.name} replied to a thread in ${channel.name}, unread`,
   );
@@ -145,7 +140,6 @@ test("notifications page complete groups, filter unread, and mark groups and all
   await expect(feed.getByRole("heading", { name: "You’re all caught up" })).toBeVisible();
   await feed.getByRole("button", { name: "Show all", exact: true }).click();
   await expect(feed.getByRole("group", { name: "Read is Unread", exact: true })).toHaveCount(0);
-  // The full feed keeps the older page it loaded, and every row in it is now read.
   await expect(rows).toHaveCount(21);
   await expect(rows.getByRole("button", { name: "Mark as read", exact: true })).toHaveCount(0);
 });

@@ -11,7 +11,6 @@ import { SelectField } from "@/components/forms/select-field";
 import { PersonField } from "@/components/people/person-field";
 import { z } from "zod";
 
-/** Choose a workspace person and a level. Sharing happens only when the person confirms. */
 export function ProjectAccessForm({
   detail,
   pending,

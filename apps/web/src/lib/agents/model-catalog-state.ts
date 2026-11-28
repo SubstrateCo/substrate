@@ -1,6 +1,5 @@
 import type { HarnessAuthMethod, HarnessModelCatalog } from "@substrate/contracts/harness-runtime";
 
-/** What the model picker shows for the runtime it is browsing. */
 export type ModelCatalogState =
   | { kind: "desktop-required" }
   | { kind: "sign-in"; methods: HarnessAuthMethod[] }
@@ -9,10 +8,6 @@ export type ModelCatalogState =
   | { kind: "loading" }
   | { kind: "ready" };
 
-/**
- * Only the desktop app reads model catalogs. A catalog that says the runtime needs a sign-in or
- * is not installed wins over a failed refresh, because it is what the runtime last answered.
- */
 export function modelCatalogState({
   desktop,
   catalog,

@@ -6,10 +6,6 @@ import {
 
 const day = 24 * 60 * 60_000;
 
-/**
- * Deletes records nothing reads any more, in small batches so no statement holds many row locks.
- * Each rule stops after maxBatches; the next run continues.
- */
 export async function pruneRecords(
   db: DatabaseExecutor,
   { batchSize = 500, maxBatches = 20 } = {},

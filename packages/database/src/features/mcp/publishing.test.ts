@@ -66,12 +66,10 @@ test("a background reply posts at once, in place or elsewhere", async () => {
   const inPlace = await call("reply", { requestId: crypto.randomUUID(), body: "Done" }, background);
   expect(inPlace).toMatchObject({ conversationId: dm.id, threadId: null });
 
-  // A routine turn has no source and publishes to its destination.
   const routine = routineTurn({ conversationId: channel.id, threadId: null });
   const sent = await call("reply", { requestId: crypto.randomUUID(), body: "Weekly" }, routine);
   expect(sent).toMatchObject({ conversationId: channel.id, threadId: null });
 
-  // Interactive turns may choose another target.
   const elsewhere = await call(
     "reply",
     { requestId: crypto.randomUUID(), body: "Posted here", to: { conversationId: channel.id } },
@@ -104,7 +102,6 @@ test("a call cannot borrow another agent's turn", async () => {
   ).toBeInstanceOf(AccessDeniedError);
 });
 
-// Replies no longer wait, but proposals stored before that change can still be approved.
 test("an approved stored post to a task discussion posts once, as the agent, with its turn", async () => {
   const { agent, dm, owner, propose, turn: contextOf } = await mcpFixture(f);
   const repos = f.forActor(f.alice);
@@ -161,7 +158,6 @@ test("only a turn leased by the agent's home desktop, called from that desktop, 
     .update(userAgents)
     .set({ homeDeviceId: desktop.id })
     .where(eq(userAgents.id, agent.agentId));
-  // The old desktop's lease, called from the old desktop, the new one, an unknown one, or none.
   const oldDesktop = { ...dmTurn(dm.id), installationId: agent.identity.installationId };
   const newCaller = { ...dmTurn(dm.id), installationId: desktop.installationId };
   const unknown = { ...dmTurn(dm.id), installationId: crypto.randomUUID() };
@@ -170,19 +166,16 @@ test("only a turn leased by the agent's home desktop, called from that desktop, 
     expect(
       await rejection(call("reply", { requestId: crypto.randomUUID(), body: "Stale" }, turn)),
     ).toBeInstanceOf(AccessDeniedError);
-    // A call that would wait for approval is refused before it is stored.
     expect(
       await rejection(
         pending("delete_task", { requestId: crypto.randomUUID(), taskId: task.entityId }, turn),
       ),
     ).toBeInstanceOf(AccessDeniedError);
-    // Reads need a live turn of the home desktop too.
     expect(await rejection(call("list_projects", {}, turn))).toBeInstanceOf(AccessDeniedError);
   }
   expect(await messagesIn(dm.id)).toEqual([]);
   expect(await f.db.select().from(agentRequests)).toEqual([]);
 
-  // A turn the new home desktop holds publishes.
   const home = {
     ...dmTurn(dm.id),
     installationId: desktop.installationId,
@@ -192,7 +185,6 @@ test("only a turn leased by the agent's home desktop, called from that desktop, 
   expect((await messagesIn(dm.id)).map((row) => row.body)).toEqual(["Moved"]);
   expect((await call("list_projects", {}, home)).items).toHaveLength(1);
 });
-// writeGate's unit test covers each tool and turn kind; this checks the gate runs before writes.
 test("a quiet handoff turn cannot publish but can read", async () => {
   const { dm, call } = await mcpFixture(f);
   await f.forActor(f.alice).projects.create({ name: "Work" });
@@ -204,7 +196,6 @@ test("a quiet handoff turn cannot publish but can read", async () => {
   ).toBeInstanceOf(ValidationError);
   expect(await messagesIn(dm.id)).toEqual([]);
   expect(await f.db.select().from(agentRequests)).toEqual([]);
-  // Reading stays allowed, so the agent can gather its notes.
   expect((await call("list_projects", {}, handoff)).items).toHaveLength(1);
 });
 
@@ -255,7 +246,6 @@ test("update_task requires a requestId and replays the same change", async () =>
   ).toBeInstanceOf(ZodError);
   const input = { requestId: crypto.randomUUID(), taskId: task.id, changes: { priority: "high" } };
   const updated = await call("update_task", input, turn);
-  // Someone changes the task after the agent did; a retry must not apply the change again.
   await f.forActor(f.alice).tasks.update(task.id, { priority: "low" });
   expect(await call("update_task", input, turn)).toEqual(updated);
   expect((await call("get_task", { taskId: task.id }, turn)).priority).toBe("low");
@@ -284,7 +274,6 @@ test("a call that waits stores the exact call once", async () => {
     conversationId: dm.id,
   });
   expect(requests[0]!.actionHash).toMatch(/^[0-9a-f]{64}$/);
-  // The same requestId with other input is a conflict, not a new proposal.
   expect(
     await rejection(pending("delete_task", { ...input, taskId: other.entityId }, turn)),
   ).toBeInstanceOf(ConflictError);
@@ -293,7 +282,6 @@ test("a call that waits stores the exact call once", async () => {
 test("a reply with a mention it cannot carry says that the mention is the problem", async () => {
   const { alice, dm, call } = await mcpFixture(f);
   const channel = await alice.createConversation({ kind: "channel", name: "general" });
-  // A root message without replies is not a thread yet.
   const root = await alice.sendMessage(channel.id, "Launch plan");
   const error = await rejection(
     call(

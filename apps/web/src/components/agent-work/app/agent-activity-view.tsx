@@ -81,23 +81,16 @@ function ActivityRowsLoading() {
 
 export type ActivityRow = {
   id: string;
-  /** What the work did, such as its latest activity line or "Replied". */
   summary: string;
-  /** Where it happened, already access-checked: "In #launch" or a placeholder. */
   place?: string;
-  /** Direct message, Thread, Routine, or Helper. */
   kind: string;
-  /** The status tag. The container passes one with its own clock for live work. */
   status: ReactNode;
   createdAt: string;
   selected: boolean;
-  /** One line of reviewed copy for work that failed, since the row has no card. */
   note?: string;
-  /** For example, the needs-attention card. */
   attention?: ReactNode;
 };
 
-/** A row of work, or two or more finished routine runs folded into one. */
 export type ActivityItem =
   | { kind: "row"; row: ActivityRow }
   | { kind: "routines"; id: string; rows: ActivityRow[] };
@@ -144,10 +137,6 @@ function ActivityRowButton({
   );
 }
 
-/**
- * Finished routine runs in a row, folded so they don't push other work out of view. It opens on
- * its own when it holds the selected run.
- */
 function RoutineRunsGroup({
   rows,
   onTranscript,
@@ -155,7 +144,6 @@ function RoutineRunsGroup({
   rows: ActivityRow[];
   onTranscript: (turnId: string) => void;
 }) {
-  // A group always holds two or more runs, newest first.
   const newest = rows[0];
   return (
     <Collapsible className="group/runs" defaultOpen={rows.some((row) => row.selected)}>
@@ -200,7 +188,6 @@ const helperStatusLabels: Record<HelperStatus, string> = {
   stopped: "Stopped",
 };
 
-/** One agent's work, including silent, routine, and helper work. */
 export function AgentActivityView({
   name,
   items,

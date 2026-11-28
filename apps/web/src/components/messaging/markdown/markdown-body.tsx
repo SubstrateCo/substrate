@@ -3,12 +3,10 @@ import { TextLink } from "@/components/ui/text-link";
 import ReactMarkdown, { type Options } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-/** The text of a Markdown syntax node, such as the code inside a fence. */
 type TextNode = { value?: string; children?: TextNode[] };
 const textOf = (node: TextNode | undefined): string =>
   node?.value ?? (node?.children ?? []).map(textOf).join("");
 
-// Kept at module scope, so react-markdown sees the same components on every render.
 const renderers = {
   a: ({ children, href }) => <TextLink href={href}>{children}</TextLink>,
   table: ({ children }) => (
@@ -30,7 +28,6 @@ const renderers = {
   img: ({ alt }) => <span className="text-muted-foreground">[Image: {alt || "attachment"}]</span>,
 } satisfies Options["components"];
 
-/** Both messages and imported notes render text without executing HTML or loading remote images. */
 export function MarkdownBody({
   body,
   remarkPlugins = [],

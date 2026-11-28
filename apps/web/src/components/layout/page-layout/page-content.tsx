@@ -4,12 +4,10 @@ import { panelId, usePageLayout } from "./page-layout-context";
 import { ResizablePanel } from "@/components/ui/resizable";
 import { cn } from "cn";
 
-// Main pane. It takes the space the sidebar and aside leave, down to a shared minimum.
 const minWidth = 320;
 
 export function PageContent({ className, ...props }: ComponentProps<"div">) {
   const layout = usePageLayout("PageContent");
-  // A covering aside hides the content, so the content must not take focus or be read.
   const covered = layout.hasAside && layout.asideCovers;
   return (
     <ResizablePanel

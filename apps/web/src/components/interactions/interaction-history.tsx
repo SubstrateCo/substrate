@@ -57,8 +57,6 @@ export function InteractionHistory({
           ) : (
             <ol className={recordRows}>
               {interactions.map((interaction) => {
-                // Authors delete their own interactions, and admins delete any.
-                const deletable = interaction.canDelete;
                 return (
                   <InteractionRow
                     key={interaction.entityId}
@@ -80,7 +78,7 @@ export function InteractionHistory({
                       />
                     }
                     actions={
-                      (canEdit || deletable) && (
+                      (canEdit || interaction.canDelete) && (
                         <RowActions label="Interaction actions">
                           {canEdit && (
                             <RowAction
@@ -90,7 +88,7 @@ export function InteractionHistory({
                               <Pencil aria-hidden />
                             </RowAction>
                           )}
-                          {deletable && (
+                          {interaction.canDelete && (
                             <RowAction
                               label="Delete interaction"
                               destructive
@@ -114,7 +112,6 @@ export function InteractionHistory({
   );
 }
 
-/** The chosen change, unless it is an edit and the reader can no longer edit. */
 function openChange(change: InteractionChange | null, canEdit: boolean) {
   if (change?.action === "edit" && !canEdit) return null;
   return change;

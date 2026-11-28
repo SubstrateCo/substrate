@@ -35,7 +35,6 @@ export async function sharePrivateFile(file: PrivateFile, share: () => Promise<v
   }
 }
 
-/** Pending responses and created files are fenced by the same private-state reset. */
 export function createPrivateFileManager(
   createFile: (input: TemporaryFileInput) => Promise<PrivateFile>,
 ) {

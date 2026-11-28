@@ -6,7 +6,6 @@ ruleTester.run("no-native-date-input", noNativeDateInput, {
     '<input type="datetime-local" />',
     '<input type="hidden" value="2026-11-23" />',
     "<input type={kind} />",
-    // no-native-element reports a raw input, so this rule does not report it twice.
     '<input type="date" />',
     '<DateField label="Due date" value={value} onChange={setValue} />',
     'import { Input } from "another-library"; <Input type="date" />;',

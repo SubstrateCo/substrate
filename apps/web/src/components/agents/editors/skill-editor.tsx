@@ -24,7 +24,6 @@ const skillFields = saveSkillInput.omit({ id: true }).extend({
 
 const contentLimit = 100_000;
 
-/** The format, and the length once it nears the limit. */
 function contentHint(length: number) {
   const format = "Markdown: steps, examples, and links the agent should follow.";
   if (length < contentLimit * 0.8) return format;
@@ -40,11 +39,9 @@ export function SkillEditor({
   onRestoreFocus,
 }: {
   skill?: HarnessSkill;
-  /** The save mutation's state. */
   pending: boolean;
   error?: Error | null;
   onClose: () => void;
-  /** Starts the save mutation. */
   onSave: (input: SaveSkillInput) => void;
   onRestoreFocus?: () => void;
 }) {
@@ -82,7 +79,6 @@ export function SkillEditor({
           <form.Field name="name">
             {(field) => (
               <FormTextField
-                // Blur turns "Release notes" into "release-notes" so the name is always valid.
                 field={{
                   state: field.state,
                   handleChange: field.handleChange,

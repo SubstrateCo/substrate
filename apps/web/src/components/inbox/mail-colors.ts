@@ -42,7 +42,6 @@ function paletteIndex(key: string) {
 }
 export const defaultLabelColor = (label: MailLabel) =>
   gmailLabels.get(label.id)?.[1] ?? mailColors[paletteIndex(label.id)]!;
-/** Resolve address collisions once per account set, not per row, sort order, or nickname. */
 export function mailboxColors(boxes: readonly Mailbox[]) {
   const colors = new Map<string, MailColor>();
   const used = new Set<MailColor>();

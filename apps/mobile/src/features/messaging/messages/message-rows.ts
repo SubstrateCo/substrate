@@ -1,6 +1,5 @@
 import type { MessageRow } from "@substrate/contracts/messaging/message-layout";
 
-// Messages closer than this to the previous one from the same author share its header.
 const groupWindow = 5 * 60_000;
 
 type GroupedMessage = {
@@ -22,7 +21,6 @@ function sameAuthor(a: GroupedMessage, b: GroupedMessage) {
   return a.authorName === b.authorName;
 }
 
-/** Lays out an oldest-first timeline. Agent messages always keep their header. */
 export function messageRows<T extends GroupedMessage>(messages: readonly T[]): MessageRow<T>[] {
   return messages.map((message, index) => {
     if (index === 0) return { message, newDay: true, grouped: false };
@@ -40,7 +38,6 @@ export function messageRows<T extends GroupedMessage>(messages: readonly T[]): M
   });
 }
 
-/** Joins oldest-first pages, newest page first, into one oldest-first list without repeats. */
 export function timelineFromPages<T extends { id: string }>(pages: readonly (readonly T[])[]) {
   const seen = new Set<string>();
   const ordered: T[] = [];

@@ -75,12 +75,9 @@ export function RecordList({
   kind: CrmKind;
   rows: CrmListRow[];
   loading?: boolean;
-  /** A later page is loading. */
   fetching?: boolean;
   pagination?: AppTablePagination;
-  /** A search or the archived filter is active, so the empty list says nothing matched. */
   filtered?: boolean;
-  /** Offers the empty list's primary action when the viewer can create a record. */
   onCreate?: () => void;
 }) {
   const { organizationId } = useWorkspaceScope();

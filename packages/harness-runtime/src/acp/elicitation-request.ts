@@ -12,10 +12,6 @@ type ElicitationScope = { sessionId: string } | { requestId: unknown };
 
 const sessionScope = z.object({ sessionId: z.string() });
 
-/**
- * The host answers with an ACP elicitation response: accept with content, decline or cancel.
- * `value` is the protocol's schema for one accepted content value.
- */
 export function elicitationRequest<Value>(
   request: ElicitationScope,
   value: z.ZodType<Value>,

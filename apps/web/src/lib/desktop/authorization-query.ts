@@ -4,7 +4,6 @@ export type ElectronAuthorization = {
   code_challenge: string;
 };
 
-/** The desktop sign-in handoff, only when all of its validated search params are present. */
 export function electronQuery(search: {
   client_id?: string;
   state?: string;

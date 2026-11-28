@@ -9,7 +9,6 @@ import { CircleCheck, Info, OctagonX, TriangleAlert } from "lucide-react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Toaster as Sonner } from "sonner-native";
 
-/** Tap the collapsed stack to expand upward; tap again or outside to collapse. */
 export function Toaster() {
   const { colorScheme, colors, metrics } = useTheme();
   const offset = useToastOffset();

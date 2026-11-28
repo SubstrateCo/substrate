@@ -13,7 +13,6 @@ function skillFile(skill: HarnessSkill, managed = true) {
   return `---\nname: ${skill.name}\ndescription: ${JSON.stringify(skill.description)}\n${managed ? "substrateManaged: true\n" : ""}---\n\n${skill.content}`;
 }
 
-/** The host's skills: each write replaces installed ones, so they match the current tools. */
 async function writeManagedSkills(agentRoot: string, agent: HarnessAgent): Promise<void> {
   for (const { installed, ...skill } of agent.managedSkills) {
     const path = `${harnessDefinitions[agent.harness].skills}/${skill.id}/SKILL.md`;
@@ -33,19 +32,12 @@ async function writeManagedSkills(agentRoot: string, agent: HarnessAgent): Promi
   }
 }
 
-/**
- * Writes a missing instructions file. With `replace`, replaces an existing one too: on a reset,
- * and when a session opens, so its folder matches the current agent. Installed managed skills
- * are always replaced, other managed skills are removed, and user skills are preserved. With
- * managedPrefix, the instructions file starts with it: the managed policy channel for harnesses
- * that load no other instruction source.
- */
-export async function writeDefaultFiles(
+export async function writeAgentFiles(
   folder: string,
   agent: HarnessAgent,
-  options: { replace?: boolean; managedPrefix?: string } = {},
+  options: { replaceInstructions?: boolean; managedPrefix?: string } = {},
 ): Promise<void> {
-  const { replace = false, managedPrefix } = options;
+  const { replaceInstructions = false, managedPrefix } = options;
   const content = `${agent.instructions}\n`;
   const target = await safePath(
     folder,
@@ -55,7 +47,7 @@ export async function writeDefaultFiles(
   );
   await writeFile(target, managedPrefix ? `${managedPrefix}\n${content}` : content, {
     mode: 0o600,
-    flag: replace ? "w" : "wx",
+    flag: replaceInstructions ? "w" : "wx",
   }).catch((error: NodeJS.ErrnoException) => {
     if (error.code !== "EEXIST") throw error;
   });
@@ -74,7 +66,7 @@ export async function materialize(
       throw new HarnessError("duplicate-id", `Duplicate agent ID: ${agent.id}`);
     ids.add(agent.id);
     const agentRoot = await safePath(directory, safeId(agent.id), true);
-    if (agent.enabled) await writeDefaultFiles(agentRoot, agent);
+    if (agent.enabled) await writeAgentFiles(agentRoot, agent);
   }
   return directory;
 }

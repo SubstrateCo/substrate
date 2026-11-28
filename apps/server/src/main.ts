@@ -13,7 +13,6 @@ import { createGoogleLinkTickets } from "./auth/google-link";
 import { createAuthPublisher } from "./auth/realtime";
 import { createAuth } from "./auth/server";
 import { createSessionApi } from "./auth/session-api";
-// Parsed once on import: an invalid environment stops startup before the app is created.
 import { environment } from "./environment";
 import { createServerDatabase } from "./infrastructure/database";
 import { createSmtpMail } from "./mail/service";
@@ -45,11 +44,7 @@ const outboxRelay = createOutboxRelay({
   finish: (id) => finishOutbox(db, id),
   reportFailure: (message) => console.warn(message),
 });
-// Session reads keep a resolved workspace for 5 seconds. A membership, role or account change
-// drops them at once: here when this server commits it, and below when another server does.
 const repositories = createRepositories(db, { workspaceCacheMs: 5_000 });
-// The worker needs the committed publisher, while publication wakes that same worker.
-// No work starts until both have been constructed.
 const publish = createCommittedPublisher({
   publish: (hints, stored) => {
     if (changesWorkspace(hints)) repositories.forgetWorkspaces();
@@ -111,7 +106,6 @@ const server = Bun.serve({
 console.log(`Substrate API listening on ${server.url}`);
 
 let cleaning = false;
-// Hourly: storage objects, then records nothing reads any more.
 async function cleanup() {
   if (cleaning) return;
   cleaning = true;
@@ -133,7 +127,6 @@ const cleanupTimer = setInterval(() => void cleanup(), 60 * 60_000);
 cleanupTimer.unref();
 
 let sweeping = false;
-// Every minute: end the live agent turns of hosts that went away, so their work runs again.
 async function sweepLeases() {
   if (sweeping) return;
   sweeping = true;
@@ -149,7 +142,6 @@ const leaseTimer = setInterval(() => void sweepLeases(), 60_000);
 leaseTimer.unref();
 
 let scheduling = false;
-// Every 30 seconds: queue the due runs of approved routines. They wait for the agent's host.
 async function scheduleRoutines() {
   if (scheduling) return;
   scheduling = true;

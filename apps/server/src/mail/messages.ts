@@ -3,7 +3,6 @@ import { desktopHandoffURL } from "@substrate/contracts/desktop/links";
 import { frontendAuthLink, invitationLink } from "./links";
 import { renderTransactionalEmail } from "./transactional-email";
 
-/** Where links in emails point: the public web app and the public API. */
 export interface MailOrigins {
   webURL: string;
   apiURL: string;
@@ -52,7 +51,6 @@ export async function resetPasswordMessage(
   };
 }
 
-/** A request from the desktop renderer gets the desktop handoff instead of a web link. */
 export async function organizationInvitationMessage(
   invitation: { id: string; organizationName: string },
   origins: MailOrigins,

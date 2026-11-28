@@ -46,7 +46,6 @@ const responses = {
   declined: "declined",
   tentative: "tentative",
 } as const satisfies Record<string, AttendeeResponseStatus>;
-// `other` is not a Google type: the parser uses it for types this adapter does not know.
 const googleKinds = [
   "default",
   "focusTime",
@@ -79,7 +78,6 @@ export const googleEvent = z.object({
   status: z.enum(calendarEventStatuses).catch("confirmed"),
   iCalUID: z.string().optional(),
   recurringEventId: z.string().optional(),
-  // A missing type is a default event; a type this adapter does not know is `other`.
   eventType: z.enum(googleKinds).optional().catch("other"),
   summary: z.string().optional(),
   description: z.string().optional(),
@@ -122,7 +120,6 @@ const calendarListPage = z.object({
     .default([]),
   nextPageToken: z.string().optional(),
 });
-/** All-day dates become UTC midnight. Timed values become UTC ISO strings. */
 function instant(time: z.output<typeof eventTime> | undefined) {
   if (time?.date) return { at: `${time.date}T00:00:00.000Z`, allDay: true };
   const parsed = time?.dateTime ? new Date(time.dateTime) : undefined;
@@ -169,7 +166,6 @@ function attendees(event: GoogleEvent): ProviderCalendarAttendee[] {
   return listed;
 }
 
-/** Returns undefined for an event without usable times. */
 export function normalizeGoogleEvent(event: GoogleEvent): ProviderCalendarEvent | undefined {
   const start = instant(event.start);
   const end = instant(event.end) ?? start;
@@ -198,10 +194,6 @@ export function normalizeGoogleEvent(event: GoogleEvent): ProviderCalendarEvent 
   };
 }
 
-/**
- * Maps a Google failure to its calendar error, with the Google error as `cause`. Its `errorCode`
- * stays Google's.
- */
 export function calendarError(error: GoogleError) {
   const { errorCode, message } = error;
   if (error instanceof GoogleReauthRequired || error instanceof GoogleScopeMissing)
@@ -216,18 +208,11 @@ async function mapped<T>(call: () => Promise<T>) {
   try {
     return await call();
   } catch (error) {
-    // Errors that are not Google's pass through unchanged.
     throw error instanceof GoogleError ? calendarError(error) : error;
   }
 }
 
-/**
- * The Google Calendar adapter. Calls, including the token load, throw calendar errors: an expired
- * sync token is CalendarCursorExpired, and a grant without calendar access is
- * CalendarAccessRequired.
- */
 export function createGoogleCalendar(deps: {
-  /** Loads the account's token with the calendar product's scopes. */
   accessToken: (account: CalendarAccountRef) => Promise<string>;
   fetch?: GoogleFetch;
   sleep?: (ms: number) => Promise<void>;
@@ -288,7 +273,6 @@ export function createGoogleCalendar(deps: {
         for (const item of page.items) {
           const parsed = googleEvent.safeParse(item);
           if (!parsed.success) continue;
-          // A full sync drops cancelled occurrences: events it does not list are gone anyway.
           if (parsed.data.status === "cancelled") {
             if (!fullSync) result.cancelledEventIds.push(parsed.data.id);
             continue;

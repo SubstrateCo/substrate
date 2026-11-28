@@ -40,7 +40,6 @@ test("expanded images fit the desktop, rotate, zoom, fade controls, and keep key
   await expect(viewer.getByText("Image 1 of 2", { exact: false })).toBeVisible();
   await expect(viewer.locator("time")).toHaveCount(1);
   const viewport = page.viewportSize()!;
-  // Large windows inset the viewer to 80%, keeping its close button clear of the window controls.
   const inset = viewport.width >= 1024 ? 0.1 : 0;
   await expect
     .poll(async () => {

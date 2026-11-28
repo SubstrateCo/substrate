@@ -20,8 +20,6 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-// One rolling line of an agent's work: a DM, a thread, a routine or a helper. The host keeps the
-// native session that runs it; the server keeps where it routes and when the owner reset it.
 export const agentSessions = pgTable(
   "agent_sessions",
   {
@@ -29,7 +27,6 @@ export const agentSessions = pgTable(
     ...agentWorkColumns(),
     key: text("key").notNull(),
     kind: text("kind").$type<AgentSessionKind>().notNull(),
-    // A helper session's parent: the session whose turn started the helper.
     parentSessionId: uuid("parent_session_id"),
     originConversationId: uuid("origin_conversation_id"),
     originThreadId: uuid("origin_thread_id"),
@@ -44,7 +41,6 @@ export const agentSessions = pgTable(
   (table) => [
     ...agentWorkForeignKeys(table, "agent_sessions"),
     unique("agent_sessions_agent_key_unique").on(table.userAgentId, table.key),
-    // The target of composite keys that keep items, turns and helpers in their session's agent.
     unique("agent_sessions_agent_unique").on(table.organizationId, table.userAgentId, table.id),
     foreignKey({
       name: "agent_sessions_parent_fk",
@@ -71,7 +67,6 @@ export const agentSessions = pgTable(
       columns: [table.destinationConversationId, table.destinationThreadId],
       foreignColumns: [messagingMessages.conversationId, messagingMessages.id],
     }).onDelete("cascade"),
-    // Sessions that come from or post to a conversation: the owner's conversation work.
     index("agent_sessions_origin_idx").on(table.originConversationId),
     index("agent_sessions_destination_idx").on(table.destinationConversationId),
     check("agent_sessions_key_check", sql`length(${table.key}) BETWEEN 1 AND 200`),

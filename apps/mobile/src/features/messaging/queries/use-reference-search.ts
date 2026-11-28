@@ -11,7 +11,6 @@ import { useMessagingScope } from "../scope";
 import { api } from "@/api/client";
 import { readResult } from "@/api/result";
 
-// "All" lists the best few of each kind, people first.
 const mixedLimit = 5;
 const debounceMs = 200;
 
@@ -24,7 +23,6 @@ export function useDebounced<T>(value: T) {
   return { value: debounced, pending: debounced !== value };
 }
 
-/** The workspace's enabled apps. Task references and record actions depend on them. */
 export function useMessagingApps(organizationId: string) {
   const scope = useMessagingScope(organizationId);
   const apps = useQuery({
@@ -53,7 +51,6 @@ export function referenceTabs(trigger: "@" | "#", tasks: boolean): ReferenceTab[
   return tasks ? ["all", "person", "agent", "task", "project"] : ["all", "person", "agent"];
 }
 
-/** Searches what the viewer may reference here. Results never include records they can't open. */
 export function useReferenceSearch({
   organizationId,
   conversationId,

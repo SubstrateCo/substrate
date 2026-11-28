@@ -25,8 +25,6 @@ export async function recordTaskActivity(
       })),
     )
     .returning();
-  // An activity row records a change to the task, so the task's readers refresh it. Callers
-  // without the task's project cost one read of it.
   const hints = task.projectEntityId
     ? [workHint(organizationId, task.projectEntityId, [taskEntityId])]
     : await workChangeHints(context.db, organizationId, [taskEntityId]);

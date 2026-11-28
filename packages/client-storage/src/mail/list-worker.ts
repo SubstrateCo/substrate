@@ -14,8 +14,6 @@ type Read =
   | { kind: "cachedPage"; query: OlderMailQuery };
 export type ListRequest = { reply: MessagePort } & Read;
 
-/** A single reader per verified workspace. Writes keep the WAL connection in main; searches
- * and conditional label counts cannot block Electron's event loop or the writer's queue. */
 export function mailListWorker(
   path: string,
   org: string,

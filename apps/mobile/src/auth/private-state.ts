@@ -1,6 +1,5 @@
 const resets = new Set<() => void>();
 
-/** Draft stores subscribe to account/workspace exit and access-loss cleanup. */
 export function onPrivateStateReset(reset: () => void) {
   resets.add(reset);
   return () => {

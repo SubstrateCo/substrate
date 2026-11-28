@@ -129,7 +129,6 @@ function TranscriptBody({
       return <PaneState label="Transcript unavailable" error={body.error} onRetry={onRetry} />;
   }
 }
-/** A turn's full record in its own side panel. */
 export function TurnTranscriptView({
   name,
   tone,
@@ -153,12 +152,10 @@ export function TurnTranscriptView({
   startedAt?: string;
   session?: string;
   usage?: string;
-  /** What the runtime reported when the work stopped, shown under Technical details. */
   diagnostic?: string;
   sources?: ReactNode;
   outputs?: ReactNode;
   body: TranscriptBodyState;
-  /** The turn's timeline, shown when `body` is `timeline`. */
   timeline?: ReactNode;
   onRetry: () => void;
   onClose: () => void;
@@ -168,7 +165,6 @@ export function TurnTranscriptView({
   const close = useRef<HTMLButtonElement>(null);
   const covers = useAsideCovers();
   useEffect(() => {
-    // When the panel covers the page, focus moves into it.
     if (covers) close.current?.focus();
   }, [covers]);
   return (

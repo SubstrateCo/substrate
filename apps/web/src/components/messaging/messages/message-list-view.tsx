@@ -15,19 +15,11 @@ export function MessageList({
   children,
 }: {
   lastId?: string;
-  /** The first row inside the scrolling timeline, such as a way to load older messages. */
   header?: ReactNode;
-  /** Floats over the bottom edge without taking space. */
   footer?: ReactNode;
   olderPage?: boolean;
-  /** The person is sending a message here. */
   sending?: boolean;
-  /**
-   * The first scroll waits for this. It opens at the "New" divider when there is one, otherwise at
-   * the newest message.
-   */
   positionReady?: boolean;
-  /** Reports whether the newest message is in view. */
   onLatestVisibleChange?: (visible: boolean) => void;
   children: ReactNode;
 }) {
@@ -38,7 +30,6 @@ export function MessageList({
   const readingAnchor = useRef<{ node: HTMLElement; top: number } | null>(null);
   const positioned = useRef(false);
   const [away, setAway] = useState(false);
-  // A newer message arrived while the person was scrolled up.
   const [unseen, setUnseen] = useState(false);
   const showedOlderPage = useRef(olderPage);
   const measure = () => {
@@ -93,31 +84,24 @@ export function MessageList({
         ? node.scrollTop + divider.getBoundingClientRect().top - node.getBoundingClientRect().top
         : node.scrollHeight;
     } else if (follow.current) node.scrollTop = node.scrollHeight;
-    // Moving to or from an older page changes the newest message too, but nothing new arrived.
     else if (!olderPage && !showedOlderPage.current) setUnseen(true);
     // Setting the same scroll position fires no scroll event, so measure here too.
     measure();
   });
-  // Position again only when the newest message changes or the first position becomes known.
   // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Position only when the newest message changes or the first position becomes known.
   useLayoutEffect(() => position(), [lastId, positionReady]);
-  // Runs after the effect above, so it still sees the page the previous render showed.
   useLayoutEffect(() => {
     showedOlderPage.current = olderPage;
   });
   const followLatest = useEffectEvent(() => {
     scrollToLatest();
-    // Measure now so following, and the cleared notice, do not wait for the scroll event.
     measure();
   });
-  // Sending a message goes to the newest messages and follows them, as in other chat apps.
-  // Move only when a send starts.
   useLayoutEffect(() => {
     if (sending) followLatest();
   }, [sending]);
   const resize = useEffectEvent(() => {
     if (!positioned.current) return;
-    // Use the pre-resize anchor and follow state for pane changes and loaded message images.
     restorePosition();
     measure();
   });
@@ -126,7 +110,6 @@ export function MessageList({
     const body = content.current;
     if (!node || !body) return;
     const observer = new ResizeObserver(() => resize());
-    // The scroll viewport stays the same size when a reaction row or other message content grows.
     observer.observe(body);
     observer.observe(node);
     return () => observer.disconnect();
@@ -182,7 +165,6 @@ export function MessageList({
 
 function readAnchor(node: HTMLElement, previous: { node: HTMLElement; top: number } | null) {
   const viewport = node.getBoundingClientRect();
-  // Reuse the restored anchor after reflow. A deliberate scroll selects a fresh visible row.
   if (previous && node.contains(previous.node)) {
     const bounds = previous.node.getBoundingClientRect();
     const top = bounds.top - viewport.top;
@@ -190,8 +172,6 @@ function readAnchor(node: HTMLElement, previous: { node: HTMLElement; top: numbe
       return { node: previous.node, top };
   }
   let clipped: { node: HTMLElement; top: number } | null = null;
-  // Prefer a row starting in view: anchoring the clipped row above it lets that row's new
-  // wrapping move the message the person is reading. Stop once a visible row is found.
   for (const row of node.querySelectorAll<HTMLElement>("article")) {
     const bounds = row.getBoundingClientRect();
     if (bounds.top >= viewport.bottom) break;

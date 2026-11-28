@@ -119,7 +119,6 @@ test("workspace pictures are readable by members but cannot be managed by member
     attachedAvatar,
   );
 
-  // The member's session moves to another workspace, so the pictures are no longer coworkers'.
   await workspace(member);
   for (const file of [logo, avatar]) {
     await rejected(await member.request.get(file.url, { maxRedirects: 0 }));
@@ -131,7 +130,6 @@ for (const purpose of ["avatar", "organization-logo"] as const) {
     actors,
     workspace,
   }) => {
-    // A logo belongs to the active workspace, so the logo case writes a fresh one.
     const [owner] =
       purpose === "organization-logo" ? await workspace(actors.owner) : [actors.owner];
     const organizationId = purpose === "organization-logo" ? owner.organizationId : undefined;

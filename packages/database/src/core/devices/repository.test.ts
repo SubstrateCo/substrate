@@ -60,7 +60,6 @@ test("a device calling every minute stays online, and one that stops goes offlin
       .where(eq(desktopDevices.id, device.id));
     return row!.online;
   };
-  // A call a minute after the last write is past the 30 s throttle, so it writes.
   await seenAgo(device.id, 60);
   await touchDevice(f.db, "alice", installationId);
   expect(await online()).toBe(true);

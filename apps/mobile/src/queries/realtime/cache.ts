@@ -16,7 +16,6 @@ function targetFilter({ queryKey, predicate }: RealtimeTarget): QueryFilters {
   return predicate ? { queryKey, predicate } : { queryKey };
 }
 
-/** Refreshes the queries that realtime changes make stale, and checks access again. */
 export function createRealtimeCache({
   queryClient,
   userId,
@@ -28,11 +27,8 @@ export function createRealtimeCache({
   queryClient: QueryClient;
   userId: string;
   organizationId: string | null;
-  /** How long change hints collect before one refresh. */
   batchMs?: number;
-  /** Reads the messages that a new-message hint adds to a loaded history. */
   loadMessages: typeof listMessages;
-  /** Reads a thread's root alone, for its reply count. */
   loadTarget: typeof getMessageTarget;
 }) {
   const scope = organizationId ? { userId, organizationId } : undefined;
@@ -41,7 +37,6 @@ export function createRealtimeCache({
   const pending: RealtimeTarget[] = [];
   let timer: ReturnType<typeof setTimeout> | undefined;
   let disposed = false;
-  // Access checks supersede narrower reads that started before them.
   let generation = 0;
 
   function markStale(query: Query) {
@@ -53,7 +48,6 @@ export function createRealtimeCache({
   }
 
   function refresh(targets: RealtimeTarget[]) {
-    // Targets can overlap. Read each query once; a refreshing target wins over a stale-only one.
     const matched = new Map<Query, boolean>();
     for (const target of targets)
       for (const query of cache.findAll(targetFilter(target)))
@@ -83,10 +77,6 @@ export function createRealtimeCache({
   }
 
   return {
-    /**
-     * Checks access again without clearing the screen. Unmounted values go; mounted ones are
-     * read again, and a denied read clears its value. Use after a reconnect or an access change.
-     */
     recheck() {
       generation++;
       clearTimeout(timer);
@@ -109,8 +99,6 @@ export function createRealtimeCache({
       let targets = realtimeTargets(event, userId, organizationId);
       const epoch = generation;
       const shouldApply = () => !disposed && epoch === generation;
-      // Takes one history's target out of the batch. A narrower read may replace it; when that
-      // read cannot bring the history up to date, the target goes back to the batch.
       const narrow = (threadId: string | undefined, read?: () => Promise<boolean>) => {
         const taken = targets.filter(
           (target) => target.history && target.history.threadId === threadId,
@@ -124,14 +112,11 @@ export function createRealtimeCache({
       };
       const { conversationId, messageId, threadId } = event;
       const newMessage = event.domain === "messaging" && event.scope === "messages";
-      // The timeline or thread that a new message joins, when its hint names one.
       const location: MessagingConversationTarget | undefined =
         newMessage && conversationId && threadId !== undefined
           ? { conversationId, threadId: threadId ?? undefined }
           : undefined;
       if (scope && location && messageId) {
-        // A new message changes only the newest page of its timeline or thread. Read just the
-        // messages after the loaded ones instead of the whole history.
         if (canAppendNewMessages(queryClient, scope, location))
           narrow(location.threadId, () =>
             appendNewMessages(queryClient, scope, location, {
@@ -140,8 +125,6 @@ export function createRealtimeCache({
               shouldApply,
             }),
           );
-        // A reply changes the timeline only in its root's reply count: read the root alone, or
-        // nothing when no loaded history shows it.
         const update = location.threadId && replyCountUpdate(queryClient, scope, location);
         if (update === "none") narrow(undefined);
         if (update === "root")

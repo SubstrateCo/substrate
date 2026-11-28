@@ -2,8 +2,6 @@ import { provisionWorkspaceSession } from "../../../server/integration/test-supp
 import { test as base } from "./fixtures";
 import { randomUUID } from "node:crypto";
 
-// Workspace-only workflows reuse an identity, never their mutable workspace records.
-// Auth, profile, agent, and personal-data tests must keep the fresh account fixture.
 export const test = base.extend({
   account: async ({ playwright, workspaceIdentity }, use) => {
     const request = await playwright.request.newContext({

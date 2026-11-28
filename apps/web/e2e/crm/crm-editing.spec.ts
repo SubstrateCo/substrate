@@ -114,7 +114,6 @@ test("editing a title does not turn an unselected participant into the primary c
   });
 });
 
-// Contacts are readable by every member, so only the account can be restricted.
 test("an editor can update a deal with a restricted customer account without removing it", async ({
   actors,
   client,

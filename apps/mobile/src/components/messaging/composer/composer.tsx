@@ -23,10 +23,6 @@ import { useMessagingScope } from "@/features/messaging/scope";
 import { errorText, newRequestId } from "@/features/records/format";
 import { ActionSheet } from "@/features/records/ui/sheet";
 
-/**
- * Sends to a conversation or thread. The draft is kept per account, workspace, conversation and
- * thread. A failed send keeps the text and its request ID, so retrying cannot post twice.
- */
 export function Composer({
   organizationId,
   conversationId,
@@ -98,7 +94,6 @@ function DestinationComposer({
       {
         onSuccess: () => {
           uploads.clear();
-          // Text typed while sending stays as the next draft.
           update((current) => {
             if (current.request?.id !== request.id) return current;
             return current.body.trim() === body

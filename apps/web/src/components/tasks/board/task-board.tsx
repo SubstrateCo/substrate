@@ -18,7 +18,6 @@ export function TaskBoard({
   statusPending,
 }: {
   tasks: Task[];
-  /** A card's assignee, parent title, and blocked cue, which the list resolves once. */
   cues: (
     task: Task,
   ) => Pick<ComponentProps<typeof TaskBoardCard>, "assignee" | "parentTitle" | "blocked">;

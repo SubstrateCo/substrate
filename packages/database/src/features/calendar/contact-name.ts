@@ -1,5 +1,3 @@
-// Shared mailboxes whose local part is not a person's name. Compared without separators, so
-// `no-reply` and `no_reply` match `noreply`.
 const roleMailboxes = new Set([
   "accounts",
   "admin",
@@ -34,11 +32,6 @@ function titleCase(part: string) {
   return part.toLowerCase().replace(/^./u, (first) => first.toUpperCase());
 }
 
-/**
- * The name derived from the part of an email before the @: one to three letter-only parts of at
- * least two letters, split by `.`, `_` or `-`, title-cased. A `+tag` is dropped first. Null for
- * role mailboxes and for anything else that does not look like a name.
- */
 function nameFromEmail(email: string): string | null {
   const at = email.lastIndexOf("@");
   if (at <= 0) return null;

@@ -1,19 +1,14 @@
 export type EyeKind = "open" | "closed" | "happy" | "heart" | "spiral" | "squeeze";
 export type ParticleKind = "z" | "heart" | "question" | "exclaim" | "dots" | "sweat";
 
-/** The continuous values that springs smooth from frame to frame. */
 export interface Pose {
-  /** Where the eyes look, from -1 to 1. Positive is right and down. */
   gazeX: number;
   gazeY: number;
-  /** Head turn in radians: yaw turns right, pitch tips forward, roll tilts clockwise. */
   yaw: number;
   pitch: number;
   roll: number;
-  /** Sideways offset and height above the floor, in view units. */
   x: number;
   hop: number;
-  /** Depth toward the viewer: 0.2 draws it 20% bigger, -0.2 draws it 20% smaller. */
   z: number;
   squashX: number;
   squashY: number;
@@ -22,7 +17,6 @@ export interface Pose {
   eyeScale: number;
   eyeScaleL: number;
   eyeScaleR: number;
-  /** How far each lid comes down, as a share of the eye height. */
   lidInner: number;
   lidOuter: number;
   blush: number;
@@ -49,7 +43,6 @@ export const POSE_KEYS = [
   "blush",
 ] as const satisfies readonly (keyof Pose)[];
 
-/** Builds a value for every pose channel. */
 export function poseRecord<T>(value: (key: keyof Pose) => T): Record<keyof Pose, T> {
   return {
     gazeX: value("gazeX"),
@@ -75,10 +68,8 @@ export function poseRecord<T>(value: (key: keyof Pose) => T): Record<keyof Pose,
 
 export interface MoodPose extends Pose {
   eyeKind: EyeKind;
-  /** Rotation of spiral eyes, in radians. */
   eyeSpin: number;
   blinks: boolean;
-  /** Whether the eyes follow the pointer, focus or `lookAt` in this mood. */
   attentive: boolean;
   particles: ParticleKind | null;
 }
@@ -109,9 +100,7 @@ export const NEUTRAL_POSE: MoodPose = {
   particles: null,
 };
 
-/** One-shot offsets added on top of the sprung pose. */
 export interface PoseDelta extends Partial<Pose> {
-  /** Openness multipliers for each eye. */
   openL?: number;
   openR?: number;
   eyeKind?: EyeKind;

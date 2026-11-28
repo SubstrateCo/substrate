@@ -18,7 +18,6 @@ test("owner messages debounce: each moves the open batch out, up to the batch wi
   expect(first!.deadlineAt.getTime() - first!.createdAt.getTime()).toBe(ownerBatchWindowMs);
   await x.alice.sendMessage(x.dm.id, "Two");
   const [moved, second] = await x.items();
-  // Both wait for the newest message, and the batch keeps its first deadline.
   expect(moved!.availableAt).toEqual(second!.availableAt);
   expect(second!.availableAt.getTime() - second!.createdAt.getTime()).toBeLessThanOrEqual(
     ownerMessageDebounceMs,
@@ -61,10 +60,8 @@ test("other people's and other agents' thread messages join the live thread turn
       threadId: x.root.id,
     },
   });
-  // The agent's own messages are never context for itself.
   await createMessagingService(f.db, x.agentIdentity).sendMessage(x.channel.id, "Mine", x.root.id);
   expect((await x.passive())[0]!.sourceRef).toMatchObject({ messageIds: [first.id, second.id] });
-  // The turn's end drops passive context it did not take.
   await x.host.finish(x.claimed.turn.id, {
     attempt: 1,
     status: "completed",
@@ -77,11 +74,9 @@ test("other people's and other agents' thread messages join the live thread turn
     usage: null,
   });
   expect(await x.itemRow(batch!.id)).toMatchObject({ status: "dropped", reason: "turn_finished" });
-  // Passive context never starts a turn.
   const session = await x.session({ key: x.claimed.session.key, kind: "thread" });
   await x.item(session, { ...batch!.sourceRef }, { availableAt: new Date(0) });
   expect(await x.claim()).toEqual([]);
-  // Without a live turn, another person's message adds nothing.
   const after = await x.bob.sendMessage(x.channel.id, "After the turn", x.root.id);
   expect(JSON.stringify(await x.items())).not.toContain(after.id);
 });

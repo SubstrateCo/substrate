@@ -88,7 +88,6 @@ function localPoint(event: PointerEvent<HTMLElement>) {
   };
 }
 
-/** Themeable, for example transparent in light mode and a soft white in dark mode. */
 const DEFAULT_OUTLINE = "var(--agent-avatar-outline, rgba(255, 255, 255, 0.32))";
 
 function AgentAvatarView(props: AgentAvatarProps) {
@@ -234,7 +233,6 @@ function AgentAvatarView(props: AgentAvatarProps) {
         viewBox={VIEW_BOX}
         width={size}
         height={size}
-        // Inline sizes outrank icon rules such as `[&_svg]:size-4` in buttons and menus.
         style={{ display: "block", overflow: "visible", width: size, height: size }}
       >
         <defs>
@@ -324,5 +322,4 @@ function AgentAvatarView(props: AgentAvatarProps) {
   );
 }
 
-/** Memoised: a parent re-render (for example a streaming chat) skips unchanged avatars. */
 export const AgentAvatar = memo(AgentAvatarView);

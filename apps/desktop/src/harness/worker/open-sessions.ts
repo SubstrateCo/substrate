@@ -3,18 +3,12 @@ import type { HarnessCommand, HarnessEvent } from "@substrate/contracts/harness-
 interface OpenSession {
   organizationId: string;
   turn?: { turnId: string; generation: number };
-  /** The open command has not answered yet. */
   provisional: boolean;
 }
 
-/**
- * Main's view of the sessions open in the worker, so that a stopped worker still ends every
- * session and its live turn with session.closed { reason: "worker_exited" }.
- */
 export function createOpenSessions() {
   const sessions = new Map<string, OpenSession>();
   return {
-    /** An open was sent. It may open in the worker even if its answer never arrives. */
     opening(command: Extract<HarnessCommand, { type: "open" }>) {
       if (!sessions.has(command.sessionId))
         sessions.set(command.sessionId, {
@@ -26,7 +20,6 @@ export function createOpenSessions() {
       const session = sessions.get(sessionId);
       if (session) session.provisional = false;
     },
-    /** The worker refused the open, so a session it did not have before is not open. */
     openFailed(sessionId: string) {
       if (sessions.get(sessionId)?.provisional) sessions.delete(sessionId);
     },
@@ -39,7 +32,6 @@ export function createOpenSessions() {
       else if (event.type === "turn.completed" && session.turn?.turnId === event.turnId)
         session.turn = undefined;
     },
-    /** Synthetic session.closed events for every open session. Clears the view. */
     exited(): HarnessEvent[] {
       const events = [...sessions].map(([sessionId, session]): HarnessEvent => ({
         type: "session.closed",

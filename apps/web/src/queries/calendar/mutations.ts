@@ -3,8 +3,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../keys";
 import { connectCalendars, runCalendarAction, updateCalendar } from "@/api/calendar/requests";
 
-// Calendar writes change the viewer's calendars and events. Contacts and interactions that a sync
-// creates arrive later, through the server's context hints.
 function useCalendarInvalidation(organizationId: string) {
   const client = useQueryClient();
   return () => client.invalidateQueries({ queryKey: queryKeys.calendar(organizationId) });

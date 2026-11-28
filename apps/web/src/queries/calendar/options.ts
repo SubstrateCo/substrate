@@ -17,7 +17,6 @@ export const calendarSettingsOptions = (organizationId: string) =>
     retry: false,
   });
 
-/** The calendars in a linked account, read live from the provider when the dialog opens. */
 export const providerCalendarsOptions = (organizationId: string, credentialAccountId: string) =>
   queryOptions({
     queryKey: [...queryKeys.calendarSettings(organizationId), "provider", credentialAccountId],
@@ -27,7 +26,6 @@ export const providerCalendarsOptions = (organizationId: string, credentialAccou
     retry: false,
   });
 
-/** Every connected calendar's events in a period. The view filters calendars locally. */
 export const calendarEventsOptions = (
   organizationId: string,
   range: { from: string; until: string },
@@ -58,10 +56,6 @@ export const contactMeetingsOptions = (organizationId: string, contactEntityId: 
     retry: false,
   });
 
-/**
- * The meetings that calendar interactions came from, in one request per list. The server returns
- * only the sources the viewer can read, so the others show just the interaction.
- */
 export const interactionSourcesOptions = (
   organizationId: string,
   interactionEntityIds: string[],

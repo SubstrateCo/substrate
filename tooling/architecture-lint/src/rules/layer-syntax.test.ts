@@ -47,9 +47,7 @@ const database = at("db/tasks.ts");
 ruleTester.run("layer-syntax", layerSyntax(config, model), {
   valid: [
     { code: 'const body = c.req.valid("json");', filename: route },
-    // Strings and comments are not code.
     { code: 'const note = "c.req.json()"; // await c.req.json()', filename: route },
-    // The rule applies only to its layer.
     { code: "const body = await c.req.json();", filename: at("src/v1/tasks/service.ts") },
     { code: "const row = taskRow.parse(value);", filename: database },
   ],
@@ -65,7 +63,6 @@ ruleTester.run("layer-syntax", layerSyntax(config, model), {
       ],
     },
     {
-      // A call that spans lines is one path.
       code: 'const q = c.req\n  .query("a");',
       filename: route,
       errors: [
@@ -87,7 +84,6 @@ ruleTester.run("layer-syntax", layerSyntax(config, model), {
       ],
     },
     {
-      // Only the `repositories.agents` member matches, not the longer chain around it.
       code: "await repositories.agents.list();",
       filename: route,
       errors: [

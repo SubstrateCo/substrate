@@ -13,11 +13,6 @@ type ReceiptKey = {
   requestId: string;
 };
 
-/**
- * Claims the request by inserting its receipt first. A concurrent request with the same key waits
- * on the primary key until this transaction ends. Returns the stored receipt of an earlier
- * request, or undefined for a new one; save the new result with saveToolReceipt before commit.
- */
 export async function claimToolReceipt(
   tx: DatabaseExecutor,
   key: ReceiptKey,

@@ -2,7 +2,6 @@ import type { AcpConfigOption, AcpConfigSelectValue } from "../api.ts";
 import type { AcpUpdate } from "../driver.ts";
 import type { SessionConfigOption, SessionUpdate } from "@agentclientprotocol/sdk/unstable";
 
-/** Flattens grouped select values. */
 export function configOptionsV1(options: SessionConfigOption[] | null | undefined) {
   return (options ?? []).map((option): AcpConfigOption => {
     const values: AcpConfigSelectValue[] =
@@ -27,7 +26,6 @@ export function configOptionsV1(options: SessionConfigOption[] | null | undefine
   });
 }
 
-/** Reduces one v1 session/update. Updates the client does not act on return undefined. */
 export function updateV1(update: SessionUpdate): AcpUpdate | undefined {
   switch (update.sessionUpdate) {
     case "agent_message_chunk": {
@@ -61,7 +59,6 @@ export function updateV1(update: SessionUpdate): AcpUpdate | undefined {
       return { type: "commands", names: update.availableCommands.map((command) => command.name) };
     case "config_option_update":
       return { type: "config", options: configOptionsV1(update.configOptions) };
-    // Thoughts, plans, modes, notices and the rest are not part of a canonical turn.
     case "user_message_chunk":
     case "agent_thought_chunk":
     case "plan":

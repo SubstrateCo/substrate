@@ -51,7 +51,6 @@ describe("unsaved drafts", () => {
 });
 
 describe("leaving the document", () => {
-  /** A document location that records each exit. */
   function recordingLocation() {
     const exits: string[] = [];
     return {

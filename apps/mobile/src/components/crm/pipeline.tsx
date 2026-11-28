@@ -26,7 +26,6 @@ function stageTotal(deals: DealListItem[]) {
   return formatMoney(String(total), [...currencies][0]!);
 }
 
-/** Open deals grouped by stage, in pipeline order. */
 export function PipelineBoard({
   scope,
   onOpenRecord,
@@ -122,7 +121,6 @@ type DraftStage = Extract<CrmWrite, { action: "configureStages" }>["stages"][num
   key: string;
 };
 
-/** Renames, reorders, adds and retires stages. Only workspace admins can save. */
 function StagesForm({
   scope,
   stages,

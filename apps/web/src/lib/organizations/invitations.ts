@@ -6,17 +6,12 @@ export function isInvitationExpired(expiresAt: string | Date, now: number) {
   return new Date(expiresAt).getTime() < now;
 }
 
-/** What the accept-invitation screen shows. */
 export type InvitationScreenState<T> =
   | { kind: "loading" }
   | { kind: "error" }
   | { kind: "missing" }
   | { kind: "ready"; invitation: T };
 
-/**
- * An invitation that Better Auth refuses, or that is no longer pending or has expired, is
- * missing. A failed refresh keeps a loaded invitation on screen.
- */
 export function invitationScreenState<T extends { expiresAt: string | Date; status: string }>({
   invitation,
   unavailable,

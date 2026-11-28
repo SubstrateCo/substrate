@@ -28,7 +28,6 @@ export function createDrafts() {
 
 export const Drafts = createContext<ReturnType<typeof createDrafts> | null>(null);
 
-/** Registers a dirty draft. */
 export function useRegisterDraft(key: string, dirty: boolean) {
   const drafts = useContext(Drafts);
   useLayoutEffect(() => {

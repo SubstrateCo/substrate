@@ -12,7 +12,6 @@ import { storageFileReader } from "../files/agent-file-reader";
 import type { ImageCodec } from "../files/image-codec";
 import type { z } from "zod";
 
-/** A call stored as a proposal. The agent learns the result in a later turn. */
 export type ApprovalPending = {
   success: false;
   error: { code: typeof approvalPendingCode; message: string; requestId: string };
@@ -37,8 +36,6 @@ export function createMcpService({
     ): Promise<ServiceResult<unknown> | { pending: ApprovalPending }> {
       const result = await serviceResult(async () => {
         const { organizationId, userId, installationId } = scope;
-        // The database loads the server turn that TurnContext names. It must be live and leased by
-        // the agent's home device, which must be the installation this request came from.
         return publish(
           await executeUserAgentTool(
             db,

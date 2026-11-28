@@ -123,7 +123,6 @@ test("a subtask created while its parent is deleted or moved never loses its par
       parentTaskEntityId: task.entityId,
       title,
     });
-  // Every live task's parent is live and in the same project.
   const expectWholeTrees = async () => {
     for (const id of [project.entityId, destination.entityId]) {
       const listed = await repos.tasks.list(id);
@@ -136,7 +135,6 @@ test("a subtask created while its parent is deleted or moved never loses its par
     repos.tasks.move(task.entityId, project.entityId, destination.entityId, null),
     subtask("During move"),
   ]);
-  // The loser gets a domain error, not a foreign-key failure.
   for (const result of moved)
     if (result.status === "rejected")
       expect([ConflictError, ValidationError]).toContain(result.reason.constructor);
@@ -263,7 +261,6 @@ test("a move checks both projects' access in one statement and denies view-only 
   const { db, queries } = recordQueries();
   const bob = new ActorRepositories(db, { organizationId: f.orgA, actorEntityId: f.bob });
   await bob.tasks.move(task.entityId, project.entityId, destination.entityId, null);
-  // Access checks read the scope actor's entity as scope_actor_entity.
   expect(queries.filter((query) => query.includes("scope_actor_entity"))).toHaveLength(1);
   expect((await repos.tasks.get(task.entityId)).projectEntityId).toBe(destination.entityId);
   await repos.permissions.grant({

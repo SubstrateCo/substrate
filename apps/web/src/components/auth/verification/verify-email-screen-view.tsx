@@ -33,7 +33,6 @@ export function VerifyEmailScreen({
   email: string;
   invalid?: boolean;
   pending?: boolean;
-  /** The address a new link was just sent to. */
   sentTo?: string;
   error?: Error | null;
   onSubmit: (form: FormData) => void;

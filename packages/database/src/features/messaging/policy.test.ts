@@ -81,7 +81,6 @@ test("canManage allows the host owner and host admins, never DMs, partners or ag
   expect(canManage(conversation("dm"), viewer({ admin: true }))).toBe(false);
   expect(canManage(conversation("agent_dm"), viewer({ admin: true }))).toBe(false);
   expect(canManage(conversation("group"), viewer({ agent: true }))).toBe(false);
-  // A legacy external creator keeps no authority in the host organization.
   expect(canManage(conversation("group"), viewer({ organizationId: "partner", admin: true }))).toBe(
     false,
   );

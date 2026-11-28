@@ -43,7 +43,6 @@ const agentRequestState = z.object({
 });
 export type AgentRequestState = z.output<typeof agentRequestState>;
 
-/** Codes after which the caller verifies the session again. */
 const deniedCodes = new Set(["UNAUTHENTICATED", "FORBIDDEN", "WORKSPACE_CHANGED"]);
 
 export type ServerCall = <T extends z.ZodType>(
@@ -112,7 +111,6 @@ export function createAgentWorkServer(options: {
     },
     async catalog() {
       const catalog = await options.catalog();
-      // The server marks the home device that matches this installation as current.
       const home = new Set(
         catalog.runSettings
           .filter((settings) => settings.homeDevice?.current === true)

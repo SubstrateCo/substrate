@@ -1,7 +1,5 @@
 import { useEffect, useEffectEvent } from "react";
 
-/** Only a deliberate, continuously visible foreground reader counts as reading.
- * Moving away starts a fresh dwell; fetching a body never changes Gmail. */
 export function useReadDwell(element: HTMLElement | null, enabled: boolean, onRead: () => void) {
   const read = useEffectEvent(onRead);
   useEffect(() => {

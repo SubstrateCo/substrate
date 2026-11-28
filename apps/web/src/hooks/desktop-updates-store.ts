@@ -12,10 +12,6 @@ type DesktopUpdatesStore = {
 
 const stores = new WeakMap<UpdatesSource, DesktopUpdatesStore>();
 
-/**
- * The main process owns update status and pushes every change. All views share one subscription
- * per bridge: it reads the status once when the first view subscribes, then listens.
- */
 export function desktopUpdatesStore(bridge: UpdatesSource): DesktopUpdatesStore {
   const existing = stores.get(bridge);
   if (existing) return existing;
@@ -27,18 +23,17 @@ export function desktopUpdatesStore(bridge: UpdatesSource): DesktopUpdatesStore 
     for (const listener of listeners) listener();
   };
   const start = () => {
-    let changed = false;
+    let receivedChange = false;
     const unsubscribe = bridge.onChange((next) => {
-      changed = true;
+      receivedChange = true;
       set(next);
     });
     stop = unsubscribe;
+    const isLatestSubscription = () => stop === unsubscribe;
     bridge
       .get()
-      // A change that arrived while this read was in flight is newer, and a read from an
-      // earlier subscription must not replace what a later one received.
       .then((initial) => {
-        if (!changed && stop === unsubscribe) set(initial);
+        if (!receivedChange && isLatestSubscription()) set(initial);
       })
       .catch(() => {});
   };

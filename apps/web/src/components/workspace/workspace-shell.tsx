@@ -25,7 +25,6 @@ export function WorkspaceShell({
   unavailable: boolean;
   hasUnreadNotifications?: boolean;
   hasUnreadMessages?: boolean;
-  /** One of the viewer's agents waits for an answer, an approval, or a decision. */
   agentsNeedYou?: boolean;
   switcher: ReactNode;
   userMenu: ReactNode;
@@ -47,7 +46,6 @@ export function WorkspaceShell({
     agents: { unread: agentsNeedYou, unreadLabel: "needs you", dotTone: "warning" },
   };
   const visibleApps = workspaceApps.filter(({ id }) => !isOptionalApp(id) || apps.enabled(id));
-  // Agents sit at the bottom of the rail, above Notifications.
   const topApps = visibleApps.filter(({ id }) => id !== "agents");
   const bottomApps = visibleApps.filter(({ id }) => id === "agents");
   return (
@@ -80,7 +78,6 @@ export function WorkspaceShell({
         className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface md:rounded-tl-2xl"
       >
         {loading && (
-          // Same height as the search bar that replaces it, so the page does not jump when it loads.
           <div className="box-content flex h-14 shrink-0 items-center border-b px-3 *:flex-1">
             <LoadingState label="Loading workspace details" variant="compact" rows={1} />
           </div>

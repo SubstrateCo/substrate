@@ -4,7 +4,6 @@ import type { OutboxBatch, RealtimeChange } from "@substrate/database/trusted";
 import { environment } from "../../environment";
 import { RedisClient } from "bun";
 
-/** Stores batches that could not be published, so the outbox relay publishes them later. */
 export interface OutboxStore {
   record: (hints: RealtimeHint[]) => Promise<void>;
   finish: (id: string) => Promise<void>;
@@ -15,12 +14,7 @@ export function createRefreshPublisher(
   reportFailure: () => void,
   outbox?: OutboxStore,
 ) {
-  // Call only after the outer transaction commits. Delivery cannot undo a write.
-  return async (
-    hints: RealtimeHint[] | Promise<RealtimeHint[]>,
-    // A write's hints, stored in its transaction. Publishing them deletes the row.
-    stored?: OutboxBatch,
-  ) => {
+  return async (hints: RealtimeHint[] | Promise<RealtimeHint[]>, stored?: OutboxBatch) => {
     let changes: RealtimeChange[];
     try {
       changes =
@@ -34,8 +28,6 @@ export function createRefreshPublisher(
       await send(JSON.stringify(changes));
     } catch {
       reportFailure();
-      // A stored batch is already due for the relay. Store any other batch for it now. Clients
-      // drop events they already received by ID, so a later publish of the same batch is safe.
       if (!stored) await outbox?.record(changes).catch(() => {});
       return;
     }

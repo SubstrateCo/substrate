@@ -15,12 +15,10 @@ export async function requireWork<Level extends Minimum = "view">(
   entityId: string,
   // SAFETY: Level defaults to "view", so the omitted argument is "view".
   minimum: Level = "view" as Level,
-  // The caller's requireAccess at `minimum`, in this transaction.
   access?: AuthorizedAccess<Level>,
 ) {
   const { entity, level } =
     access ?? (await context.requireAccess(entityId, minimum, { type: ["task", "project"] }));
-  // Archived work stays readable, like archived CRM records, but takes no changes.
   if (minimum !== "view" && (entity.entityType === "task" || entity.entityType === "project"))
     await requireUnarchived(context, [entityId]);
   if (entity.entityType === "task") {
@@ -69,7 +67,6 @@ export async function requireWork<Level extends Minimum = "view">(
   throw new AccessDeniedError();
 }
 
-// Explicit context targets are separate from body mentions and task-owned discussions.
 export async function requireContextTarget<Level extends Minimum = "view">(
   context: RepositoryContext,
   entityId: string,

@@ -19,7 +19,6 @@ import {
 } from "@agentclientprotocol/sdk/experimental/v2/unstable";
 import { z } from "zod";
 
-/** Waits this long for the user_message of a submission acknowledged after an idle. */
 const insertionGraceMs = 1_000;
 const cancelledCode = -32800;
 const errorCode = z.object({ code: z.number() });
@@ -29,14 +28,12 @@ interface Submission {
   acked: boolean;
   settled: boolean;
   messageId?: string;
-  /** Sends $/cancel_request for a held steer. */
   withdraw: AbortController;
   timer?: ReturnType<typeof setTimeout>;
 }
 
 interface Turn {
   active: boolean;
-  /** The idle that ends the turn once every submission is settled. */
   idle?: IdleStateUpdate;
   submissions: Submission[];
   resolve(result: AcpPromptResult): void;
@@ -46,10 +43,8 @@ interface Turn {
 export type SendPrompt = (signal?: AbortSignal) => Promise<PromptResponse>;
 
 export class SessionTurns {
-  /** Foreground state from the latest state_update. */
   private state: "idle" | "active" | "unknown" = "idle";
   private turn: Turn | undefined;
-  /** user_message IDs seen during the current turn. */
   private readonly inserted = new Set<string>();
 
   constructor(private readonly ended: () => void) {}
@@ -122,7 +117,6 @@ export class SessionTurns {
     }
   }
 
-  /** Ends the turn with error, such as a closed connection. */
   fail(error: Error) {
     if (this.turn) this.end(this.turn, error);
   }
@@ -142,13 +136,10 @@ export class SessionTurns {
     if (this.turn !== turn) return;
     submission.acked = true;
     submission.messageId = response.messageId;
-    // No idle yet, or its user_message came before the idle: the current work covers it.
     if (!turn.idle || this.inserted.has(response.messageId)) {
       this.settle(turn, submission);
       return;
     }
-    // Acknowledged after the idle: wait for its user_message to place it. An agent that never
-    // sends one is treated as covered by the idle.
     submission.timer = setTimeout(() => this.settle(turn, submission), insertionGraceMs);
   }
 

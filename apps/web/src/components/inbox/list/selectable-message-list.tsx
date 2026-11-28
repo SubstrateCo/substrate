@@ -46,7 +46,6 @@ export function SelectableMessageList({
         batch.rows.map((row) => row.id),
         batch.action,
       ),
-    // A bridge interruption can leave provider outcomes unknown. Keep the exact targets for retry.
     onSettled: (results, _error, batch) => {
       const done = new Set(
         (results ?? [])

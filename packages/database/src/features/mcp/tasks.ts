@@ -55,8 +55,6 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity
         linked: await linkSummary(ctx, identity, project.entityId),
       };
     },
-    // Updates move a task to the top, often the agent's own while it pages, so pages continue
-    // from the last task's position instead of an offset that such moves would shift.
     async listTasks(input: McpInput<"list_tasks">) {
       const p = newestFirstPagination(scope, "list_tasks", input);
       const assignee = await resolveActor(ctx, identity, input.assigneeActorId);
@@ -87,7 +85,6 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity
     async getTask(taskId: string): Promise<McpOutput<"get_task">> {
       const task = await taskRepository(ctx).get(taskId);
       const { detail, source } = await queryTaskDetail(ctx, identity, task);
-      // The source is a message the reader can open, so its files keep the message's access.
       const [attachments, sourceFiles] = await Promise.all([
         taskFiles(ctx.db, taskId),
         source ? messageFiles(ctx.db, [source.id]) : undefined,
@@ -122,7 +119,6 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity
             blocking: link.blocking,
           };
         }),
-        // Task-to-task links are already in links.
         linked: await linkSummary(ctx, identity, taskId, ["task"]),
         createdAt: iso(detail!.createdAt),
         updatedAt: iso(detail!.updatedAt),

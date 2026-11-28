@@ -115,7 +115,6 @@ export function createAttachmentRepository(context: RepositoryContext) {
               eq(messageAttachments.id, input.attachmentId),
             ),
           );
-        // A partner organization's file stays in its own organization's records.
         if (!source || source.organizationId !== ctx.scope.organizationId)
           throw new AccessDeniedError();
         const existing = await ctx.db
@@ -143,7 +142,6 @@ export function createAttachmentRepository(context: RepositoryContext) {
           .onConflictDoNothing({ target: [taskAttachments.taskEntityId, taskAttachments.fileId] })
           .returning({ id: taskAttachments.id });
         if (!row) {
-          // A concurrent call attached the same file first.
           const [winner] = await ctx.db
             .select({ id: taskAttachments.id })
             .from(taskAttachments)
@@ -174,7 +172,6 @@ export function createAttachmentRepository(context: RepositoryContext) {
           )
           .returning();
         if (!removed.length) throw new AccessDeniedError();
-        // taskContext checked that the task belongs to this project.
         ctx.effects.hint(
           workHint(scope.organizationId, input.projectEntityId, [input.taskEntityId]),
         );

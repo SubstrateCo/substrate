@@ -57,18 +57,15 @@ test("a reader viewing the timeline reads new messages as they arrive, without a
   const first = (await send(group.id, "first")).result;
   await mark(group.id, first.id, { viewing: true });
   const seen = await send(group.id, "while Bob looks");
-  // Bob's notice is kept, read, and nothing alerts him. The other member is still alerted.
   expect(seen.hints).not.toContainEqual(bobAlert());
   expect((await noticeFor(seen.result.id, f.bob))?.readAt).toBeInstanceOf(Date);
   expect(seen.hints).toContainEqual(alertFor(f.orgB, f.outsider));
   expect(await noticeFor(seen.result.id, f.outsider)).toEqual({ readAt: null });
   expect(await reads().unreadCounts()).toEqual([]);
-  // Viewing the timeline does not cover its threads.
   await f.messaging("bob").sendMessage(group.id, "joining the thread", first.id);
   const reply = await send(group.id, "in the thread", first.id);
   expect(reply.hints).toContainEqual(bobAlert());
   expect(await reads().unreadCounts()).toMatchObject([{ unreadReplyThreadIds: [first.id] }]);
-  // Ending the lease, or letting it lapse, makes new messages unread again.
   await mark(group.id, seen.result.id, { viewing: false });
   const afterLeaving = await send(group.id, "after Bob left");
   expect(afterLeaving.hints).toContainEqual(bobAlert());
@@ -120,7 +117,6 @@ test("a read that renews its viewing lease runs one lookup and two writes", asyn
   expect((await renew()).result).toEqual({ read: true, moved: true, cleared: true });
   queries.length = 0;
   expect((await renew()).result).toEqual({ read: true, moved: false, cleared: false });
-  // The workspace, the visible message, the position with its lease, and the notices.
   expect(queries).toHaveLength(4);
   const [position] = await f.db
     .select({ viewingUntil: messagingReadPositions.viewingUntil })

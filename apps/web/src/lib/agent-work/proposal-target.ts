@@ -10,22 +10,16 @@ import {
 } from "@/lib/navigation/record-links";
 import { z } from "zod";
 
-/**
- * A record an action names, as the viewer can see it now. hidden carries no name or link, so the
- * preview never reveals a record the viewer can't open.
- */
 export type ProposalRecord =
   | { access: "loading" }
   | { access: "hidden" }
   | { access: "visible"; label: string; link?: RecordLink };
 
-/** The parts of a project's detail the preview reads. Tasks are only the readable ones. */
 export interface ProposalProject {
   project: { entityId: string; name: string };
   tasks: readonly { entityId: string; title: string; parentTaskEntityId: string | null }[];
 }
 
-/** What a hidden record is, so its placeholder can say so without naming it. */
 export type RecordKind =
   | "conversation"
   | "thread"
@@ -36,22 +30,13 @@ export type RecordKind =
   | "record"
   | "interaction";
 
-/**
- * What the viewer can read now. Each lookup returns undefined while it loads and null when the
- * viewer can't open the record.
- */
 export interface ProposalLookups {
   organizationId: string;
-  /** Contacts open in Contacts with CRM on, and in Interactions with it off. */
   crmEnabled: boolean;
-  /** The name and type of a record ID in the call's input. */
   label: (id: string) => RecordLabel | null | undefined;
-  /** A project's detail, read only for a task change, to name its project and parent. */
   project: (projectId: string) => ProposalProject | null | undefined;
 }
 
-// Each stored input is the tool's input without requestId, so each typed preview parses it with
-// the tool's own schema. An input that does not parse gets the generic preview.
 const typedInputs = {
   reply: mcpTools.reply.input.omit({ requestId: true }),
   create_task: mcpTools.create_task.input.omit({ requestId: true }),
@@ -77,14 +62,12 @@ function typedAction(action: ProposalAction): TypedAction | null {
   // SAFETY: hasOwn checked that the name is a key of typedInputs.
   const tool = action.tool as TypedTool;
   const parsed = typedInputs[tool].safeParse(action.input);
-  // A reply without `to` posts in the turn's own place, which the generic preview shows.
   if (!parsed.success || (tool === "reply" && !("to" in parsed.data && parsed.data.to)))
     return null;
   // SAFETY: the input was parsed with the schema of the same tool.
   return { tool, input: parsed.data } as TypedAction;
 }
 
-/** A field of a stored call, as the generic preview shows it. */
 export type ProposalField =
   | { label: string; kind: "text"; text: string; markdown: boolean }
   | { label: string; kind: "record"; record: ProposalRecord; recordKind: RecordKind };
@@ -143,7 +126,6 @@ function resolve<T>(value: T | null | undefined, visible: (value: T) => Proposal
   return visible(value);
 }
 
-/** Where a record opens, by its type. People, stages, task links and contact details have no page. */
 function labelLink(lookups: ProposalLookups, label: RecordLabel): RecordLink | undefined {
   const { organizationId } = lookups;
   switch (label.type) {
@@ -173,10 +155,6 @@ function labelLink(lookups: ProposalLookups, label: RecordLabel): RecordLink | u
   }
 }
 
-/**
- * A record ID, named from the viewer's own reads. A record of another type than the call expects
- * is not the one it names, so it is hidden.
- */
 function labelRecord(
   lookups: ProposalLookups,
   id: string,
@@ -207,7 +185,6 @@ function parentRecord(organizationId: string, detail: ProposalProject, taskId: s
   } satisfies ProposalRecord;
 }
 
-/** The project that holds a task, from the task's label. Null when the viewer can't open it. */
 function taskProject(lookups: ProposalLookups, taskId: string) {
   const label = lookups.label(taskId);
   if (label === undefined) return undefined;
@@ -219,7 +196,6 @@ type JsonObject = Record<string, Json>;
 const recordId = z.uuid();
 const jsonObject = z.record(z.string(), z.json());
 const primitive = z.union([z.string(), z.number()]);
-/** A typed record reference, such as attach_message's target. The label names its type. */
 const typedRef = z.strictObject({ type: z.string(), id: z.uuid() });
 
 function humanize(key: string) {
@@ -231,7 +207,6 @@ function humanize(key: string) {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
-/** A field's name without its ID suffix: assigneeActorId is "Assignee". */
 function fieldLabel(key: string) {
   const name = key.replace(/(Actor)?(Entity)?Ids?$/, "");
   if (name === "actor") return "Person";
@@ -251,7 +226,6 @@ type GenericField =
   | { label: string; kind: "text"; text: string; markdown: boolean }
   | { label: string; kind: "id"; id: string };
 
-/** Every field of a stored call, with each record ID left to resolve. */
 function genericFields(input: JsonObject) {
   const fields: GenericField[] = [];
   const visit = (key: string, value: Json, prefix: string, ownLabel?: string): void => {
@@ -283,7 +257,6 @@ function genericFields(input: JsonObject) {
   return fields;
 }
 
-/** Every record ID in a stored call, at any depth, for one batched label read. */
 export function proposalRecordIds(action: ProposalAction): string[] {
   const ids = new Set<string>();
   const visit = (value: Json) => {
@@ -297,7 +270,6 @@ export function proposalRecordIds(action: ProposalAction): string[] {
   return [...ids];
 }
 
-/** The task whose project detail a typed preview reads, to name its project and parent. */
 export function proposalDetailTask(action: ProposalAction): string | undefined {
   const typed = typedAction(action);
   return typed?.tool === "update_task" || typed?.tool === "delete_task"
@@ -335,20 +307,14 @@ function namedRecords(target: ProposalTarget): (ProposalRecord | null)[] {
   }
 }
 
-/** Approval waits until every named record resolves, so the owner sees the exact target first. */
 export function proposalTargetLoading(target: ProposalTarget) {
   return namedRecords(target).some((record) => record?.access === "loading");
 }
 
-/**
- * The agent acts with its owner's access, so the owner cannot approve a change to a record they
- * can't open: the server would refuse it.
- */
 export function proposalTargetHidden(target: ProposalTarget) {
   return namedRecords(target).some((record) => record?.access === "hidden");
 }
 
-/** The tool's title, or its name for a tool this version does not know. */
 function toolTitle(tool: string) {
   // SAFETY: hasOwn checked that the name is a key of mcpTools.
   return Object.hasOwn(mcpTools, tool) ? mcpTools[tool as keyof typeof mcpTools].title : tool;
@@ -362,10 +328,8 @@ function typedTarget(action: TypedAction, lookups: ProposalLookups): ProposalTar
   const { organizationId } = lookups;
   switch (action.tool) {
     case "reply": {
-      // typedAction keeps only replies with `to`.
       const { conversationId, threadId } = action.input.to ?? { conversationId: "" };
       const conversation = labelRecord(lookups, conversationId, ["conversation"]);
-      // A thread in a conversation the viewer can't open, or in another one, is hidden too.
       const thread = (id: string) => {
         if (conversation.access === "hidden") return hidden;
         return resolve(lookups.label(id), (label) =>
@@ -384,7 +348,6 @@ function typedTarget(action: TypedAction, lookups: ProposalLookups): ProposalTar
     case "create_task": {
       const { projectId, parentTaskId, sourceMessageId, assigneeActorId } = action.input;
       const project = labelRecord(lookups, projectId, ["project"]);
-      // The parent must be a task of the same project.
       const parent = (id: string) =>
         resolve(lookups.label(id), (label) =>
           label.type === "task" && label.projectId === projectId && project.access !== "hidden"
@@ -409,7 +372,6 @@ function typedTarget(action: TypedAction, lookups: ProposalLookups): ProposalTar
         input: action.input,
         task: labelRecord(lookups, taskId, ["task"]),
         project: resolve(detail, (project) => projectRecord(organizationId, project)),
-        // The parent is not in the call, so the project's readable tasks name it.
         parentTask: detail && parentId ? parentRecord(organizationId, detail, parentId) : null,
         assignee: changes.assigneeActorId ? person(lookups, changes.assigneeActorId) : null,
       };
@@ -465,11 +427,6 @@ function typedTarget(action: TypedAction, lookups: ProposalLookups): ProposalTar
   }
 }
 
-/**
- * Every record the stored call names, resolved from what the viewer can read, never from the
- * agent's words. Approval runs the stored call, so the owner must see what it targets. Tools
- * without a typed preview show each input field.
- */
 export function proposalTarget(action: ProposalAction, lookups: ProposalLookups): ProposalTarget {
   const typed = typedAction(action);
   if (typed) return typedTarget(typed, lookups);

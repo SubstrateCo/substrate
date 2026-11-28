@@ -41,19 +41,15 @@ import { type SelectedFields } from "drizzle-orm/pg-core";
 export function projectRepository(context: RepositoryContext) {
   const { db, scope } = context;
   const name = joinedActorName();
-  // Joined on `user`: whether the person is still a member here.
   const organizationMember = and(
     eq(member.userId, user.id),
     eq(member.organizationId, scope.organizationId),
   );
-  // Read inside JSON aggregates; withPictures accepts only managed pictures afterwards.
   const image = sql<string | null>`case when ${actors.type} = 'agent' then null
     else case when ${member.id} is not null then ${user.image} end end`;
   const avatar = joinedActorAvatar();
   const projectWhere = (id: string) =>
     and(eq(projects.organizationId, scope.organizationId), eq(projects.entityId, id));
-  // The project row and the actor's level. A row exists only when the actor can read the
-  // project, so the extra fields are never computed for a reader without access.
   function selectWithLevel<T extends SelectedFields>(entityId: string, fields: T) {
     const level = sql<PermissionLevel | null>`${context.accessLevel(projects.entityId)}`;
     return db
@@ -66,7 +62,6 @@ export function projectRepository(context: RepositoryContext) {
     if (!row) return context.deny(entityId, "view", { type: "project" });
     return row.project;
   }
-  // A JSON object with the given keys. Keys are fixed identifiers in this file.
   function jsonObject(fields: Record<string, SQLWrapper>) {
     return sql.join(
       Object.entries(fields).map(([key, value]) => sql`${sql.raw(`'${key}'`)}, ${value}`),
@@ -113,11 +108,7 @@ export function projectRepository(context: RepositoryContext) {
       );
   }
   function availableActors(projectEntityId: string) {
-    // Organization actors are discoverable only inside an accessible project, not across organizations.
-    // Another user's agent appears only as the assignee of a readable task in this project.
     const listed = and(activeActorCondition(), visibleActorCondition(scope));
-    // Assignable matches requireAssignee: listed, and able to read the project. Agents read
-    // through their owner. The readers subquery runs once for all actors.
     const assignable = and(
       listed,
       sql`${permissionActorEntityId({ organizationId: scope.organizationId, actorEntityId: actors.entityId })} IN (${entityReaders(scope.organizationId, projectEntityId)})`,
@@ -198,7 +189,6 @@ export function projectRepository(context: RepositoryContext) {
       )
       .where(liveProjectTasks(scope, projectEntityId));
   }
-  // Each list is aggregated on its own, so one list's rows never multiply another's.
   function scalar<T>(query: SQLWrapper & PromiseLike<{ items: T }[]>) {
     return sql<T>`(${query})`;
   }
@@ -207,11 +197,9 @@ export function projectRepository(context: RepositoryContext) {
       const parsed = managedPicture.safeParse(row.image);
       return { ...row, image: parsed.success ? parsed.data : null };
     });
-  // A structural change: it claims the project's version, like delete and sharing do.
   function setArchived(entityId: string, archived: boolean) {
     return context.transaction(async (ctx) => {
       await ctx.requireStructuralAccess(entityId, "owner", { type: "project" });
-      // The old state is in the WHERE, so a repeated call changes nothing.
       const [changed] = await ctx.db
         .update(projects)
         .set(
@@ -279,7 +267,6 @@ export function projectRepository(context: RepositoryContext) {
     async delete(entityId: string) {
       return context.transaction(async (ctx) => {
         const tx = ctx.db;
-        // The claim comes first, so a restore in flight is either committed or fails after this.
         await ctx.requireStructuralAccess(entityId, "owner", { type: "project" });
         const [project] = await tx
           .select({ archivedAt: projects.archivedAt })
@@ -314,8 +301,6 @@ export function projectRepository(context: RepositoryContext) {
         const access = await ctx.requireStructuralAccess(entityId, "owner", { type: "project" });
         await requireUnarchived(ctx, [entityId]);
         await requireUnassignedProjectActor(ctx, entityId, actorEntityId);
-        // The caller's organization role can change during the checks above. Check ownership
-        // again last. A demotion that commits after this read does not stop the revocation.
         await ctx.requireAccess(entityId, "owner");
         await changePermission(ctx, access, { actorEntityId });
       });
@@ -399,7 +384,6 @@ export function projectRepository(context: RepositoryContext) {
             description: input.description ?? "",
           })
           .returning();
-        // Only the creator and admins can read a new project.
         ctx.effects.hint(workHint(scope.organizationId, entity.entityId));
         return project!;
       });

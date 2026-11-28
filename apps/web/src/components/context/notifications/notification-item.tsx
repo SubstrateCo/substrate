@@ -21,20 +21,15 @@ import { AtSign, Check, ChevronRight, ListTodo, LockKeyhole, MessageSquare } fro
 export type Notification = {
   id: string;
   kind: "assignment" | "mention" | "reply" | "message";
-  /** The task or project for assignments. */
   title: string;
-  /** Who acted, or null when the server could not name them. */
   actorName: string | null;
   actorImage: string | null;
-  /** Set exactly when the actor is an agent. */
   actorAvatar?: AgentAvatarCode | null;
-  /** Where it happened, as the reader sees it. */
   source: {
     kind: "project" | "channel" | "dm" | "agent_dm" | "group";
     name: string;
     private?: boolean;
   };
-  /** One line of the message, with references the reader cannot open left unnamed. */
   excerpt: string | null;
   link: RecordLink;
   read: boolean;
@@ -52,7 +47,6 @@ const kindIcons = {
   mention: AtSign,
 };
 
-/** Where it happened: "#launch", a private channel by its bare name, a group, or "a direct message". */
 function place(source: Notification["source"]) {
   if (source.kind === "agent_dm") return "an agent DM";
   if (source.kind === "dm") return "a direct message";
@@ -60,12 +54,10 @@ function place(source: Notification["source"]) {
   return conversationLabel({ ...source, kind: source.kind });
 }
 
-/** "Alice replied to a thread in #launch", as plain parts so the names can stand out. */
 function sentence(item: Notification) {
   if (item.mixedKinds && item.source.kind !== "project")
     return { verb: "updated a thread in", object: place(item.source) };
   if (item.kind === "assignment") return { verb: "assigned you", object: item.title };
-  // A mention on a task comes from a comment.
   if (item.kind === "mention" && item.source.kind === "project")
     return { verb: "mentioned you in a comment on", object: item.title };
   if (item.kind === "mention") return { verb: "mentioned you in", object: place(item.source) };
@@ -78,7 +70,6 @@ function sentence(item: Notification) {
   return { verb: "replied to a thread in", object: place(item.source) };
 }
 
-/** A lock before the name of a private channel, which has no "#". */
 function LockedPlace({ item, object }: { item: Notification; object: string }) {
   if (item.kind === "assignment" || item.source.kind !== "channel" || !item.source.private)
     return object;
@@ -97,7 +88,6 @@ export function NotificationItem({
   renderEvents,
 }: {
   item: Notification;
-  /** Marks the row read. Without it, the row has no read action. */
   onRead?: () => void;
   onOpen: (event: MouseEvent<HTMLAnchorElement>) => void;
   renderEvents?: () => ReactNode;
@@ -105,7 +95,6 @@ export function NotificationItem({
   const [expanded, setExpanded] = useState(false);
   const Icon = kindIcons[item.kind];
   const actor = notificationActor(item);
-  // One event needs no count: the row is that event.
   const events: GroupedEvents | undefined =
     item.count !== undefined && item.count > 1
       ? { count: item.count, unread: item.unreadCount, render: renderEvents }
@@ -153,7 +142,6 @@ export function NotificationItem({
   );
 }
 
-/** Several events grouped in one row. With `render`, the row expands to list them. */
 type GroupedEvents = { count: number; unread?: number; render?: () => ReactNode };
 
 function NotificationEvents({ events, expanded }: { events: GroupedEvents; expanded: boolean }) {
@@ -261,7 +249,6 @@ function NotificationSummary({
       <p className="flex min-w-0 items-baseline gap-2 text-sm">
         <Link
           {...item.link}
-          // One name for the row; a visually hidden span would add a stray space before ", unread".
           aria-label={`${actors} ${verb} ${object}${item.read ? "" : ", unread"}`}
           onClick={onOpen}
           className="min-w-0 flex-1 rounded-sm wrap-anywhere outline-none focus-visible:ring-2 focus-visible:ring-ring"

@@ -140,7 +140,6 @@ test("sending a work reference refreshes its project discussions, not other conv
     otherWorkspace: { key: queryKeys.messages("other", "conversation") },
   });
   try {
-    // Measure the replaced organization-wide policy against the same mounted fixture.
     await fixture.client.invalidateQueries({ queryKey: queryKeys.organization("org") });
     expect(Object.values(fixture.reads).reduce((sum, count) => sum + count, 0)).toBe(18);
     for (const name of Object.keys(fixture.reads)) fixture.reads[name] = 0;
@@ -151,14 +150,11 @@ test("sending a work reference refreshes its project discussions, not other conv
       `New discussion @[task:${taskId}]`,
     );
     expect(fixture.reads).toEqual({
-      // A send changes the list only by rejoining, and that sends its own messaging hint.
       conversations: 0,
-      // updateSentMessageHistory reads only the new messages into history pages.
       channel: 0,
       thread: 0,
       history: 0,
       otherConversation: 0,
-      // A new message cannot change the context of loaded messages; it gets its own page.
       page: 0,
       otherPage: 0,
       relatedTask: 1,
@@ -206,7 +202,6 @@ test("a sent message joins its loaded page through one read of newer messages", 
     await updateSentMessageHistory(client, location, "sent", load);
     expect(observer.getCurrentResult().data?.map((row) => row.id)).toEqual(["first", "sent"]);
     expect(after).toEqual(["first"]);
-    // A thread that is not loaded has nothing to update and reads nothing.
     await updateSentMessageHistory(client, { ...location, threadId: "root" }, "reply", load);
     expect(after).toEqual(["first"]);
     expect(fullReads).toBe(0);
@@ -244,7 +239,6 @@ test("local replies refresh cached root and reply target counts without realtime
   });
   const unsubscribes = observers.map((observer) => observer.subscribe(() => {}));
   try {
-    // A successful local reply changes the server snapshot; no realtime cache is connected.
     replyCount++;
     await invalidateSentMessage(client, "org", "conversation", "Another reply", "root");
     expect(observers.map((observer) => observer.getCurrentResult().data?.root.replyCount)).toEqual([
@@ -347,7 +341,6 @@ test("task edits refresh the affected project, labels, activity and notification
 test("a link refreshes every cached project and task history", async () => {
   const fixture = mount({
     project: { key: queryKeys.project("org", "project"), data: { tasks: [{ entityId: taskId }] } },
-    // The other end of a link may be in another project.
     otherProject: { key: queryKeys.project("org", "other"), data: { tasks: [] } },
     catalog: { key: queryKeys.projects("org") },
     activity: { key: [...context, "activity", taskId] },

@@ -5,12 +5,6 @@ import { cn } from "@/lib/utils";
 
 const longPressDelay = 350;
 
-/**
- * A message row that opens its actions on long press, like a chat app. The row is not an
- * accessibility element itself, so the links, chips and buttons inside it stay reachable; screen
- * reader and keyboard users open the same actions from the row's More button. On the web the row
- * is a hover group, so that button can appear on hover or focus.
- */
 export function MessagePressable({
   onLongPress,
   className,
@@ -40,7 +34,6 @@ export function MessagePressable({
   );
 }
 
-/** Whether a screen reader is running, kept current while it turns on or off. */
 export function useScreenReaderEnabled() {
   const [enabled, setEnabled] = useState(false);
   useEffect(() => {

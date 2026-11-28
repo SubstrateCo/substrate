@@ -15,11 +15,6 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Check } from "lucide-react";
 
-/**
- * A searchable list of one option field's values. A single choice applies and calls `onDone`;
- * a multiple-choice list stays open and toggles values. It mounts on each open, so the option
- * order captured on open stays put while the person checks and unchecks values.
- */
 export function OptionEditor({
   field,
   clause,
@@ -36,7 +31,6 @@ export function OptionEditor({
   const values = clause?.values ?? [];
   const operator = clause?.operator ?? fieldOperators(field)[0];
   const search = query.trim().toLocaleLowerCase();
-  // Ticked options lead, so a field that ticks unchosen options keeps field order.
   const leading = field.checks === "unchosen" ? [] : chosenOnOpen;
   const options = orderOptions(field.options, leading).filter(
     (option) => !search || option.label.toLocaleLowerCase().includes(search),
@@ -49,21 +43,14 @@ export function OptionEditor({
       return;
     }
     const next = toggleValue(values, option.value);
-    // A required field always keeps one value.
     if (!next.length && field.required) return;
     onChange(next.length ? { operator, values: next } : undefined);
   };
   const notice = optionNotice(field, options.length);
   return (
-    <Command
-      shouldFilter={false}
-      loop
-      // A single choice opens on its chosen option, not the first one in the list.
-      defaultValue={field.multiple ? undefined : chosenOnOpen[0]}
-    >
+    <Command shouldFilter={false} loop defaultValue={field.multiple ? undefined : chosenOnOpen[0]}>
       <div className="border-b p-2">
         <CommandInput
-          // The editor replaces the field list in place, so focus has to move into it.
           autoFocus
           aria-label={`Search ${field.label.toLocaleLowerCase()}`}
           placeholder={field.label}
@@ -87,7 +74,6 @@ export function OptionEditor({
                     onSelect={() => choose(option)}
                   >
                     {field.multiple && (
-                      // The option row is the control; the checkbox only shows its state.
                       <Checkbox
                         checked={checked}
                         tabIndex={-1}
@@ -108,10 +94,6 @@ export function OptionEditor({
   );
 }
 
-/**
- * The line above the options. Loaded options stay after a failed refresh, with the error above
- * them; without options, the error, loading, or empty line takes their place.
- */
 function optionNotice(field: OptionFilterField, matches: number): ReactNode {
   if (field.options.length)
     return (

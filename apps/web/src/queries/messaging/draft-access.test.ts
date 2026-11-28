@@ -7,7 +7,6 @@ import { expect, test } from "bun:test";
 const organizationId = "org";
 const draftKey = (conversationId: string) => `${organizationId}:${conversationId}:channel`;
 
-/** Subscribes and records, for each revoke, which of `conversationIds` keep their drafts. */
 function watch(client: QueryClient, conversationIds: string[]) {
   const calls: string[][] = [];
   subscribeDraftAccess(client, organizationId, (accessible) => {

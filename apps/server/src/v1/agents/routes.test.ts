@@ -36,7 +36,6 @@ test("agent avatar changes accept only stored avatar codes", async () => {
       headers: { "Content-Type": "application/json", Origin: "http://localhost:3000" },
       body: JSON.stringify({ id, avatar }),
     });
-  // Wrong version, unknown body preset, wrong length, and a body/colour object.
   for (const avatar of ["231005", "1z1005", "13100", { body: "circle" }])
     expect((await change(avatar)).status).toBe(400);
   expect(changes).toEqual([]);

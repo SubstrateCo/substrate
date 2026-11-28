@@ -25,10 +25,6 @@ const agentFields = saveAgentInput.extend({
 
 export type AgentSection = "skills" | "mcps";
 
-/**
- * Whether the name, model, or instructions differ from the saved agent. Enabled, apps and the
- * guide are not part of the draft: their switches save at once.
- */
 function definitionChanged(values: SaveAgentInput, saved: SaveAgentInput) {
   return (
     values.name !== saved.name ||
@@ -38,7 +34,6 @@ function definitionChanged(values: SaveAgentInput, saved: SaveAgentInput) {
   );
 }
 
-/** The draft's runtime and model, for the model field the settings compose. */
 export type AgentModelField = {
   id: string;
   harness: HarnessKind;
@@ -48,25 +43,16 @@ export type AgentModelField = {
 };
 
 type AgentFormProps = {
-  /** Renders the model field for the draft's runtime and model. */
   renderModel: (field: AgentModelField) => ReactNode;
-  /** Renders the built-in rules preview for the draft's runtime and name. */
   renderStartupInstructions: (draft: { harness: HarnessKind; name: string }) => ReactNode;
   agent?: AgentConfiguration;
   pending: boolean;
   renderCreate?: (editor: FormDialogEditor) => ReactNode;
-  /** Starts the save mutation. Call `onSuccess` once the agent is stored. */
   onSave: (input: SaveAgentInput, options: { onSuccess: () => void }) => void;
-  /** The save mutation's error. */
   error?: Error | null;
-  /** Clears the save mutation's error. */
   onResetError?: () => void;
 };
 
-/**
- * Create mode is a short dialog. Edit mode is one section with the name, model, and instructions in
- * one draft; leaving the settings overview with a draft asks first.
- */
 export function AgentForm({
   renderModel,
   renderStartupInstructions,
@@ -103,7 +89,6 @@ export function AgentForm({
       };
   const form = useForm({
     defaultValues,
-    // A new agent's empty name is not an error until the owner tries to create it.
     validationLogic: revalidateLogic({
       mode: agent ? "blur" : "submit",
       modeAfterSubmission: "change",
@@ -111,8 +96,6 @@ export function AgentForm({
     validators: { onDynamic: agentFields },
     onSubmit: ({ value }) => {
       if (pending) return;
-      // The saved agent owns enabled, its apps and its guide; their switches save at once and may
-      // have changed them since the draft began.
       const input = agent
         ? {
             ...value,
@@ -244,7 +227,6 @@ export function AgentForm({
               dirty={dirty}
               description="Your changes to this agent’s name, model, or instructions aren’t saved."
               name={`Agent settings: ${agent.name}`}
-              // Moving the view or a thread under the open overview keeps the draft.
               shouldBlock={({ next }) =>
                 next.routeId !== "/_authenticated/_frame/_workspace/agents" ||
                 !(next.search.agentId === agent.id && next.search.settings === "overview")

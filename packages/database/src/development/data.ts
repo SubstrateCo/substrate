@@ -296,7 +296,6 @@ export function developmentConversations(
   };
 }
 
-// Author indexes: Northstar owner, Orbit owner, Northstar member, Orbit member.
 export const developmentPartner = {
   channel: { kind: "channel", name: "Partner launch", shareHistory: true, private: true },
   dm: { kind: "dm", shareHistory: true },

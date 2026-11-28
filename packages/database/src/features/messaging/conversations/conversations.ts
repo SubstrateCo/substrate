@@ -46,16 +46,13 @@ interface CreateConversationInput {
   private?: boolean;
   emails?: string[];
   shareHistory?: boolean;
-  /** The caller's own agent definitions. */
   agentIds?: string[];
 }
 
-// An unnamed conversation is named after the given members.
 function displayName(name: string | null, members: { name: string }[]) {
   return name ?? (members.map((person) => person.name).join(", ") || null);
 }
 
-// The client view of a conversation. The DM key holds organization, actor and invited email IDs.
 function conversationView(conversation: Conversation) {
   const { id, organizationId, kind, taskEntityId, name, createdBy, createdAt } = conversation;
   return {
@@ -70,7 +67,6 @@ function conversationView(conversation: Conversation) {
   };
 }
 
-// Conversation membership and management. Scope comes from the authenticated session.
 export function conversationOperations(
   db: DatabaseExecutor,
   scope: Readonly<SessionIdentity>,
@@ -87,7 +83,6 @@ export function conversationOperations(
       });
   }
 
-  // Admins can find conversations of their organization that they cannot read.
   async function managedConversation(tx: DatabaseExecutor, viewer: Viewer, id: string) {
     if (viewer.agent) throw new AccessDeniedError();
     const [conversation] = await tx
@@ -108,8 +103,6 @@ export function conversationOperations(
     return conversation;
   }
 
-  // Management writes claim the conversation's next version, so they run one at a time. The
-  // claim succeeds only when the row is still the one authorized here.
   async function requireManaged(tx: DatabaseExecutor, viewer: Viewer, id: string) {
     return claimConversationChange(tx, await managedConversation(tx, viewer, id));
   }
@@ -148,7 +141,6 @@ export function conversationOperations(
               .where(inArray(tasks.entityId, taskIds))
           : [];
         const byConversation = await activeMembers(tx, ids, scope);
-        // Only disclose organizations attached to conversations this viewer can read.
         const connections = ids.length
           ? await tx
               .select({
@@ -223,10 +215,7 @@ export function conversationOperations(
                 external: organizationId !== scope.organizationId,
               }),
             ),
-            // The sidebar lists joined conversations. Public channels the person never joined or
-            // left are still returned, so links and search can open them.
             joined: members.some((participant) => participant.userId === scope.userId),
-            // Listed rows are visible, and a visible partner row has an active connection.
             canShare: canShare(row, viewer, { connected: true, visible: true }),
             canManage: canManage(row, viewer),
           };
@@ -277,15 +266,10 @@ export function conversationOperations(
             .select()
             .from(messagingConversations)
             .where(eq(messagingConversations.dmKey, dmKey!));
-          // A deletion or another re-invite can release the key while the insert waits.
           if (!existing) continue;
           if (!external.length) return conversationView(existing);
-          // Read validity after the wait: a concurrent creator may just have queued its invite.
           const valid = await findExternalDirectMessage(tx, scope, external[0]!);
           if (valid) return conversationView(valid);
-          // Expired/revoked invitations and departed or disconnected people do not reserve a DM.
-          // Release the key only if the holder is unchanged since it was read: invitations and
-          // acceptances claim a new version. Otherwise the next round reads the holder again.
           await tx
             .update(messagingConversations)
             .set({ dmKey: null, version: sql`${messagingConversations.version} + 1` })
@@ -303,7 +287,6 @@ export function conversationOperations(
           [{ ...actor, organizationId: scope.organizationId }, ...selected],
           "join",
         );
-        // An existing DM is returned above without a new invitation.
         await queueSharingInvitations(
           tx,
           scope,
@@ -329,7 +312,6 @@ export function conversationOperations(
           { emails: external, shareHistory },
           viewer,
         );
-        // Adding someone who left brings them back.
         const added = await writeMembers(tx, conversationId, selected, "join");
         if (added.length || external.length) changed(tx, conversationId, true);
         if (external.length) return { added: added.length, invited: external.length };
@@ -372,8 +354,6 @@ export function conversationOperations(
           ),
         );
         changed(tx, conversationId, true);
-        // Removed members no longer receive conversation hints. A user hint also refreshes
-        // their owner's agent sources and clears cached private content after access loss.
         effectsFor(tx).hint({
           audience: realtimeKeys.user(target.userId!),
           domain: accessRevoked ? "access" : "messaging",
@@ -382,8 +362,6 @@ export function conversationOperations(
       });
     },
 
-    // A member adds their own agent so they can address it here. This is not management:
-    // the agent reads with its owner's access, so it gains nothing the owner cannot see.
     async addAgent(conversationId: string, agentId: string) {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
@@ -400,7 +378,6 @@ export function conversationOperations(
       });
     },
 
-    // Only the agent's owner removes it. Its rows stay for authorship history.
     async removeAgent(conversationId: string, agentActorId: string) {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
@@ -456,12 +433,10 @@ export function conversationOperations(
       });
     },
 
-    // The owner names a new owner in the same call. The last member deletes instead.
     async leaveConversation(conversationId: string, newOwnerUserId?: string) {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
         const { actor, viewer } = await authenticate(tx);
-        // Leaving depends on the owner and the other members, so it claims the conversation.
         const conversation = await claimConversationChange(
           tx,
           await loadConversation(tx, scope, conversationId),
@@ -492,8 +467,6 @@ export function conversationOperations(
       });
     },
 
-    // Counts only linked work the caller can read, so the warning leaks nothing. The count is
-    // advisory; deletion authorizes again in its own transaction.
     async deleteImpact(conversationId: string) {
       return read(async (tx) => {
         const { context, viewer } = await authenticate(tx);
@@ -511,8 +484,6 @@ export function conversationOperations(
       });
     },
 
-    // Foreign keys remove messages, members, reactions, references and alerts. Task history keeps
-    // its rows without the message link.
     async deleteConversation(conversationId: string) {
       return db.transaction(async (tx) => {
         const { viewer } = await authenticate(tx);
@@ -524,7 +495,6 @@ export function conversationOperations(
       });
     },
 
-    // Admin view: names and members only, never messages.
     async listManagedConversations() {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return read(async (tx) => {

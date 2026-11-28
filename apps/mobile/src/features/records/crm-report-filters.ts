@@ -1,7 +1,6 @@
 import { reportPeriod } from "./crm/report-period";
 import { oneOf, type DateRange, type FilterOption } from "./filters";
 
-/** The CRM report's filter bar value. Close date and stale days always have a value. */
 export type ReportFilterValue = {
   close: DateRange;
   stage?: readonly string[];
@@ -11,7 +10,6 @@ export type ReportFilterValue = {
   stale: number;
 };
 
-/** The report filters the server reads, beside the close period. */
 export type ReportFilters = {
   stageId?: string;
   ownerActorEntityId?: string;
@@ -24,15 +22,10 @@ export const staleDayBounds = { min: 1, max: 3650 } as const;
 const outcomes = ["open", "won", "lost"] as const;
 const currencyCode = /^[A-Z]{3}$/;
 
-/** This month so far, and deals stale after 30 days. */
 export function initialReportFilters(today: string): ReportFilterValue {
   return { close: { from: `${today.slice(0, 7)}-01`, through: today }, stale: 30 };
 }
 
-/**
- * The report's request inputs. `period` is the UTC close period, or null when the dates are not
- * a valid range. `valid` is false when any input can't be sent.
- */
 export function reportRequest(value: ReportFilterValue) {
   const period = reportPeriod(value.close.from, value.close.through);
   const stage = value.stage?.[0];
@@ -53,7 +46,6 @@ export function reportRequest(value: ReportFilterValue) {
   return { period, filters, valid };
 }
 
-/** Known currency codes, sorted and without repeats, then "Unknown" for deals without one. */
 export function currencyOptions(known: readonly (string | null | undefined)[]): FilterOption[] {
   const codes = [
     ...new Set(known.filter((code): code is string => !!code && currencyCode.test(code))),

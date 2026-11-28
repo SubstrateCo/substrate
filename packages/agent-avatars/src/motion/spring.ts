@@ -5,7 +5,6 @@ export interface SpringConfig {
 
 const MAX_STEP = 1 / 120;
 
-/** A damped spring that chases a target. Fixed sub-steps keep stiff springs stable. */
 export class Spring {
   value: number;
   velocity = 0;

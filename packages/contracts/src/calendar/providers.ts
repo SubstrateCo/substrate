@@ -1,12 +1,9 @@
-// Calendar sync is read-only. Microsoft values are part of the model so the schema and contracts
-// need no change when Outlook support lands, but only Google is implemented.
 export const calendarProviders = ["google", "microsoft"] as const;
 export type CalendarProvider = (typeof calendarProviders)[number];
 export const implementedCalendarProviders = [
   "google",
 ] as const satisfies readonly CalendarProvider[];
 
-// Only `default` events are meetings. The others never create contacts or interactions.
 export const calendarEventKinds = [
   "default",
   "focus_time",

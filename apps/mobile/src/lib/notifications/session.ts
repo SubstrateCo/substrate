@@ -9,7 +9,6 @@ type ToastSink = {
   dismiss: () => void;
 };
 
-/** Private UI feedback must not survive its account or its pending operation. */
 export function createToastSession(sink: ToastSink) {
   let generation = 0;
   let active = false;

@@ -33,7 +33,6 @@ import { useInteractionSources } from "@/queries/calendar/interaction-sources";
 import { interactionRecordOptions } from "@/queries/context/interactions";
 import { Pencil, Trash2 } from "lucide-react";
 
-/** Interaction details in a `PageSheet`. The host renders the contact link, which depends on the page. */
 export function InteractionDetail({
   entityId,
   renderContact,
@@ -73,8 +72,6 @@ export function InteractionDetail({
     );
   const { interaction } = data;
   const { canEdit } = entityCapabilities({ level: data.level, archived: data.archived });
-  // Authors delete their own interactions, and admins delete any.
-  const canDelete = interaction.canDelete;
   const open = (action: InteractionChange["action"]) =>
     setChange({ entityId, summary: interaction.summary, action });
   const kind = interactionTypes[interaction.kind].label;
@@ -100,7 +97,7 @@ export function InteractionDetail({
               </Tooltip>
             )}
             <CopyLink link={interactionLink(organizationId, entityId)} grouped />
-            {canDelete && (
+            {interaction.canDelete && (
               <DropdownMenu>
                 <MoreActionsTrigger />
                 <DropdownMenuContent align="end">

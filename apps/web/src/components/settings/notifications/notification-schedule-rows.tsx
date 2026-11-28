@@ -14,11 +14,9 @@ const minutes = (time: string) => {
   return hour * 60 + minute;
 };
 
-/** Times of day for one end of the window. The other end's time is left out: they must differ. */
 const windowOptions = (current: number, other: number) =>
   timeOptions(clock(current)).filter((option) => option.value !== clock(other));
 
-/** The schedule switch, then its days and hours while it is on. */
 export function NotificationScheduleRows({
   schedule,
   disabled,
@@ -29,7 +27,6 @@ export function NotificationScheduleRows({
   schedule: NotificationSchedule | null;
   disabled: boolean;
   onEnable: () => void;
-  /** Saves the schedule with this change, in the device's time zone. */
   onChange: (change: Partial<Omit<NotificationSchedule, "timeZone">>) => void;
   onDisable: () => void;
 }) {
@@ -66,7 +63,6 @@ export function NotificationScheduleRows({
                 value={schedule.days.map(String)}
                 disabled={disabled}
                 onValueChange={(values) => {
-                  // A schedule needs at least one day. Turn the schedule off to allow none.
                   if (values.length) onChange({ days: values.map(Number).sort((a, b) => a - b) });
                 }}
               >

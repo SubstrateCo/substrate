@@ -9,7 +9,6 @@ export function useAttachMessageWork<T extends { id: string; projectEntityId: st
 ) {
   const client = useQueryClient();
   return useMutation({
-    // The API links one item per request. Each request settles on its own, so earlier links stay.
     mutationFn: async (items: T[]) => {
       const settled = await Promise.allSettled(
         items.map((item) => attachWork({ data: { organizationId, messageId, entityId: item.id } })),

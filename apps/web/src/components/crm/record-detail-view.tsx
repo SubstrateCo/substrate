@@ -58,7 +58,6 @@ export function RecordDetailView({
   onEdit: () => void;
   onArchive: () => void;
   children: ReactNode;
-  /** Feature actions, such as Move deal: items in the More actions menu. */
   tools?: RecordTool[];
   properties?: ReactNode;
   notice?: ReactNode;
@@ -71,7 +70,6 @@ export function RecordDetailView({
     noun: singularLabels[kind],
     capabilities,
     record: ownerRecord,
-    // Every member edits contacts, so they have no sharing or owner.
     enabled: kind !== "contacts",
     onRestoreFocus: () => menuTrigger.current?.focus(),
   });
@@ -88,7 +86,6 @@ export function RecordDetailView({
       <RecordDetailLayout
         tools={{
           link: recordLink(organizationId, kind, entityId),
-          // Editors keep Edit in view while the record is archived, disabled until they restore it.
           edit: canArchive ? { onEdit, disabled: !canEdit } : undefined,
           menu: (
             <RecordActionsMenu
@@ -165,7 +162,6 @@ export function RecordDetailLoading({ kind }: { kind: CrmKind }) {
   );
 }
 
-/** The header tools of a loaded record. */
 type RecordHeaderTools = {
   link: RecordLink;
   edit?: { onEdit: () => void; disabled: boolean };
@@ -173,9 +169,7 @@ type RecordHeaderTools = {
 };
 
 type RecordLayoutProps = {
-  /** A loading record has none. */
   tools?: RecordHeaderTools;
-  /** The link back to the collection, on a record page. */
   back?: ReactNode;
   name: ReactNode;
   archived: boolean;
@@ -183,11 +177,9 @@ type RecordLayoutProps = {
   properties?: ReactNode;
   notice?: ReactNode;
   children?: ReactNode;
-  /** Set while a skeleton stands in for the record. */
   loadingLabel?: string;
 };
 
-/** A record in the open sheet, or as its own page. */
 function RecordDetailLayout(props: RecordLayoutProps) {
   const sheet = usePageSheet();
   if (sheet) return <RecordSheetLayout label={sheet.label} {...props} />;
@@ -313,7 +305,6 @@ function RecordPageLayout({
   );
 }
 
-/** Announces the load once and hides the skeleton from assistive technology. */
 function RecordLoadingStatus({
   label,
   className,
@@ -332,7 +323,6 @@ function RecordLoadingStatus({
   );
 }
 
-/** The More actions menu on the sheet and the page: record tools, then Archive or Restore below a separator. */
 function RecordActionsMenu({
   triggerRef,
   tools,
@@ -373,7 +363,6 @@ function RecordActionsMenu({
   );
 }
 
-/** One More actions item. Choosing it hands its action to the menu to run after the menu closes. */
 function RecordToolItem({
   tool,
   onChoose,
@@ -389,7 +378,6 @@ function RecordToolItem({
   );
 }
 
-/** The record name in a sheet body, with its Archived tag and summary below. */
 function RecordTitle({
   name,
   archived,
@@ -424,7 +412,6 @@ function RecordProperties({ children }: { children: ReactNode }) {
   );
 }
 
-/** A record page: the summary and sections, with the properties in a right column when wide. */
 function RecordPageBody({
   summary,
   children,

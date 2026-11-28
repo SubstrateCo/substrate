@@ -24,10 +24,6 @@ import {
 } from "@/queries/agent-work/local";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 
-/**
- * Whether this desktop stores the turn's transcript: it runs the agent now, or it ran an attempt
- * of the turn before the agent moved. Undefined while that is unknown.
- */
 function useLocalTranscript(userId: string, organizationId: string, turn?: AgentWorkTurnView) {
   const enabled = localWorkEnabled(userId) && !!turn;
   const homed = useQuery({ ...homedAgentsOptions(userId, organizationId), enabled });
@@ -37,7 +33,6 @@ function useLocalTranscript(userId: string, organizationId: string, turn?: Agent
   if (homed.data?.some((agent) => agent.userAgentId === turn.userAgentId)) return true;
   if (runs.data?.length) return true;
   if (homed.isPending || runs.isPending) return undefined;
-  // A failed bridge read counts as no transcript here.
   return false;
 }
 
@@ -91,11 +86,6 @@ function transcriptDetails(
   };
 }
 
-/**
- * One turn's record: its summary, sources and outputs from the server on any device, and its
- * timeline from the desktop that ran it. Links check the viewer's conversations now; a
- * conversation the viewer can no longer open shows a placeholder.
- */
 export function TurnTranscript({
   turn,
   turnLoading,
@@ -112,7 +102,6 @@ export function TurnTranscript({
   turnError: Error | null;
   onRetryTurn: () => void;
   agentName: string;
-  /** The agent's home desktop, to say where its transcripts are. */
   device?: string;
   requests: readonly AgentRequestView[];
   unavailable?: string;
@@ -145,7 +134,6 @@ export function TurnTranscript({
       })}
       onRetry={() => {
         onRetryTurn();
-        // Without a turn the events read is skipped; the turn's own retry loads it first.
         if (turn && local) void events.refetch();
       }}
       onClose={onClose}

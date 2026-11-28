@@ -19,10 +19,6 @@ function liveState(state: LiveState, change: Partial<LiveState>): LiveState {
   return { ...state, ...change };
 }
 
-/**
- * A connected socket shows as connected only once the cache refresh after it is done. A failed
- * refresh also shows as connected: each failed load shows its own error or stale notice in-page.
- */
 function liveStatus({ socket, health }: LiveState): RealtimeStatus {
   if (socket !== "connected") return socket;
   return health === "syncing" ? "connecting" : "connected";
@@ -61,7 +57,6 @@ export function RealtimeConnection({
     });
     const unsubscribe = bridge.onEvent((event) => {
       if (!active) return;
-      // The cache reports failed refreshes through onHealth.
       if (event.type !== "status") void cache.receive(event).catch(() => {});
       else {
         connected = event.status === "connected";
@@ -69,8 +64,6 @@ export function RealtimeConnection({
         if (event.status === "forbidden") void cache.forbidden().catch(() => {});
       }
     });
-    // Hints keep the cache current, and the server retries hints it failed to publish. Returning
-    // to the window still re-reads what is on screen, in case a hint was lost anyway.
     const reconcile = () => {
       if (active && connected) void cache.reconcile().catch(() => {});
     };
@@ -106,7 +99,6 @@ const statusText: Record<Exclude<RealtimeStatus, "connected">, string> = {
   forbidden: "Live updates unavailable. Check workspace access.",
 };
 
-/** Why live updates are off, over the page outlet when one is rendered. */
 function RealtimeStatusNotice({
   status,
   container,
@@ -116,7 +108,6 @@ function RealtimeStatusNotice({
 }) {
   const notification = (
     <div
-      // Center on the main page outlet when one is rendered; otherwise span the container.
       // oxlint-disable-next-line shadcn/no-arbitrary-values -- Safe-area clearance is device-dependent; the minimum uses the spacing token.
       className={`${container ? "absolute" : "fixed"} pointer-events-none inset-x-page-outlet bottom-[max(--spacing(3),env(safe-area-inset-bottom))] z-50 flex justify-center`}
     >

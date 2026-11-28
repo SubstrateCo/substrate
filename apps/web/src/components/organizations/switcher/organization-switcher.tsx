@@ -14,12 +14,9 @@ import { toast } from "sonner";
 
 export function OrganizationSwitcher({ organizationId }: { organizationId: string }) {
   const [open, setOpen] = useState(false);
-  // The workspace frame holds this read and shows its loading and error states. Until it loads,
-  // the trigger shows a generic label.
   const current = useQuery(currentOrganizationQueryOptions(organizationId));
   const name = (current.isSuccess && current.data.name) || "Workspace";
   const logo = current.isSuccess ? current.data.logo : null;
-  // Load the list only for the open menu.
   const organizations = useQuery({ ...organizationsQueryOptions(), enabled: open });
   const switchOrganization = useActivateOrganization();
   return (

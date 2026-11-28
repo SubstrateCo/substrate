@@ -13,10 +13,6 @@ function address(href: string, omit: readonly string[] = []) {
 const workspace = (href: string) =>
   new URL(href, "https://workspace.invalid").searchParams.get("workspaceId");
 
-/**
- * Only entries observed in this document can prove a safe return. Reloads deliberately start
- * fresh. The router remains the history owner; this records committed entries, not a second stack.
- */
 export function trackPanelHistory(history: RouterHistory) {
   const entries = new Map<number, HistoryLocation>();
   let scope = workspace(history.location.href);
@@ -52,7 +48,6 @@ export function trackPanelHistory(history: RouterHistory) {
     const currentKey = current.state.__TSR_key;
     const knownEntry = !!currentKey && entries.get(index)?.state.__TSR_key === currentKey;
     if (!sameWorkspace || !knownEntry || address(current.href, keys) !== background) return;
-    // Stop at a gap, another app, or any changed background state. Never skip unrelated visits.
     for (let position = index - 1; position >= 0; position--) {
       const entry = entries.get(position);
       if (!entry || address(entry.href, keys) !== background) return;

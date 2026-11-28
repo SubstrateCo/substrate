@@ -6,23 +6,21 @@ import type {
 } from "@substrate/contracts/harness-runtime";
 
 import { z } from "zod";
-// ACP request fields are lenient: a field of an unexpected type is dropped, and fields this
-// module does not read stay as they are, for display.
-const acpText = z.string().nullish().catch(undefined);
-const acpTexts = z.array(z.string()).nullish().catch(undefined);
+const lenientText = z.string().nullish().catch(undefined);
+const lenientTexts = z.array(z.string()).nullish().catch(undefined);
 const acpEnumOption = z
-  .looseObject({ const: acpText, title: acpText, description: acpText })
+  .looseObject({ const: lenientText, title: lenientText, description: lenientText })
   .catch({});
 const acpEnumOptions = z.array(acpEnumOption).nullish().catch(undefined);
 const acpProperty = z
   .looseObject({
-    type: acpText,
-    title: acpText,
-    description: acpText,
-    enum: acpTexts,
+    type: lenientText,
+    title: lenientText,
+    description: lenientText,
+    enum: lenientTexts,
     oneOf: acpEnumOptions,
     items: z
-      .looseObject({ type: acpText, enum: acpTexts, anyOf: acpEnumOptions })
+      .looseObject({ type: lenientText, enum: lenientTexts, anyOf: acpEnumOptions })
       .nullish()
       .catch(undefined),
     /** codex-acp field markers (dist/index.js:41630, :41660-41661). */
@@ -30,8 +28,8 @@ const acpProperty = z
       .looseObject({
         codex: z
           .looseObject({
-            role: acpText,
-            questionId: acpText,
+            role: lenientText,
+            questionId: lenientText,
             isSecret: z.boolean().nullish().catch(undefined),
           })
           .nullish()
@@ -43,19 +41,15 @@ const acpProperty = z
   .catch({});
 type AcpProperty = z.output<typeof acpProperty>;
 const acpPermissionOption = z
-  .looseObject({ optionId: acpText, name: acpText, kind: acpText })
+  .looseObject({ optionId: lenientText, name: lenientText, kind: lenientText })
   .catch({});
 
-/**
- * An ACP request as the adapter emitted it: `session/request_permission` params for permission
- * requests, `elicitation/create` params for input requests. Parse it once when it arrives.
- */
 const acpToolCall = z
   .looseObject({
-    title: acpText,
+    title: lenientText,
     rawInput: z.json().optional().catch(undefined),
     locations: z
-      .array(z.looseObject({ path: acpText }).catch({}))
+      .array(z.looseObject({ path: lenientText }).catch({}))
       .nullish()
       .catch(undefined),
   })
@@ -66,20 +60,20 @@ export const acpRequestData = z
     /** v1 permission subject. */
     toolCall: acpToolCall,
     /** v2 permission prompt: its own title, description, and a tool call or command subject. */
-    title: acpText,
-    description: acpText,
+    title: lenientText,
+    description: lenientText,
     subject: z
-      .looseObject({ type: acpText, toolCall: acpToolCall, command: acpText })
+      .looseObject({ type: lenientText, toolCall: acpToolCall, command: lenientText })
       .nullish()
       .catch(undefined),
     options: z.array(acpPermissionOption).optional().catch(undefined),
-    mode: acpText,
-    message: acpText,
+    mode: lenientText,
+    message: lenientText,
     requestedSchema: z
       .looseObject({
-        title: acpText,
+        title: lenientText,
         properties: z.record(z.string(), acpProperty).nullish().catch(undefined),
-        required: acpTexts,
+        required: lenientTexts,
       })
       .optional()
       .catch(undefined),
@@ -104,18 +98,12 @@ function approve(
   };
 }
 
-/** A form without fields only asks the owner to accept or decline. */
 const acceptDecline = [
   { id: "accept", label: "Approve", style: "approve" as const },
   { id: "decline", label: "Decline", style: "deny" as const },
   { id: "cancel", label: "Stop the turn", style: "neutral" as const },
 ];
 
-/**
- * The first allow_once option approves and the first reject_once option denies, so the owner's
- * primary buttons and an expiry pick one-time decisions. Other kinds, such as allow_always, are
- * secondary choices.
- */
 function permissionOptions(data: AcpRequestData) {
   const options = (data.options ?? []).flatMap((option) => {
     const id = string(option.optionId);
@@ -135,7 +123,6 @@ function permissionOptions(data: AcpRequestData) {
   });
 }
 
-/** Tool input that runs a command shows the command. */
 const commandInput = z.looseObject({ command: z.string().trim().min(1) });
 
 function permissionDetail(call: NonNullable<AcpRequestData["toolCall"]>) {
@@ -154,9 +141,7 @@ type FormField = {
   type: "string" | "number" | "integer" | "boolean" | "array";
   title: string | null;
   description: string | null;
-  /** Enum choices. Empty for free text. */
   choices: FormChoice[];
-  /** The free-text field that holds the owner's own answer to this select field, if any. */
   companion: string | null;
 };
 
@@ -169,7 +154,6 @@ function secretField(key: string, property: AcpProperty) {
   return [key, property.title, property.description].some((text) => credential.test(text ?? ""));
 }
 
-/** Whether an input request asks for a secret, which the host declines. */
 export function asksForSecret(data: AcpRequestData) {
   return Object.entries(data.requestedSchema?.properties ?? {}).some(([key, property]) =>
     secretField(key, property),
@@ -211,12 +195,6 @@ function formChoices(
   return choices.slice(0, 20);
 }
 
-/**
- * The fields of a form elicitation, or null when it cannot be shown: URL mode, a secret field,
- * more than ten fields, or a required field of an unknown type. Unknown optional fields are
- * skipped. An optional free-text field that gives an own answer to a select field before it
- * joins that field, as its custom answer.
- */
 function formFields(data: AcpRequestData): FormField[] | null {
   if (data.mode && data.mode !== "form") return null;
   const schema = data.requestedSchema;

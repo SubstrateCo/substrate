@@ -28,7 +28,6 @@ test("CRM discussions require both endpoints and hide restricted backlink metada
     actorEntityId: f.bob,
     level: "view",
   });
-  // Target access does not expose private message IDs, names, timestamps, or counts.
   expect(await f.context("bob").related(account.entityId)).toEqual([]);
   await f.db.update(member).set({ role: "admin" }).where(eq(member.userId, "bob"));
   expect(await f.context("bob").related(account.entityId)).toEqual([]);
@@ -41,11 +40,9 @@ test("CRM discussions require both endpoints and hide restricted backlink metada
   );
   await chat.addMembers(conversation.id, ["bob@example.com"]);
   expect(await f.context("bob").related(account.entityId)).toHaveLength(1);
-  // Message access and target view still do not permit association writes.
   expect(await rejection(f.context("bob").attach(reply.id, account.entityId))).toBeInstanceOf(
     AccessDeniedError,
   );
-  // Every member edits contacts, so message access is enough to associate one.
   const contact = await repos.contacts.create({ displayName: "Shared customer" });
   expect(await f.context("bob").attach(reply.id, contact.entityId)).toBe(true);
   await repos.permissions.revoke({ entityId: account.entityId, actorEntityId: f.bob });
@@ -131,6 +128,5 @@ test("account and deal discussions stay explicit and hints never cross the endpo
   expect(await rejection(f.context().attach(reply.id, deal.entityId))).toBeInstanceOf(
     AccessDeniedError,
   );
-  // Archive keeps readable history, but prevents new associations.
   expect(await f.context().related(deal.entityId)).toHaveLength(1);
 });

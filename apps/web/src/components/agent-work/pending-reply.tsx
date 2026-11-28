@@ -10,13 +10,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import type { WorkMood, WorkTone } from "@/lib/agent-work/status";
 import { LockKeyhole } from "lucide-react";
 
-/**
- * Stands in for the agent's reply until it posts one, with the shape of the reply message, so
- * the reply takes its place without moving the timeline. Only the agent's owner sees agent
- * work; everyone else sees only the reply when it arrives.
- *
- * It is a separate message row after its source, never part of a user's message body.
- */
 export function PendingReply({
   name,
   avatar,
@@ -27,15 +20,10 @@ export function PendingReply({
   children,
 }: {
   name: string;
-  /** The agent's look, or null while it is not known. */
   avatar: AgentAvatarCode | null;
-  /** Queued and live work show in the avatar's mood. */
   mood: WorkMood | null;
-  /** Ended work shows its dot on the avatar. */
   tone: WorkTone;
-  /** The work's status, in the byline. */
   status: ReactNode;
-  /** One line where the reply's text will go, such as the latest activity. */
   line?: ReactNode;
   children?: ReactNode;
 }) {

@@ -75,7 +75,6 @@ test("an interaction is deleted only when the owner could delete it", async () =
     .from(entities)
     .where(eq(entities.entityId, own.entityId));
   expect(deleted?.deletedAt).not.toBeNull();
-  // Without the admin role, Alice deletes only her own interactions.
   await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));
   expect(
     await rejection(propose("delete_crm_interaction", { entityId: bobs.entityId })),

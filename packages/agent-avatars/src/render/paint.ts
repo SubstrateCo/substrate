@@ -2,8 +2,6 @@ import type { Palette } from "../config/resolve.ts";
 import { BODY_RADIUS } from "../motion/frame.ts";
 import type { ParticleKind } from "../motion/pose.ts";
 
-/** Paint shared by every renderer, so the DOM and native avatars look the same. */
-
 interface GradientStop {
   offset: number;
   color: string;
@@ -41,7 +39,6 @@ export function gradients(palette: Palette): GradientSpec[] {
         { offset: 1, color: palette.to },
       ],
     },
-    // One layer for both the diffuse light and the shading away from it.
     {
       kind: "radial",
       name: "light",
@@ -104,13 +101,11 @@ export function gradients(palette: Palette): GradientSpec[] {
   ];
 }
 
-/** Fixed sizes of the layers that only move, in view units. */
 export const LAYERS = {
   lightRadius: BODY_RADIUS * 2,
   bounce: { rx: BODY_RADIUS * 0.75, ry: BODY_RADIUS * 0.3 },
   spec: { rx: BODY_RADIUS * 0.26, ry: BODY_RADIUS * 0.15, rotate: -32 },
   outlineWidth: 1.2,
-  /** The eye shadow sits this far below the eye. */
   eyeShadowOffset: 0.9,
   eyeShadowOpacity: 0.22,
   particleStrokeWidth: 1.6,
@@ -119,7 +114,6 @@ export const LAYERS = {
 interface ParticleStyle {
   d: string;
   stroked: boolean;
-  /** Marks such as `z` and `?` use the text colour, so they read on light and dark pages. */
   color: string;
 }
 

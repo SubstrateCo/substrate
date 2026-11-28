@@ -9,7 +9,6 @@ import { loadArchitecture, repositoryRoot } from "./workspace.ts";
 const { config, workspace } = loadArchitecture();
 const model = layerModel(config, workspace);
 
-/** Architecture rules: the layers in architecture.config.json and the AGENTS.md rules. */
 export default {
   meta: { name: "architecture" },
   rules: {

@@ -3,7 +3,6 @@ import { member } from "../organizations/schema";
 import { user } from "./schema";
 import { and, eq } from "drizzle-orm";
 
-// Trusted auth lifecycle APIs; never expose these as tools or accept a client user ID.
 export async function getRememberedOrganization(db: DatabaseExecutor, userId: string) {
   const [membership] = await db
     .select({ organizationId: member.organizationId })

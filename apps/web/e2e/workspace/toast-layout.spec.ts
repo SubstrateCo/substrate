@@ -10,7 +10,6 @@ test.use({ reducedMotion: "no-preference" });
 test("dismissing a toast does not resize or scroll the app frame", async ({ account, client }) => {
   const user = await client(account);
   const { page } = user;
-  // Exercise the renderer's contained desktop layout, not native window or update behavior.
   await page.addInitScript(() => {
     const windowBridge: DesktopWindowAPI = {
       platform: "win32",
@@ -52,7 +51,6 @@ test("dismissing a toast does not resize or scroll the app frame", async ({ acco
     height: element.clientHeight,
     scrollTop: element.scrollTop,
   }));
-  // Sample throughout the exit animation; checking only after removal misses the jump.
   const samples = frame.evaluate(
     (element) =>
       new Promise<{ width: number; height: number; scrollHeight: number; scrollTop: number }[]>(

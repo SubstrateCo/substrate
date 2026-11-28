@@ -47,17 +47,13 @@ export const notifications = pgTable(
       table.createdAt,
       table.id,
     ),
-    // The unread feed and mark-all-read.
     index("notification_unread_idx")
       .on(table.organizationId, table.recipientActorEntityId, table.createdAt, table.id)
       .where(sql`${table.readAt} IS NULL`),
-    // Message deletion cascades here.
     index("notification_message_idx").on(table.messageId),
-    // Retention deletes read notifications by age.
     index("notification_read_created_idx")
       .on(table.createdAt)
       .where(sql`${table.readAt} IS NOT NULL`),
-    // Entity deletion cascades here.
     index("notification_entity_idx")
       .on(table.organizationId, table.entityId)
       .where(sql`${table.entityId} IS NOT NULL`),

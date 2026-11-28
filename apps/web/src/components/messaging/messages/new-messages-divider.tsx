@@ -1,4 +1,3 @@
-/** The line above the first message that was unread when the conversation opened. */
 export function NewMessagesDivider() {
   return (
     <div

@@ -18,7 +18,6 @@ import { ChevronDownIcon, XIcon, CheckIcon, SearchIcon } from "lucide-react";
  */
 const ComboboxPortalContainer = React.createContext<HTMLElement | null>(null);
 
-/** Escape inside an open combobox closes only the combobox, not the surface around it. */
 function isComboboxEscape(event: KeyboardEvent) {
   return event.target instanceof Element && !!event.target.closest("[data-slot=combobox-content]");
 }
@@ -32,7 +31,6 @@ function ComboboxValue({ ...props }: ComboboxPrimitive.Value.Props) {
   return <ComboboxPrimitive.Value data-slot="combobox-value" {...props} />;
 }
 
-// A `property` trigger reads as text, so its chevron shows only on hover and focus.
 function ComboboxTrigger({ className, children, ...props }: ComboboxPrimitive.Trigger.Props) {
   return (
     <ComboboxPrimitive.Trigger
@@ -93,7 +91,6 @@ function ComboboxInput({
   );
 }
 
-/** The search field at the top of a popup whose trigger is a button. */
 function ComboboxSearch({ className, ...props }: ComboboxPrimitive.Input.Props) {
   return (
     <InputGroup className={cn("w-auto", className)}>
@@ -105,7 +102,6 @@ function ComboboxSearch({ className, ...props }: ComboboxPrimitive.Input.Props) 
   );
 }
 
-// Match the trigger, with an 18rem minimum only when the available width allows it.
 function ComboboxContent({
   className,
   side = "bottom",
@@ -158,7 +154,6 @@ function ComboboxList({ className, ...props }: ComboboxPrimitive.List.Props) {
   );
 }
 
-// The keyboard cursor is the neutral row highlight; the chosen row shows a trailing check.
 function ComboboxItem({ className, children, ...props }: ComboboxPrimitive.Item.Props) {
   return (
     <ComboboxPrimitive.Item
@@ -214,7 +209,6 @@ function ComboboxEmpty({ className, ...props }: ComboboxPrimitive.Empty.Props) {
   );
 }
 
-/** A muted line under the list: search progress, a load error, or a result limit. */
 function ComboboxStatus({ className, ...props }: ComboboxPrimitive.Status.Props) {
   return (
     <ComboboxPrimitive.Status

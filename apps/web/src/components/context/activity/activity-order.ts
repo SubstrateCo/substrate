@@ -1,6 +1,5 @@
 type TimedActivity = { id: string; createdAt: string };
 
-/** Match the API's descending (millisecond timestamp, ID) order without changing query data. */
 export function orderActivity<T extends TimedActivity>(items: readonly T[]): T[] {
   return [...items].sort((a, b) => {
     const time = Date.parse(b.createdAt) - Date.parse(a.createdAt);

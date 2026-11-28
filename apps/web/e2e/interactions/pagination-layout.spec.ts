@@ -50,7 +50,6 @@ test("pages fit the screen; page turns and loading keep the table frame and page
     await pager.getByRole("button", { name: "Previous page", exact: true }).click();
     await expect(table.getByRole("row")).toHaveCount(rows);
 
-    // A taller window fits more rows on a page.
     await page.setViewportSize({ width, height: 900 });
     await expect(async () => {
       expect(await table.getByRole("row").count()).toBeGreaterThan(rows);

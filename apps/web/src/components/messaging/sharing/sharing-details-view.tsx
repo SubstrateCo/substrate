@@ -91,7 +91,6 @@ export function SharingDetailsLoading() {
   );
 }
 
-/** Who outside the organization has access, who is invited, and what changed. */
 export function SharingDetailsView({
   details,
   organizationId,

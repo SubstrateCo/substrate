@@ -30,7 +30,6 @@ test("concurrent lookups share one batch and each receives its own result", asyn
   ];
   expect(await Promise.all(identities.map(resolve))).toEqual(identities.map(resolved));
   expect(batches).toEqual([identities]);
-  // A later lookup starts a new batch and never reuses an earlier result.
   expect(await resolve(identities[0]!)).toEqual(resolved(identities[0]!));
   expect(batches).toHaveLength(2);
 });
@@ -129,7 +128,6 @@ test("an access hint rechecks every connection in one receiver batch and removes
   expect(connections.map(({ events }) => events.length)).toEqual([2, 1, 2, 2]);
   expect(connections[1]!.closed).toEqual([1008]);
   expect(hub.size).toBe(3);
-  // A failed batch closes each connection that waited on it.
   failing = true;
   await hub.publish({
     id: crypto.randomUUID(),

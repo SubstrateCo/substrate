@@ -28,9 +28,6 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-// Something that needs the owner: a blocking native prompt, an async question from reply.ask,
-// or a proposal. turn_id names a server turn; it has no foreign key, because older rows hold IDs
-// from the desktop's former local state.
 export const agentRequests = pgTable(
   "agent_requests",
   {
@@ -41,12 +38,10 @@ export const agentRequests = pgTable(
     agentActorEntityId: uuid("agent_actor_entity_id").notNull(),
     sessionKey: text("session_key").notNull(),
     turnId: uuid("turn_id").notNull(),
-    // Set for native prompts. Requests from MCP tools do not know the local epoch.
     epoch: integer("epoch"),
     kind: text("kind").$type<AgentRequestKind>().notNull(),
     mode: text("mode").$type<AgentRequestMode>().notNull(),
     nativeRequestId: text("native_request_id"),
-    // The message the card renders under. Place fields grant no access; readers re-check it.
     anchorMessageId: uuid("anchor_message_id"),
     conversationId: uuid("conversation_id").references(() => messagingConversations.id, {
       onDelete: "cascade",
@@ -55,10 +50,8 @@ export const agentRequests = pgTable(
     payload: jsonb("payload").$type<AgentRequestPayload>().notNull(),
     proposedAction: jsonb("proposed_action").$type<ProposalAction>(),
     actionHash: text("action_hash"),
-    // Proposals only: the targets' state at propose time. Approval runs only while it matches.
     targetBasis: jsonb("target_basis").$type<ProposalTargetBasis>(),
     response: jsonb("response").$type<AgentRequestResponse>(),
-    // Proposals only: declined, or the receipt of the executed action, or why it failed.
     outcome: jsonb("outcome").$type<ProposalOutcome>(),
     status: text("status").$type<AgentRequestStatus>().notNull().default("pending"),
     resolvedByUserId: text("resolved_by_user_id").references(() => user.id, {
@@ -78,7 +71,6 @@ export const agentRequests = pgTable(
       columns: [table.organizationId, table.agentActorEntityId],
       foreignColumns: [actors.organizationId, actors.entityId],
     }).onDelete("cascade"),
-    // The actor is this user agent's actor, so it is an agent actor in this organization.
     foreignKey({
       name: "agent_requests_agent_actor_fk",
       columns: [table.organizationId, table.agentActorEntityId, table.userAgentId],
@@ -92,7 +84,6 @@ export const agentRequests = pgTable(
       columns: [table.conversationId, table.threadId],
       foreignColumns: [messagingMessages.conversationId, messagingMessages.id],
     }).onDelete("cascade"),
-    // A repeated open of the same native prompt returns the same request.
     uniqueIndex("agent_requests_native_unique")
       .on(table.userAgentId, table.turnId, table.nativeRequestId)
       .where(sql`${table.nativeRequestId} IS NOT NULL`),

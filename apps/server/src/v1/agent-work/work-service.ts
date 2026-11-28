@@ -13,11 +13,6 @@ type Repository = WorkspaceScope["repositories"]["agentWork"];
 type TurnCommand = "stopTurn" | "retryTurn" | "dismissTurn" | "startFresh";
 type ItemCommand = "sendNow" | "resendItem" | "discardItem";
 
-/**
- * The owner's agent work from any device: activity, conversation work, turns and routines, and
- * the commands that change them. Each command publishes a data-less agent-work hint to the
- * owner, which also tells the agent's home host to sync.
- */
 export function createWorkService({ publish }: { publish: CommittedPublisher }) {
   const repository = (scope: WorkspaceScope): Repository => scope.repositories.agentWork;
   return {

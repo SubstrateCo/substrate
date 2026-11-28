@@ -12,7 +12,6 @@ import type { ImageCodec } from "./image-codec";
 import { normalizePicture } from "./image-policy";
 import { createHash } from "node:crypto";
 
-/** How long an upload can be completed after it was created. */
 const uploadTtlMs = 15 * 60_000;
 
 export interface FileServiceDependencies {
@@ -65,7 +64,6 @@ export function createFileService(deps: FileServiceDependencies) {
         const sha256 = createHash("sha256").update(bytes).digest("hex");
         const objectKey = finalObjectKey(upload, sha256);
         const contentType = isPicture ? "image/webp" : upload.contentType;
-        // Record intent first. A crash leaves a durable, sweepable orphan, not a leaked object.
         await repository.addCandidate(objectKey);
         await storage.putImmutable(objectKey, bytes, contentType);
         const file = await repository.complete(scope, id, {
@@ -74,7 +72,6 @@ export function createFileService(deps: FileServiceDependencies) {
           size: bytes.length,
           sha256,
         });
-        // Temporary keys stay writable until the ticket expires. Never use them for content.
         return { fileId: file.id };
       });
     },
@@ -95,7 +92,6 @@ export function createFileService(deps: FileServiceDependencies) {
       return serviceResult(async () => {
         const file = await repository.getReadable(scope, id);
         if (!file) throw new ServiceError("NOT_FOUND", "File not found or access denied.");
-        // Only normalized managed pictures may render inline through this endpoint.
         if (file.purpose === "file")
           throw new ServiceError("NOT_FOUND", "Picture not found or access denied.");
         try {
@@ -114,7 +110,6 @@ export function createFileService(deps: FileServiceDependencies) {
       });
     },
     async cleanup() {
-      // Uploads expire after uploadTtlMs. A full day gives in-flight completions ample time to stop.
       const before = new Date(Date.now() - 24 * 60 * 60_000);
       await repository.pruneUnusedFiles(before);
       const candidates = await repository.cleanupCandidates(before);

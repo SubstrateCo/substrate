@@ -1,9 +1,7 @@
 import type { AstNode, Rule } from "../ast.ts";
 
-/** `sdk.d.ts:6761`, `dist/session-message.js:19`, or `:4179` after a named file. */
 const CITATION = /(?:[\w@./-]+)?:\d+/;
 
-/** The evidence bullets of a doc comment: `- steer, compact: <evidence>` by flag name. */
 function evidenceByFlag(comment: string) {
   const evidence = new Map<string, string>();
   const bullets = comment
@@ -24,11 +22,6 @@ function typeName(node: AstNode | null | undefined) {
   return node.typeName.type === "Identifier" ? node.typeName.name : undefined;
 }
 
-/**
- * Adapter capability flags turn on only with evidence from the installed SDK or protocol
- * types: every `true` flag in an `AdapterCapabilities` object needs a doc-comment bullet
- * that names the flag and cites a `file:line`. See packages/harness-runtime/AGENTS.md.
- */
 export const capabilityCitations: Rule = {
   meta: {
     type: "problem",

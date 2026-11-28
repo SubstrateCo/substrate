@@ -32,7 +32,6 @@ test("an epoch's first prefix fixes its working folder until the next epoch", as
   const prefix = (workspace: string | null, policyVersion = 1) =>
     store.nativeSessions.setPrefix("org-1", id, { prefix: "p", policyVersion, workspace }, 1);
   await prefix("C:\\project-a");
-  // A rebuilt prefix, such as after a policy change, keeps the folder the session started in.
   await prefix("C:\\project-b", 2);
   expect(await store.nativeSessions.get("org-1", id)).toMatchObject({
     workspace: "C:\\project-a",
@@ -92,7 +91,6 @@ test("outdated policy lists open sessions of one organization that do not rotate
   const outdated = await session();
   const rotating = await session();
   const other = await session("org-2");
-  // A session that never opened has no prefix to replace.
   await session();
   await open(current, 2);
   await open(outdated);

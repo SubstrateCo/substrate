@@ -33,20 +33,16 @@ export function ReferencePicker({
     prefix: activeReference.kind,
     kind: activeReference.kind,
   });
-  // A new typed prefix ("@task:") replaces the tab the person picked.
   if (selection.prefix !== activeReference.kind)
     setSelection({ prefix: activeReference.kind, kind: activeReference.kind });
   const kind = kinds.includes(selection.kind) ? selection.kind : kinds[0]!;
   const rowKinds = kind === "all" ? mixed : [kind];
-  // Only typing waits. A tab switch searches the settled text at once.
   const debounced = useSearchDebounce(query, JSON.stringify([organizationId, conversationId]));
   const result = useQuery({
     ...searchOptions(
       referenceSearchInput({ organizationId, conversationId, query: debounced.query }, kind, tasks),
     ),
     enabled: apps.ready && !debounced.pending,
-    // A cached answer for this text shows at once. Otherwise the last answer, narrowed to rows
-    // that still match, stays up until this one arrives.
     placeholderData: (previous) => narrowedSuggestions(previous, rowKinds, query),
   });
   const rows = (result.data ?? []).flatMap((row) => {
@@ -57,7 +53,6 @@ export function ReferencePicker({
   const error = debounced.pending ? null : result.error;
   return (
     <ReferencePickerView
-      // A new query starts at the best option.
       key={query}
       query={query}
       kind={kind}

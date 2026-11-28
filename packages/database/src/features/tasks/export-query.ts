@@ -24,7 +24,6 @@ export interface TaskExportRow {
   updatedAt: Date;
 }
 
-// A scalar first page, used only inside the authorized project row.
 export function firstTaskExportPage(ctx: RepositoryContext, projectEntityId: string) {
   const assignee = alias(actors, "export_assignee");
   const page = joinActorAccount(

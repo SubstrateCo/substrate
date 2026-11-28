@@ -59,7 +59,6 @@ const Mention = Node.create({
   },
 });
 
-/** Web preview uses browser atoms. It is not evidence of native editor behavior. */
 export function ReferenceTextInput({
   parts,
   label,
@@ -134,7 +133,6 @@ export function ReferenceTextInput({
   }, [editor]);
 
   useLayoutEffect(() => {
-    // Editability changes are not draft edits and must not emit onUpdate.
     if (editor.isEditable !== editable) editor.setEditable(editable, false);
   }, [editor, editable]);
 

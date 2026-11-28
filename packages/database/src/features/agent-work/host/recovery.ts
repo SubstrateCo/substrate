@@ -17,14 +17,9 @@ import type { TurnRow } from "./held-turn";
 import { leaseUntil } from "./lease-time";
 import { and, eq, or } from "drizzle-orm";
 
-/** A turn that was claimed but never ran. */
 export const neverStarted = (turn: TurnRow) =>
   turn.status === "assigned" && turn.startedAt === null && turn.attempt === 1;
 
-/**
- * Puts the batch of a turn that never started back in the queue, available again at
- * availableAt, and cancels the turn.
- */
 export async function requeueTurn(
   db: DatabaseExecutor,
   turn: TurnRow,
@@ -62,12 +57,6 @@ export async function requeueTurn(
   return true;
 }
 
-/**
- * Ends a live turn that lost its runner without the runner's evidence. A turn that never started
- * puts its items back. A stopped turn is cancelled. Any other turn is interrupted, with the
- * resume note of its interruption unless it is a handoff; an unconfirmed steered item makes it
- * need the owner instead.
- */
 export async function endLostTurn(
   db: DatabaseExecutor,
   turn: TurnRow,
@@ -92,14 +81,6 @@ export async function endLostTurn(
   return { action };
 }
 
-/**
- * A live turn whose harness process died, with the host's evidence. A turn that never started
- * puts its items back. A stopped turn is cancelled, and a turn the owner interrupted with Send
- * now ends as interrupted while its held items run next; neither continues by itself. A handoff
- * turn ends. Otherwise the turn continues once, as the same turn with the next attempt and
- * generation, only when every tool call it started also finished and none of its steered input
- * is unconfirmed; else it needs the owner.
- */
 export async function recoverTurn(
   db: DatabaseExecutor,
   turn: TurnRow,

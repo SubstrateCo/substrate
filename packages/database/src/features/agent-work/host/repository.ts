@@ -20,7 +20,6 @@ import { and, eq, inArray } from "drizzle-orm";
 
 type HostInput<T> = Omit<T, "organizationId" | "installationId">;
 
-/** The live turns this device holds in the organization. */
 async function syncTurns(db: DatabaseExecutor, identity: ResolvedDeviceIdentity) {
   const live = await db
     .select({ id: agentTurns.id })
@@ -38,7 +37,6 @@ async function syncTurns(db: DatabaseExecutor, identity: ResolvedDeviceIdentity)
   );
 }
 
-/** The host API of one registered device: claim, run and report turns. */
 export function createHostRepository(db: DatabaseExecutor, identity: ResolvedDeviceIdentity) {
   const write = <A extends unknown[], R>(
     work: (tx: DatabaseExecutor, identity: ResolvedDeviceIdentity, ...args: A) => Promise<R>,

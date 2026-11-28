@@ -5,16 +5,21 @@ import type { getSession } from "@/api/auth/session";
 import { guestSessionRedirect, verifiedSessionAccess } from "@/lib/auth/session-policy";
 import { sessionQueryOptions } from "@/queries/auth/session";
 
+type Session = Awaited<ReturnType<typeof getSession>>;
+
+const trustUntilInvalidated = Infinity;
+const alwaysRecheck = 0;
+const verifiedSessionStaleTime = (session: Session | undefined) =>
+  session?.user.emailVerified ? trustUntilInvalidated : alwaysRecheck;
+
 export async function requireVerifiedSession(
   queryClient: QueryClient,
   destination: string,
   options = sessionQueryOptions(),
-): Promise<NonNullable<Awaited<ReturnType<typeof getSession>>>> {
-  // Realtime session and access events, reconnect resyncs, and auth cache clears keep a
-  // verified session current. Recheck a missing or unverified one, since no event reports email verification.
+): Promise<NonNullable<Session>> {
   const session = await queryClient.query({
     ...options,
-    staleTime: (query) => (query.state.data?.user.emailVerified ? Infinity : 0),
+    staleTime: (query) => verifiedSessionStaleTime(query.state.data),
   });
   const access = verifiedSessionAccess(session, destination);
   if (access.redirect) throw redirect(access.redirect);

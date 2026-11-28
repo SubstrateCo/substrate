@@ -20,7 +20,6 @@ export function createNotificationPreferencesService(deps: { publish: CommittedP
     workspace(scope: WorkspaceScope) {
       return serviceResult(() => scope.repositories.notificationPreferences.workspace());
     },
-    // The scope already resolved the input's workspace; the repository uses the scope's.
     updateWorkspace(
       scope: WorkspaceScope,
       input: z.output<typeof updateWorkspaceNotificationPreferences>,

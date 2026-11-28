@@ -71,7 +71,6 @@ test("disabling Tasks hides direct IDs, discussion messages, search, backlinks, 
   const referencesBefore = await f.db.select().from(messageEntityReferences);
 
   await setApp("tasks", false);
-  // A reader with access learns that the app is off; nobody else learns that the record exists.
   for (const operation of [
     () => a.entities.get(task.entityId),
     () => a.tasks.get(task.entityId),
@@ -84,7 +83,6 @@ test("disabling Tasks hides direct IDs, discussion messages, search, backlinks, 
   expect(await rejection(f.forActor(f.bob).tasks.get(task.entityId))).toBeInstanceOf(
     AccessDeniedError,
   );
-  // Discussions are conversations, not records, so they stay hidden.
   for (const operation of [
     () => chat.listMessages(discussionId),
     () => session.context.messagePage([discussionMessage.id]),

@@ -6,11 +6,6 @@ import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui
 import { formatShortDate, parseDateOnly } from "@/lib/format/date";
 import { ChevronDown } from "lucide-react";
 
-/**
- * A labelled date-only field: a field button that opens the due-date picker. `value` is
- * `YYYY-MM-DD` or `""`. With `name`, a hidden input carries the value in the form's FormData.
- * The error replaces the description, so the two never stack.
- */
 export function DateField({
   label,
   name,

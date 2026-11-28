@@ -5,7 +5,6 @@ import type { DateFilterField, FilterClause } from "../types";
 import { Calendar } from "@/components/ui/calendar";
 import { formatDateOnly, parseDateOnly } from "@/lib/format/date";
 
-/** A calendar for one date-only day. Choosing a day applies it and calls `onDone`. */
 export function DateEditor({
   field,
   clause,

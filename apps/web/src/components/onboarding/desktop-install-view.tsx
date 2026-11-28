@@ -14,11 +14,6 @@ import { ArrowUpRight, Download, Laptop } from "lucide-react";
 
 const downloadHref = (platform: InstallerPlatform) => `/desktop/download?platform=${platform}`;
 
-/**
- * The desktop app step. The installer for the viewer's OS decides the whole state: with one, the
- * download is primary; without one, continuing in the browser is primary. Opening an installed
- * app is always the secondary path, and other installers and the browser are quiet links.
- */
 export function DesktopInstallView({
   openHref,
   browserLink,
@@ -31,14 +26,11 @@ export function DesktopInstallView({
 }: {
   openHref: string;
   browserLink: LinkProps;
-  /** The viewer's OS, when the browser reports one we publish for. */
   platform: InstallerPlatform | undefined;
   mode: InstallMode;
-  /** Other published installers. */
   others: InstallerPlatform[];
   error: Error | null;
   onRetry: () => void;
-  /** Whether the step shows its own title. Off when the page title already names the app. */
   heading?: boolean;
 }) {
   const loading = mode.kind === "loading";
@@ -91,7 +83,6 @@ export function DesktopInstallView({
   );
 }
 
-/** The title and description for the viewer's installer, or for continuing in the browser. */
 function installCopy(platform: InstallerPlatform | undefined, mode: InstallMode) {
   const title = "Get the desktop app";
   if (mode.kind === "download" && mode.platform === "mac")
@@ -113,7 +104,6 @@ function installCopy(platform: InstallerPlatform | undefined, mode: InstallMode)
   return { title, description: "Install Substrate, then sign in with the same account." };
 }
 
-/** A failed first check replaces the choice; a failed refresh sits quietly above the last one. */
 function InstallError({
   mode,
   error,
@@ -161,7 +151,6 @@ function InstallPrimaryAction({
   return null;
 }
 
-/** Other installers and the browser stay available without competing with the download. */
 function InstallSecondaryLinks({
   mode,
   others,

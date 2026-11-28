@@ -12,7 +12,6 @@ import { crmActivityOptions } from "@/queries/crm/activity";
 import { useFirstPageOnLeave } from "@/queries/first-page";
 import { Unlink } from "lucide-react";
 
-/** A CRM record's internal changes, in the same rows as task activity. */
 export function CrmActivity({ entityId }: { entityId: string }) {
   const { organizationId } = useWorkspaceScope();
   const options = crmActivityOptions(organizationId, entityId);
@@ -29,8 +28,6 @@ export function CrmActivity({ entityId }: { entityId: string }) {
         return {
           id: item.id,
           action: `${action.charAt(0).toLowerCase()}${action.slice(1)}${fields ? ` · ${fields}` : ""}`,
-          // CRM activity hides which agent acted ("Agent on behalf of Alice") and returns no
-          // pictures, so an agent shows the Bot mark and a person shows initials.
           actor: actorIdentity({ type: item.actor.type, name: item.actor.displayName }),
           createdAt: item.createdAt,
           source: null,

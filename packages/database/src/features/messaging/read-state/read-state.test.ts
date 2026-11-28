@@ -57,7 +57,6 @@ test("each reader's first unread message follows their own read position and ski
   expect(await reads("alice").unreadCounts()).toEqual([unread(channel.id, 1, fromBob.id)]);
   await mark(channel.id, fromAlice.id);
   expect(await reads("bob").unreadCounts()).toEqual([unread(channel.id, 1, later.id)]);
-  // Bob's position does not move Alice's.
   expect(await reads("alice").unreadCounts()).toEqual([unread(channel.id, 1, fromBob.id)]);
 });
 
@@ -92,10 +91,8 @@ test("unread replies name their thread once per reply and skip read, own, and de
   const busy = await alice.sendMessage(channel.id, "busy root");
   const quiet = await alice.sendMessage(channel.id, "quiet root");
   const read = await alice.sendMessage(channel.id, "read reply", busy.id);
-  // The timeline and the thread each have their own position.
   await mark(channel.id, quiet.id);
   await mark(channel.id, read.id);
-  // Bob's reply makes him follow the busy thread.
   await bob.sendMessage(channel.id, "own reply", busy.id);
   await alice.sendMessage(channel.id, "first unread", busy.id);
   const removed = await alice.sendMessage(channel.id, "deleted reply", quiet.id);
@@ -104,7 +101,6 @@ test("unread replies name their thread once per reply and skip read, own, and de
   expect(await reads().unreadCounts()).toMatchObject([
     { unreadCount: 2, unreadReplyThreadIds: [busy.id, busy.id] },
   ]);
-  // Alice wrote every reply Bob has not read, and has read Bob's.
   expect(await reads("alice").unreadCounts()).toMatchObject([
     { unreadCount: 1, unreadReplyThreadIds: [busy.id] },
   ]);
@@ -130,7 +126,6 @@ test("mention counts include only the reader's unread mentions and follow edits 
       unreadReplyThreadIds: [],
     },
   ]);
-  // Alice has read her own messages; Bob's message is her one unread mention.
   expect(await reads("alice").unreadCounts()).toMatchObject([{ unreadCount: 1, mentionCount: 1 }]);
   await alice.editMessage(mention.id, "no mention now");
   expect(await reads().unreadCounts()).toMatchObject([{ unreadCount: 3, mentionCount: 1 }]);
@@ -157,7 +152,6 @@ test("unread counts cover only conversations the Messages list shows, not task d
   const bob = f.messaging("bob");
   await bob.sendMessage(discussion, `@[person:${f.alice}] Discussion reply`);
   const direct = await bob.sendMessage(dm.id, "Direct reply");
-  // The discussion has an unread mention, but only its task can open it.
   expect((await f.messaging("alice").listMessages(discussion)).map((row) => row.body)).toEqual([
     "Discussion start",
     `@[person:${f.alice}] Discussion reply`,
@@ -171,7 +165,6 @@ test("unchanged and older read positions publish no refresh hints", async () => 
   const conversation = await alice.createConversation({ kind: "dm", emails: ["bob@example.com"] });
   const first = await alice.sendMessage(conversation.id, "first");
   const last = await alice.sendMessage(conversation.id, "last");
-  // Only the reader's own devices refresh, and only their unread state.
   expect((await mark(conversation.id, last.id)).hints).toEqual([
     { audience: realtimeKeys.actor(f.orgA, f.bob), domain: "messaging", scope: "read" },
     { audience: realtimeKeys.user("bob"), domain: "notifications" },
@@ -222,7 +215,6 @@ test("reading a conversation clears its message notifications through the read m
     );
   await mark(conversation.id, mention.id);
   expect(await unreadNotices()).toEqual(new Set([later.id, elsewhere.id]));
-  // Reading again at the same position still clears a notice the earlier read left unread.
   await f.db
     .update(notifications)
     .set({ readAt: null })

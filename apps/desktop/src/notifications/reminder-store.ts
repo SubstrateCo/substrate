@@ -12,17 +12,11 @@ const key = z.string().min(1).max(200);
 const expiry = z.number().int().nonnegative();
 const stored = z.object({
   meetingReminders: meetingReminderSettings.catch(defaultMeetingReminderSettings),
-  /** Card ID → when the dismissal can be forgotten. */
   dismissed: z.record(key, expiry).catch({}),
-  /** Card ID → when the card shows again. */
   snoozed: z.record(key, expiry).catch({}),
 });
 type Stored = z.infer<typeof stored>;
 
-/**
- * Device-local reminder preferences, dismissals, and snoozes in one small JSON file. A missing or
- * damaged file falls back to defaults. Writes replace the file atomically.
- */
 export function createReminderStore(path: string, now: () => number = Date.now) {
   let state: Stored = read();
 
@@ -58,7 +52,6 @@ export function createReminderStore(path: string, now: () => number = Date.now) 
       return state.meetingReminders;
     },
     isDismissed: (id: string) => Object.hasOwn(state.dismissed, id) && state.dismissed[id]! > now(),
-    /** When a snoozed card shows again, or null when it is not snoozed. */
     snoozedUntil(id: string) {
       const until = Object.hasOwn(state.snoozed, id) ? state.snoozed[id]! : 0;
       return until > now() ? until : null;

@@ -27,7 +27,6 @@ test("Contacts owns profiles and Context owns interactions, shared with members 
   expect(
     await result(await readCrm(owner, "interactions", { contactEntityId: contact.entityId })),
   ).toMatchObject([{ entityId: interaction.entityId, summary: "Private call summary" }]);
-  // Every member of the organization reads and edits its contacts without a grant.
   expect(
     await result(await readCrm(member, "contact", { entityId: contact.entityId })),
   ).toMatchObject({ profile: { displayName: "Private contact" }, level: "edit" });

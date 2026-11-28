@@ -10,12 +10,10 @@ import { sql, type SQLWrapper } from "drizzle-orm";
 // database locale. Drizzle Kit cannot store an index expression that contains ";".
 const punctuation = sql.raw("'[!-/:-@[-`{-~]'");
 
-/** Word index over text, without stemming. Punctuation separates words. */
 export function searchDocument(...columns: SQLWrapper[]) {
   return sql`to_tsvector('simple', regexp_replace(${sql.join(columns, sql` || ' ' || `)}, ${punctuation}, ' ', 'g'))`;
 }
 
-/** Trigram index key for case-insensitive substring search. Needs pg_trgm. */
 export function trigramKey(column: SQLWrapper) {
   return sql`lower(${column})`;
 }

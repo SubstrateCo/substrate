@@ -22,9 +22,7 @@ export function InvitationManager({
   framed = false,
 }: {
   organizationId: string;
-  /** The viewer's stored role. It decides which roles they may invite with. */
   viewerRole: string;
-  /** Show the form in a settings card under the page header. */
   framed?: boolean;
 }) {
   const invitations = useQuery({

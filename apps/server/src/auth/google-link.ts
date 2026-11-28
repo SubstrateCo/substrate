@@ -15,7 +15,6 @@ import { makeSignature } from "better-auth/crypto";
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 
-/** A ticket lives long enough for main to open the browser, and no longer. */
 export const googleLinkTicketTTL = 2 * 60_000;
 
 type LinkContext = Pick<
@@ -23,7 +22,6 @@ type LinkContext = Pick<
   "internalAdapter" | "authCookies" | "secret" | "createAuthCookie"
 >;
 
-/** The Better Auth surface that a link start needs. `createAuth` provides it. */
 export interface GoogleLinkAuth {
   $context: Promise<LinkContext>;
   api: {
@@ -42,13 +40,10 @@ export interface GoogleLinkAuth {
 }
 
 export interface GoogleLinkStart {
-  /** Google's consent screen. */
   url: string;
-  /** Better Auth's OAuth state cookies for the API origin, and nothing else. */
   cookies: string[];
 }
 
-/** Rows in Better Auth's verification table are readable, so they hold digests, not secrets. */
 const digest = (value: string) => createHash("sha256").update(value).digest("base64url");
 const ticketIdentifier = (ticket: string) => `google-link:${digest(ticket)}`;
 
@@ -66,16 +61,6 @@ function parseStored(value: string) {
   }
 }
 
-/**
- * Single-use tickets that let the desktop start a Google link in the system browser without a
- * browser session.
- *
- * The signed-in renderer creates a ticket bound to its user, session and product. Desktop main
- * opens the API start page with it. The start page consumes the ticket, checks that the session
- * is still live, and starts Better Auth's own link flow as that session. The browser receives
- * only the OAuth state cookie, never the session cookie, so the callback in the same browser
- * passes Better Auth's state check and links the account to the ticket's user.
- */
 export function createGoogleLinkTickets(auth: GoogleLinkAuth, options: { apiURL: string }) {
   return {
     async create(session: AuthSession["session"], product: GoogleProduct) {
@@ -94,7 +79,6 @@ export function createGoogleLinkTickets(auth: GoogleLinkAuth, options: { apiURL:
       return { ticket, expiresAt: expiresAt.toISOString() };
     },
 
-    /** Consumes a ticket and starts its link. Null when the ticket or its session is not valid. */
     async start(ticket: string): Promise<GoogleLinkStart | null> {
       if (!googleLinkTicket.safeParse(ticket).success) return null;
       const context = await auth.$context;
@@ -111,7 +95,6 @@ export function createGoogleLinkTickets(auth: GoogleLinkAuth, options: { apiURL:
       );
       if (!source) return null;
 
-      // Authenticate this server-side call as the ticket's session. The cookie stays here.
       const headers = new Headers();
       const signature = await makeSignature(source.token, context.secret);
       setRequestCookie(

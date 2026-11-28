@@ -9,10 +9,6 @@ import { screenNotificationView } from "./screen-notification-views";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 
-/**
- * Shows main's screen notifications as cards in the shared toast stack, top-right. The window lets
- * clicks through to the desktop until the pointer is over a card.
- */
 export function ScreenNotificationHost({ bridge }: { bridge: ScreenNotificationsBridge }) {
   const interactive = useRef(false);
   const setInteractive = useCallback(
@@ -26,7 +22,6 @@ export function ScreenNotificationHost({ bridge }: { bridge: ScreenNotifications
 
   useEffect(() => {
     const shown = new Set<string>();
-    // An event can arrive before `ready` answers. It is newer than the snapshot, so it wins.
     const changed = new Set<string>();
     let active = true;
 
@@ -41,14 +36,12 @@ export function ScreenNotificationHost({ bridge }: { bridge: ScreenNotifications
             onAction={(action) => void bridge.act({ id, action })}
           />
         ),
-        // Main owns each card's life: no timeout, and no swipe that hides it without telling main.
         { id, duration: Number.POSITIVE_INFINITY, dismissible: false },
       );
     };
     const remove = (id: string) => {
       shown.delete(id);
       toast.dismiss(id);
-      // The stack shrank, so the pointer may be over empty glass. The next move over a card restores it.
       setInteractive(false);
     };
 
@@ -77,7 +70,6 @@ export function ScreenNotificationHost({ bridge }: { bridge: ScreenNotifications
   }, [bridge, setInteractive]);
 
   return (
-    // Pointer events bubble from the fixed toast list, so this wrapper sees them without a box.
     <div
       onPointerEnter={() => setInteractive(true)}
       onPointerMove={() => setInteractive(true)}

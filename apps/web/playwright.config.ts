@@ -3,7 +3,6 @@ import { defineConfig } from "@playwright/test";
 
 const baseURL = "http://localhost:3100";
 const apiURL = "http://localhost:3101";
-// Existing API provisioning helpers use the same trusted renderer origin.
 process.env.PLAYWRIGHT_BASE_URL = baseURL;
 process.env.PLAYWRIGHT_API_URL = apiURL;
 
@@ -21,13 +20,11 @@ export default defineConfig({
     browserName: "chromium",
     headless: true,
     viewport: { width: 1440, height: 900 },
-    // Functional workflows do not need to wait for decorative transitions.
     reducedMotion: "reduce",
     actionTimeout: 5_000,
     navigationTimeout: 10_000,
     // Auth cookies and signed URLs can appear in traces. Do not collect them by default.
     trace: "off",
-    // Set E2E_RECORD_VIDEO to record workflow videos; recording slows every test.
     video: process.env.E2E_RECORD_VIDEO ? "on" : "off",
     screenshot: "only-on-failure",
   },

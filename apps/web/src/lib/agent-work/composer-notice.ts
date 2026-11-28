@@ -5,34 +5,21 @@ import type { ConversationAgent } from "./conversation-agents";
 
 const noticeTurnStatuses = new Set([...liveTurnStatuses, "needs_attention"]);
 
-/** One agent's line above the composer, before it gets its copy and links. */
 export type NoticeLine =
   | { kind: "turn"; agent: ConversationAgent; turn: AgentWorkTurnView }
   | { kind: "no_desktop"; agent: ConversationAgent }
   | { kind: "needs_you"; agent: ConversationAgent }
   | { kind: "status"; agent: ConversationAgent; status: AgentStatusView };
 
-/**
- * The thread whose composer carries a turn's line: its session's thread, or null for the
- * conversation. A turn that shows under its thread's root message, such as the first turn of a
- * channel mention, shows in the conversation's timeline, so the conversation's composer carries it.
- */
 export function noticeThread(sessionThreadId: string | null, anchorMessageId: string | undefined) {
   return anchorMessageId === sessionThreadId ? null : sessionThreadId;
 }
 
-/**
- * What each agent here is doing, for the composer of the conversation (`threadId` null) or of
- * one thread. An agent with a live or stopped turn in that place shows the turn. Otherwise it
- * shows its status where it works now; the conversation's own composer also shows agents that
- * need a desktop, need you, or are offline with work.
- */
 export function noticeLines(input: {
   conversationId: string;
   threadId: string | null;
   agents: readonly ConversationAgent[];
   turns: readonly AgentWorkTurnView[];
-  /** The thread where a turn's session started, or null for the conversation. */
   threadOf: (turn: AgentWorkTurnView) => string | null;
   statuses: ReadonlyMap<string, AgentStatusView> | undefined;
 }): NoticeLine[] {
@@ -50,7 +37,6 @@ export function noticeLines(input: {
     const here =
       status.liveConversationId === input.conversationId &&
       (status.liveThreadId ?? null) === threadId;
-    // General lines describe the agent as a whole, so they show only where it is a member.
     if (!agent.member && !here) return [];
     if (!status.device) return threadId === null ? [{ kind: "no_desktop", agent }] : [];
     if (status.state === "needs_you" && threadId === null) return [{ kind: "needs_you", agent }];

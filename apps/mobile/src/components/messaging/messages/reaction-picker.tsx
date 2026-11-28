@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 
-/** Uses the same named palette as the desktop message picker. */
 export function ReactionPicker({
   reacted,
   onPick,

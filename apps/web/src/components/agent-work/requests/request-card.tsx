@@ -24,7 +24,6 @@ function failure(error: Error, fallback: string) {
     : actionErrorMessage(error, fallback);
 }
 
-/** The control that shows progress while an action is sent. */
 function pendingOf(input: RequestAction): RequestPending {
   if (input.kind !== "respond") return { kind: input.kind };
   return input.response.type === "approval"
@@ -34,17 +33,14 @@ function pendingOf(input: RequestAction): RequestPending {
 
 export function RequestCard({ request }: { request: AgentRequestView }) {
   const { userId, organizationId } = useWorkspaceScope();
-  // One mutation, so the card shows only the latest attempt and its failure.
   const attempt = useRequestAction(userId, organizationId);
   const open = isOpenRequest(request);
-  // Resolve targets only while the owner can still decide.
   const apps = useOrganizationApps();
   const target = useProposalTarget(organizationId, request, {
     enabled: open,
     crmEnabled: apps.enabled("crm"),
   });
   const arriving = useArrivedLive(request.createdAt);
-  // Answering on screen, here or on another device, folds the card into its result.
   if (!open)
     return (
       <Fold state="closed">

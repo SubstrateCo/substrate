@@ -17,14 +17,11 @@ import { CheckCheck, Hand } from "lucide-react";
 export type NeedsYouEntry = {
   key: string;
   agentName: string;
-  /** Where it comes from, already access-checked. */
   place: ReactNode;
-  /** The request card, or a line for an agent that stopped. */
   body: ReactNode;
   agentLink?: LinkProps;
 };
 
-/** Everything that waits for the owner, from every agent. Works from any device. */
 export function NeedsYouView({
   entries,
   loading,
@@ -36,8 +33,6 @@ export function NeedsYouView({
   error: Error | null;
   onRetry: () => void;
 }) {
-  // An answered entry fades out and the entries below glide up. The container also holds the
-  // last entry's exit while the empty notice replaces the list.
   const page = useListMotion<HTMLDivElement>("top", "fade");
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6">

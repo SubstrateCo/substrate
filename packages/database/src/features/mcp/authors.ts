@@ -7,7 +7,6 @@ export const actorSelection = {
   name: joinedActorName(),
   type: actors.type,
 };
-/** An actor that wrote quoted text, labeled owner, member or agent for the reading agent. */
 export function authorSelection(ownerUserId: string) {
   return { ...actorSelection, kind: actorAuthorKind(ownerUserId) };
 }

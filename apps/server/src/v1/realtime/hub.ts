@@ -28,8 +28,6 @@ export interface Transport {
 
 export interface HubDependencies {
   authenticate(headers: Headers, organizationId: string | null): Promise<RealtimeReceiver | null>;
-  // Resolves an audience once per change. The filter checks only the audience; the hub
-  // authenticates each identity separately.
   recipients(audience: Readonly<RealtimeAudience>): Promise<AudienceFilter>;
   reportFailure(): void;
 }
@@ -41,12 +39,10 @@ interface Connection {
   expiresAt: number;
   awaitingPong: boolean;
   ready: boolean;
-  // Start time of the last successful session check.
   verifiedAt: number;
   checking?: Promise<boolean>;
 }
 
-// Session and access hints can follow a revocation, so they recheck the session first.
 const forcesRecheck = (change: Change) => change.domain === "session" || change.domain === "access";
 
 async function forEachLimited<T>(items: T[], limit: number, run: (item: T) => Promise<void>) {
@@ -58,7 +54,6 @@ async function forEachLimited<T>(items: T[], limit: number, run: (item: T) => Pr
   );
 }
 
-// These keys select candidates only. The database resolver authorizes every delivery.
 function relevant(identity: RealtimeReceiver, audience: Readonly<RealtimeAudience>) {
   switch (audience[0]) {
     case "user":
@@ -89,7 +84,6 @@ export function createRealtimeHub(
     maxConnections?: number;
     maxPerUser?: number;
     heartbeatMs?: number;
-    // Revocations send session or access hints that force a check, so this is only a backstop.
     sessionCheckMs?: number;
     maxBufferedBytes?: number;
     maxConcurrentChecks?: number;
@@ -105,7 +99,6 @@ export function createRealtimeHub(
   let stopped = false;
   let available = true;
   const isAvailable = () => available;
-  // Async authorization can yield while shutdown changes this flag.
   const isStopped = () => stopped;
   let running = false;
   let nextHeartbeat = 0;
@@ -114,7 +107,6 @@ export function createRealtimeHub(
   function remove(connection: Connection, code = 1008, reason = "Reconnect required") {
     if (!connections.delete(connection)) return;
     connection.transport?.close(code, reason);
-    // Do not retain a peer waiting indefinitely for the close handshake.
     connection.transport?.terminate();
   }
 
@@ -138,8 +130,6 @@ export function createRealtimeHub(
     return true;
   }
 
-  // Concurrent checks share one session lookup. A forced check never reuses a lookup that may
-  // have started before the revocation it follows.
   function revalidate(connection: Connection, forced = false) {
     if (!forced && connection.checking) return connection.checking;
     const pending = check(connection);
@@ -151,7 +141,6 @@ export function createRealtimeHub(
     return pending;
   }
 
-  // The heartbeat rechecks every session when it is due, so a check stays valid until then.
   const fresh = (connection: Connection, now = Date.now()) =>
     now - connection.verifiedAt < sessionCheckMs;
 
@@ -181,7 +170,6 @@ export function createRealtimeHub(
         throw new Error("Realtime capacity reached");
       const verifiedAt = Date.now();
       const identity = await deps.authenticate(headers, organizationId);
-      // authenticate() admits only the session's active organization.
       if (!identity) return null;
       if (isStopped() || !isAvailable() || connections.size >= maxConnections)
         throw new Error("Realtime capacity reached");
@@ -208,7 +196,6 @@ export function createRealtimeHub(
       }
       connection.transport = transport;
       try {
-        // reserve() has just checked the session; recheck only after a slow upgrade.
         if (fresh(connection) || (await revalidate(connection))) {
           send(connection, { version: 1, type: "ready" });
           connection.ready = connections.has(connection);
@@ -231,8 +218,6 @@ export function createRealtimeHub(
       available = value;
       if (!value) for (const connection of connections) remove(connection, 1012, "Resync required");
     },
-    // Delivers one Valkey batch as a unit: each audience resolves once, and each connection checks
-    // its session at most once.
     async publish(...changes: Change[]) {
       if (isStopped() || !available) return;
       const candidates: [Connection, Change[]][] = [];
@@ -248,14 +233,11 @@ export function createRealtimeHub(
           const key = JSON.stringify(audience);
           if (filters.has(key)) continue;
           const filter = deps.recipients(audience);
-          // Each recipient awaits the filter and handles its failure.
           void filter.catch(() => {});
           filters.set(key, filter);
         }
       await forEachLimited(candidates, maxConcurrentChecks, async ([connection, matching]) => {
         try {
-          // Filter first: a check either keeps the identity or removes the connection, so only
-          // recipients need one.
           const received: Change[] = [];
           for (const change of matching) {
             const receives = await filters.get(JSON.stringify(change.audience))!;
@@ -274,7 +256,6 @@ export function createRealtimeHub(
               domain: change.domain,
             };
             if (change.audience[0] === "conversation") event.conversationId = change.audience[1];
-            // The audience already limits who sees these identifiers.
             if (change.scope) event.scope = change.scope;
             if (change.messageId) event.messageId = change.messageId;
             if (change.threadId !== undefined) event.threadId = change.threadId;
@@ -295,7 +276,6 @@ export function createRealtimeHub(
         if (now >= nextHeartbeat) {
           nextHeartbeat = now + heartbeatMs;
           await forEachLimited([...connections], maxConcurrentChecks, async (connection) => {
-            // A connection can close while it waits for its turn.
             if (!connections.has(connection)) return;
             if (!connection.transport || !connection.ready) {
               if (now >= connection.expiresAt) remove(connection);

@@ -34,7 +34,6 @@ export const fileUploads = pgTable(
       sql`(${t.purpose} = 'avatar' AND ${t.ownerUserId} IS NOT NULL AND ${t.organizationId} IS NULL AND ${t.uploadedBy} = ${t.ownerUserId}) OR (${t.purpose} IN ('organization-logo', 'file') AND ${t.organizationId} IS NOT NULL AND ${t.ownerUserId} IS NULL)`,
     ),
     check("file_upload_size", sql`${t.size} > 0 AND ${t.size} <= 5242880`),
-    // Cleanup reads only uploads whose temporary object is not cleaned yet.
     index("file_upload_expiry_idx")
       .on(t.expiresAt)
       .where(sql`${t.temporaryCleanedAt} IS NULL`),
@@ -71,7 +70,6 @@ export const storedFiles = pgTable(
   ],
 );
 
-// Durable candidates allow cleanup after a process crashes between S3 and the database commit.
 export const storageCandidates = pgTable("storage_candidates", {
   objectKey: text("object_key").primaryKey(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

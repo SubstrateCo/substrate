@@ -64,14 +64,12 @@ test("a versioned picture is sent as bytes that only this session's browser may 
   expect(response.status).toBe(200);
   expect(await response.text()).toBe("webp-pixels");
   expect(response.headers.get("content-type")).toBe("image/webp");
-  // A new upload has a new version, so this URL's bytes never change.
   expect(response.headers.get("cache-control")).toBe("private, max-age=86400, immutable");
   expect(response.headers.get("vary")).toBe("Cookie");
   expect(response.headers.get("x-content-type-options")).toBe("nosniff");
   allowed = false;
   const denied = await app.request("/avatar/alice?v=one");
   expect(denied.status).toBe(404);
-  // A denial is never kept: the app-wide no-store default stays.
   expect(denied.headers.get("cache-control")).toBeNull();
 });
 

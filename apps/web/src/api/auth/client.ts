@@ -7,7 +7,6 @@ import { organizationClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 
 export const authClient = createAuthClient({
-  // The router and desktop handoff own navigation after authentication.
   disableDefaultFetchPlugins: true,
   plugins: [organizationClient({ ac, roles }), electronProxyClient({ protocol: desktop.scheme })],
 });

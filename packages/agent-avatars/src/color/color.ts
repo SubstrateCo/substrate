@@ -39,7 +39,6 @@ export function hslToHex(hue: number, saturation: number, lightness: number): st
   return toHex({ r: channel(0), g: channel(8), b: channel(4) });
 }
 
-/** WCAG relative luminance. */
 function luminance(hex: string): number {
   const { r, g, b } = parseHex(hex);
   const linear = (v: number) => {
@@ -49,7 +48,6 @@ function luminance(hex: string): number {
   return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
 }
 
-/** WCAG contrast ratio, from 1 to 21. */
 export function contrast(a: string, b: string): number {
   const la = luminance(a);
   const lb = luminance(b);

@@ -1,20 +1,16 @@
 import type { AstNode, Context, NodeOf, Rule } from "../ast.ts";
 
-/** A machine event named in code: `turnMachine.events.run` or `turnMachine.events[event]`. */
 interface EventRef {
   machine: string;
-  /** `name:run` for a fixed event, `id:event` for an event held in a variable. */
   event: string;
 }
 
 interface MachineTransitionsOptions {
-  /** Report every `status` write that is not a machine event, not only machine writes. */
   allStatusWrites?: boolean;
 }
 
 const MACHINE_DIR = "packages/contracts/src/agent-work/machines/";
 
-/** `name:run` for `"run"`, `id:event` for `event`. */
 function keyOf(node: AstNode): string | undefined {
   if (node.type === "Identifier") return `id:${node.name}`;
   // oxlint-disable-next-line deslop/no-runtime-typeof -- ESTree Literal values include strings, numbers, booleans, and null.
@@ -22,13 +18,11 @@ function keyOf(node: AstNode): string | undefined {
   return undefined;
 }
 
-/** The property name of a non-computed `a.name`. */
 function propertyName(node: AstNode): string | undefined {
   if (node.type !== "MemberExpression" || node.computed) return undefined;
   return node.property.type === "Identifier" ? node.property.name : undefined;
 }
 
-/** The event behind `<machine>.events.<event>.<field>`. */
 function eventField(node: AstNode, field: "to" | "from"): EventRef | undefined {
   if (propertyName(node) !== field || node.type !== "MemberExpression") return undefined;
   const events = node.object;
@@ -40,7 +34,6 @@ function eventField(node: AstNode, field: "to" | "from"): EventRef | undefined {
   return event === undefined ? undefined : { machine: machines.object.name, event };
 }
 
-/** The event behind `<machine>.from(<event>)`. */
 function fromCall(node: AstNode): EventRef | undefined {
   if (node.type !== "CallExpression" || propertyName(node.callee) !== "from") return undefined;
   const { callee } = node;
@@ -50,7 +43,6 @@ function fromCall(node: AstNode): EventRef | undefined {
   return event === undefined ? undefined : { machine: callee.object.name, event };
 }
 
-/** Follows a `const` binding to its initializer, so `const status = m.events.x.to` resolves. */
 function constInit(context: Context, node: NodeOf<"Identifier">): AstNode | undefined {
   for (
     let scope: ReturnType<Context["sourceCode"]["getScope"]> | null =
@@ -90,11 +82,6 @@ function* walk(context: Context, node: AstNode): Generator<AstNode> {
   }
 }
 
-/**
- * Whether the WHERE clause checks the event's from states: directly with
- * `<machine>.from(<event>)` or `<machine>.events.<event>.from`, or through a guard helper
- * that takes the same event, such as `answerableBy("decline")` or `decidable(event)`.
- */
 function checksFromStates(context: Context, where: NodeOf<"CallExpression">, event: EventRef) {
   return where.arguments.some((argument) => {
     for (const child of walk(context, argument)) {
@@ -113,14 +100,12 @@ function checksFromStates(context: Context, where: NodeOf<"CallExpression">, eve
   });
 }
 
-/** The `.where(...)` call chained right after the `.set(...)` call. */
 function chainedWhere(set: NodeOf<"CallExpression">) {
   const member = set.parent;
   if (propertyName(member) !== "where") return undefined;
   return member.parent?.type === "CallExpression" ? member.parent : undefined;
 }
 
-/** The `{ status }` object of `<db>.update(<table>).set({ status, ... })`. */
 function statusWrite(node: NodeOf<"CallExpression">) {
   const { callee } = node;
   if (propertyName(callee) !== "set" || callee.type !== "MemberExpression") return undefined;
@@ -139,11 +124,6 @@ function statusWrite(node: NodeOf<"CallExpression">) {
 const fromLabel = ({ machine, event }: EventRef) =>
   `${machine}.from(${event.startsWith("name:") ? `"${event.slice(5)}"` : event.slice(3)})`;
 
-/**
- * Agent-work statuses change only through a machine event's compare-and-set: an update that
- * writes `status` takes it from `<machine>.events.<event>.to`, and its `.where()` checks the
- * event's from states. See AGENTS.md  Agent work.
- */
 export const machineTransitions: Rule = {
   meta: {
     type: "problem",

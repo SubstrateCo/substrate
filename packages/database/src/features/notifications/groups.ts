@@ -21,7 +21,6 @@ import { sql } from "drizzle-orm";
 type FeedItem = NonNullable<ReturnType<typeof toFeedItem>>;
 type Page = { after?: string; limit: number };
 
-// Keep this relation narrow: access and grouping need no names, bodies, or excerpts.
 function eligible(db: DatabaseExecutor, ctx: RepositoryContext, scope: SessionIdentity) {
   return sql`
     SELECT ${notifications.id} AS id, ${notifications.createdAt} AS created_at,

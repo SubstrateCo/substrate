@@ -15,13 +15,6 @@ export const unreadCountsOptions = (organizationId: string | null | undefined) =
     retry: false,
   });
 
-/**
- * The conversation's first unread timeline message when it opened, or `null` when nothing was
- * unread. It stays the same while the conversation is open, so the "New" divider does not move as
- * the read position does. Mark the conversation read only once `ready` is true.
- *
- * `unreadReplies` counts the unread replies of each thread root, from `unreadRepliesByThread`.
- */
 export function useOpeningUnread(
   organizationId: string,
   conversationId: string,
@@ -49,7 +42,6 @@ export function useOpeningUnread(
       }),
     };
   }
-  // A failed count shows no divider; it must not keep the conversation unread.
   if (unread.isPending)
     return { ready: false, messageId: null, unreadReplies: new Map<string, number>() };
   const messageId = row?.firstUnreadMessageId ?? null;
@@ -72,18 +64,9 @@ export function useOpeningUnread(
   };
 }
 
-// The server ends a viewing lease 45 seconds after its last renewal.
 const leaseRenewal = 30_000;
 const foreground = () => document.visibilityState === "visible" && document.hasFocus();
 
-/**
- * Reads the main timeline, or the thread named by `threadId`, through `messageId`: the newest
- * message, once it is in view. Pass no `messageId` while it is not in view.
- *
- * While the window is in the foreground this also holds a viewing lease, so the server reads new
- * messages for the person as they arrive and they never show as unread or alert. Reading a
- * historical page or a background window does not advance the read position.
- */
 export function useConversationRead(
   organizationId: string,
   conversationId: string,
@@ -91,9 +74,7 @@ export function useConversationRead(
   threadId?: string,
 ) {
   const client = useQueryClient();
-  // Requests go one at a time, so a lease that ends cannot land after a later renewal.
   const queue = useRef<Promise<unknown>>(Promise.resolve());
-  // The lease a pane hands over when only its newest message changed.
   const handover = useRef<{ key: string; keep: () => void }>(undefined);
   useEffect(() => {
     if (!messageId) return;
@@ -112,7 +93,6 @@ export function useConversationRead(
       handover.current.keep();
       holding = true;
     }
-    // A failed read is tried again on the next focus, visibility change, or renewal.
     let read = false;
     const sync = () => {
       if (!foreground()) {
@@ -122,9 +102,6 @@ export function useConversationRead(
       }
       if (!read) {
         read = true;
-        // A read also clears the notifications of the messages it covers. Do not wait for the
-        // best-effort realtime hint to clear the Notifications dot. Most reads change nothing:
-        // the server says what this one changed, and only that is read again.
         send(true).then(
           ({ moved, cleared }) =>
             Promise.all([

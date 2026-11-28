@@ -69,7 +69,6 @@ function MemberSummary({ members }: { members: ConversationMember[] }) {
   );
 }
 
-// Admins see names and members only. Nothing here opens the messages.
 export function ManagedConversations({
   resource,
   onRetry,

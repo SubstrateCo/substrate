@@ -4,7 +4,6 @@ import { entityType } from "./schema";
 import { sql } from "drizzle-orm";
 import { text, uuid } from "drizzle-orm/pg-core";
 
-// A root entity is its own access container.
 export function rootEntityValues(
   organizationId: string,
   type: (typeof entityType.enumValues)[number],

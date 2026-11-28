@@ -83,7 +83,6 @@ body {
   margin-top: 0;
 }
 
-/* The stage: a lit room with a perspective floor. */
 .stage-card {
   grid-row: span 2;
   padding: 0;
@@ -137,7 +136,6 @@ body {
   bottom: 9%;
 }
 
-/* Controls modelled on a soft segmented control. */
 .segmented {
   display: flex;
   flex-wrap: wrap;
@@ -407,7 +405,6 @@ body {
   margin-top: 12px;
 }
 
-/* Space: no floor, a soft field of distant lights that drifts slowly. */
 .stage.space {
   background:
     radial-gradient(ellipse 55% 45% at 50% 50%, rgba(255, 255, 255, 0.95), transparent 70%),

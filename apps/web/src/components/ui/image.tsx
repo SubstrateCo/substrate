@@ -2,10 +2,6 @@ import { useState, type ReactNode } from "react";
 
 import { cn } from "cn";
 
-/**
- * An image that loads lazily and shows `fallback` while it has no source or after it fails to
- * load. `darkSrc` swaps the source in dark mode, for marks drawn for one background.
- */
 function Image({
   src,
   darkSrc,

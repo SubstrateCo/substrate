@@ -34,7 +34,6 @@ test("without a cache time every session resolves the workspace", async () => {
 
 test("a cached workspace is kept per user and organization, and a denied one is not kept", async () => {
   const repositories = createRepositories(f.db, { workspaceCacheMs: 5000 });
-  // Alice's email is not verified yet.
   expect(await rejection(repositories.forSession(alice()))).toBeInstanceOf(AccessDeniedError);
   await f.verifyEmails();
   await repositories.forSession(alice());
@@ -52,7 +51,6 @@ test("a removed member reads until the cache is forgotten or expires, and can ne
   const repositories = createRepositories(f.db, { workspaceCacheMs: 5000, now: () => now });
   const session = await repositories.forSession(alice());
   await f.db.delete(member).where(eq(member.id, "alice-a"));
-  // Writes resolve the workspace inside their transaction, so the cache never admits one.
   expect(await rejection(session.projects.create({ name: "Denied" }))).toBeInstanceOf(
     AccessDeniedError,
   );

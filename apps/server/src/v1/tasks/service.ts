@@ -104,7 +104,6 @@ export function createTasksService(deps: {
             await repos.tasks.removeLink(input.taskEntityId, input.linkId, input.projectEntityId);
             return { id: input.taskEntityId };
           case "share":
-            // Grants through this API apply only to projects.
             await repos.projects.share(input.projectEntityId, input.actorEntityId, input.level);
             break;
           case "revoke":

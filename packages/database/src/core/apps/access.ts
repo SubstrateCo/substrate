@@ -44,8 +44,6 @@ export async function enabledApps(
   return [...coreAppIds, ...optionalAppIds.filter((app) => rows.some((row) => row.appId === app))];
 }
 
-// Reads the settings without locks. A disable that commits after this read does not stop the
-// caller's write; reads hide records of a disabled app.
 export async function requireAppEnabled(context: RepositoryContext, app: OptionalAppId) {
   return requireAppsEnabled(context, [app]);
 }

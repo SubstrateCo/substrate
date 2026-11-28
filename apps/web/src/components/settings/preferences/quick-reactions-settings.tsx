@@ -23,8 +23,6 @@ export function QuickReactionsSettings() {
           <div role="group" aria-label="Quick reactions" className="flex items-center gap-2">
             {quickReactions.map(({ emoji, name }, slot) => (
               <EmojiPopover
-                // Keyed by slot, so focus returns to the same button after a replacement.
-                // oxlint-disable-next-line react/no-array-index-key -- Slots are fixed positions.
                 key={slot}
                 label={`Replace ${name}`}
                 onSelect={(next) => setQuickReactions(replaceQuickReaction(emojis, slot, next))}

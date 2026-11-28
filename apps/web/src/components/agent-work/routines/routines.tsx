@@ -29,11 +29,6 @@ const blank = (): RoutineDraft => ({
 
 const saveFailed = "We couldn’t save this routine. Try again.";
 
-/**
- * An agent's routines, from the server on any owner device. The owner's saves are approved as
- * saved; a routine the agent wrote or changed waits for the owner to approve it. The summary is
- * the settings overview's short list; without `onShowAll` this is the full list.
- */
 export function Routines({
   agentId,
   name,
@@ -46,11 +41,8 @@ export function Routines({
   const { userId, organizationId } = useWorkspaceScope();
   const routines = useQuery(routinesOptions(userId, organizationId, agentId));
   const actions = useRoutineActions(userId, organizationId);
-  // The schedule switch keeps its own state, apart from the editor's save.
   const toggles = useRoutineActions(userId, organizationId);
-  // The groups move between "Next 24 hours" and "Later" as time passes.
   const now = useNow(true, 60_000);
-  // Focus falls back to the section when the launcher is gone, such as after a delete.
   const region = useRef<HTMLDivElement>(null);
   const editor = useStateDialog<string>(region);
   const deletion = useStateDialog<AgentRoutineView>(region);

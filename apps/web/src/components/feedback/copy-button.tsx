@@ -35,7 +35,6 @@ export function CopyButton({
     },
     onError: () => toast.error(errorMessage, { id: toastId }),
   });
-  // The check mark shows briefly, then the button can copy again.
   useEffect(() => {
     if (!copied) return;
     const timeout = window.setTimeout(() => setCopied(false), 1500);

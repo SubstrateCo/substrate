@@ -1,7 +1,6 @@
 import { readGoogleClientFile } from "./google-client.ts";
 import { app, BrowserWindow, dialog, type OpenDialogOptions } from "electron";
 
-/** User-initiated native selection only. Neither a filename nor the contents crosses the bridge. */
 export async function pickGoogleClient(signal: AbortSignal) {
   signal.throwIfAborted();
   const window = BrowserWindow.getFocusedWindow();

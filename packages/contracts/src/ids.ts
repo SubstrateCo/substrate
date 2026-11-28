@@ -2,7 +2,8 @@ let lastMs = -Infinity;
 let counter = 0;
 
 const hex = Array.from({ length: 256 }, (_, byte) => byte.toString(16).padStart(2, "0"));
-/** Byte positions that start a new UUID group. */
+const counterMax = 0xfff;
+const counterStartMask = counterMax >>> 1;
 const groupStarts = new Set([4, 6, 8, 10]);
 
 /**
@@ -14,10 +15,8 @@ const groupStarts = new Set([4, 6, 8, 10]);
 export function newId(now = Date.now()): string {
   if (now > lastMs) {
     lastMs = now;
-    // Start low in the counter range so a busy millisecond has room to count up.
-    counter = crypto.getRandomValues(new Uint16Array(1))[0]! & 0x7ff;
-  } else if (++counter > 0xfff) {
-    // The counter is spent: borrow the next millisecond rather than repeat an order.
+    counter = crypto.getRandomValues(new Uint16Array(1))[0]! & counterStartMask;
+  } else if (++counter > counterMax) {
     lastMs += 1;
     counter = 0;
   }

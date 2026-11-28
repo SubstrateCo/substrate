@@ -35,7 +35,6 @@ test("a conversation opened from a CRM record keeps that record", () => {
 });
 test("a person opens in Contacts only when CRM is on", () => {
   expect(personLink("team", "maya", true)).toEqual(contactLink("team", "maya"));
-  // All time, so the profile shows the linked record's interactions however old they are.
   expect(personLink("team", "maya", false)).toEqual({
     to: "/interactions",
     search: { workspaceId: "team", section: "person", profileId: "maya", days: "all" },

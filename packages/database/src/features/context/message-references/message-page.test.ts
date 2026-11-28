@@ -26,7 +26,6 @@ async function checkedPage(messageIds: string[], userId = "alice", organizationI
   return page;
 }
 
-/** Alice's root messages in one statement, for reads that only need many rows. */
 function insertMessages(conversationId: string, bodies: string[]) {
   return f.db
     .insert(messagingMessages)
@@ -66,7 +65,6 @@ test("page context uses constant reads for one or fifty messages, including empt
   await service.messageLinks(rows[0]!.id);
   expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(3);
   await context().attach(rows[0]!.id, project.entityId);
-  // The same association that attach saved, for the other 49 messages in one statement.
   await f.db.insert(messageEntityReferences).values(
     rows.slice(1).map((row) => ({
       organizationId: f.orgA,
@@ -203,7 +201,6 @@ test("a task cannot be shared above its project, so removal rights match detach"
 test("page people resolve parsed tokens in sets and clear inactive, deleted and conversation-hidden actors", async () => {
   const { chat, conversation } = await setup();
   await chat.addMembers(conversation.id, ["bob@example.com", "outside@example.com"]);
-  // People are parsed from the body when it is read.
   const rows = await insertMessages(
     conversation.id,
     Array.from({ length: 50 }, () => `@[person:${f.bob}]`),
@@ -300,10 +297,8 @@ test("page agents resolve mentions with constant reads under the same rules as c
   const page = await service.messagePage(ids);
   expect(queries).toHaveLength(oneCount);
   expect(queries.filter((query) => /^(select|with)/i.test(query))).toHaveLength(4);
-  // Only the agent resolves; a human named by an agent token does not.
   expect(one[0]!.agents).toEqual(research);
   expect(page.map((row) => row.agents)).toEqual(rows.map(() => research));
-  // Each viewer sees the agent exactly when its profile resolves in the conversation.
   const agentsFor = async (userId: string) => {
     const [row] = await context(userId).messagePage([ids[0]!]);
     const profile = await f
@@ -316,22 +311,18 @@ test("page agents resolve mentions with constant reads under the same rules as c
     expect(row!.agents.length > 0).toBe(profile);
     return row!.agents;
   };
-  // Before it writes, only the owner sees the agent.
   expect(await agentsFor("alice")).toEqual(research);
   expect(await agentsFor("bob")).toEqual([]);
-  // A disabled agent is no longer present, and it has not written here.
   await f.db
     .update(actors)
     .set({ disabledAt: new Date() })
     .where(eq(actors.entityId, agent.entityId));
   expect(await agentsFor("alice")).toEqual([]);
   await f.db.update(actors).set({ disabledAt: null }).where(eq(actors.entityId, agent.entityId));
-  // Once it writes in the conversation, everyone who sees the conversation sees it.
   await f.messaging("alice", f.orgA, agent.entityId).sendMessage(conversation.id, "agent work");
   expect(await agentsFor("bob")).toEqual(research);
   await f.db.update(userAgents).set({ name: "Renamed" }).where(eq(userAgents.id, definition!.id));
   expect(await agentsFor("bob")).toEqual([{ id: agent.entityId, name: "Renamed" }]);
-  // The mention stays within its own conversation: the agent never wrote in this one.
   const other = await chat.createConversation({ kind: "channel", name: "Other agents" });
   const [elsewhere] = await insertMessages(other.id, [`@[agent:${agent.entityId}]`]);
   expect((await context("bob").messagePage([elsewhere!.id]))[0]!.agents).toEqual([]);
@@ -354,11 +345,9 @@ test("page agents resolve for every member while the agent is a live member, bef
   const [mention] = await insertMessages(conversation.id, [`@[agent:${actorId}]`]);
   const agentsFor = async () => (await context("bob").messagePage([mention!.id]))[0]!.agents;
   expect(await agentsFor()).toEqual([{ id: actorId, name: "Research" }]);
-  // A disabled member agent no longer resolves.
   await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, actorId));
   expect(await agentsFor()).toEqual([]);
   await f.db.update(actors).set({ disabledAt: null }).where(eq(actors.entityId, actorId));
-  // Once it leaves without writing, other members no longer resolve it.
   await chat.removeAgent(conversation.id, actorId);
   expect(await agentsFor()).toEqual([]);
 });

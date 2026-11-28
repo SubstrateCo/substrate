@@ -14,7 +14,6 @@ export function crmAffiliationsRepository(context: RepositoryContext) {
     contactId: string,
     accountId: string,
   ) {
-    // Only the account has grants to check; its access also requires the CRM app.
     await ctx.requireAccess(contactId, "edit", { type: "contact" });
     await ctx.requireAccess(accountId, "edit", { type: "account" });
   }
@@ -49,8 +48,6 @@ export function crmAffiliationsRepository(context: RepositoryContext) {
               eq(crmAffiliations.accountEntityId, input.accountEntityId),
             ),
           );
-        // No unique index covers the primary flag. The contact row write orders concurrent
-        // primary selections, so the clear below sees the earlier one.
         if (input.isPrimary) await ctx.touch(input.contactEntityId);
         if (input.isPrimary)
           await ctx.db

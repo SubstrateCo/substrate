@@ -63,7 +63,6 @@ function RecordField({
 function PreviewFields({ children }: { children: ReactNode }) {
   return <dl className="grid gap-1.5 text-sm">{children}</dl>;
 }
-/** A named record, as a link when the viewer can open it. */
 export function RecordName({ record, kind }: { record: ProposalRecord; kind: RecordKind }) {
   if (record.access === "loading")
     return (
@@ -120,10 +119,6 @@ function GenericValue({ field }: { field: ProposalField }) {
   return field.markdown ? <MessageMarkdown body={field.text} /> : field.text;
 }
 
-/**
- * Exactly what approval does. The server runs the stored call, so the preview shows every field
- * it sets and names each target record from the viewer's own reads, never from the agent's words.
- */
 export function ProposalPreview({ target }: { target: ProposalTarget }) {
   switch (target.type) {
     case "reply":
@@ -231,8 +226,6 @@ export function ProposalPreview({ target }: { target: ProposalTarget }) {
         <PreviewFields>
           <Field label="Action">{target.title}</Field>
           {target.fields.map((field, index) => (
-            // Fields keep the call's order and can repeat a label, so the index keys them.
-            // oxlint-disable-next-line react/no-array-index-key -- the list never reorders.
             <Field key={index} label={field.label}>
               <GenericValue field={field} />
             </Field>
@@ -242,7 +235,6 @@ export function ProposalPreview({ target }: { target: ProposalTarget }) {
   }
 }
 
-/** Who gains or loses access to a project, and the access they gain. */
 function ProjectAccessPreview({
   action,
   project,
@@ -264,7 +256,6 @@ function ProjectAccessPreview({
   );
 }
 
-/** Who gains or loses access to a CRM record, and the access they gain. */
 function CrmAccessPreview({
   action,
   record,
@@ -294,7 +285,6 @@ const crmAccessLabels = {
   revoke_crm_access: "Remove access to a record",
 };
 
-/** The access a CRM call gives the person. Removing access gives none. */
 function crmAccess(action: Extract<ProposalTarget, { action: unknown }>["action"]) {
   if (action.tool === "share_crm_record") return permissionLabels[action.input.level];
   if (action.tool === "assign_crm_owner")

@@ -19,7 +19,6 @@ declare global {
     readonly substrateDesktopSettings?: DesktopSettingsAPI;
     readonly substrateRealtime?: RealtimeAPI;
     readonly substrateUpdates?: DesktopUpdatesAPI;
-    /** Only the screen notification overlay window has this bridge. */
     readonly substrateScreenNotifications?: ScreenNotificationsBridge;
   }
 }

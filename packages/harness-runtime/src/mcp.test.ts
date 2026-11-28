@@ -245,7 +245,6 @@ test("a turn-only result is refused when its turn ended during the call", async 
 });
 
 test("an image reaches the model as an image block, not as offloaded JSON", async () => {
-  // Large enough that the generic path would offload it to a file.
   const data = Buffer.alloc(32 * 1024, 7).toString("base64");
   const described = { file: "bug", content: { kind: "image", mimeType: "image/webp" } };
   const mcp = await connected(
@@ -366,7 +365,6 @@ test("a lease never expires under a bound turn and expires only after it stays u
   const host = await createStartupMcp(testToolProvider().provider, { leaseTtlMs: 60_000 });
   const lease = host.issue(leaseOptions());
   const client = new Client({ name: "mcp-test", version: "1" });
-  // Moves Date.now() only; the HTTP server keeps its real timers.
   const start = Date.now();
   try {
     await client.connect(

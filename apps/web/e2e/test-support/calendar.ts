@@ -10,7 +10,6 @@ const fixture = z.object({
   contactEntityId: z.uuid(),
 });
 
-/** Seed provider records outside the renderer; every browser read still uses the real API. */
 export async function seedCalendar(actor: Actor) {
   const { stdout } = await promisify(execFile)(
     "bun",

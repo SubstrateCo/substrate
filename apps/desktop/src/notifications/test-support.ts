@@ -1,6 +1,5 @@
 import type { Clock } from "./timers.ts";
 
-/** A clock that moves only when a test advances it, firing due timers in order. */
 export function manualClock(start: number) {
   let now = start;
   let nextId = 0;

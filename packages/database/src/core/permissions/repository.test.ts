@@ -94,7 +94,6 @@ describe("access controls", () => {
       organizationId: f.orgA,
       actorEntityId: f.alice,
     }).permissions.revoke({ entityId: account.entityId, actorEntityId: f.alice });
-    // Access check and claim (2), target grant, one remaining-owner check, delete.
     expect(queries).toHaveLength(5);
     expect(await f.accessLevel(f.bob, account.entityId)).toBe("owner");
   });
@@ -122,7 +121,6 @@ describe("access controls", () => {
     const granted = await repos.transaction((tx) =>
       tx.permissions.grant({ entityId: account.entityId, actorEntityId: f.bob, level: "view" }),
     );
-    // Access check and claim (2), target actor, existing grant.
     expect(queries).toHaveLength(4);
     expect(granted.hints).toEqual([]);
     expect(await grantRow()).toEqual([before!]);
@@ -130,10 +128,8 @@ describe("access controls", () => {
     const revoked = await repos.transaction((tx) =>
       tx.permissions.revoke({ entityId: unshared.entityId, actorEntityId: f.bob }),
     );
-    // Access check and claim (2), existing grant.
     expect(queries).toHaveLength(3);
     expect(revoked.hints).toEqual([]);
-    // The claim is the only write: no grant changes.
     expect(queries.filter((query) => /^(insert|update|delete)\b/i.test(query))).toEqual([
       expect.stringContaining('update "entities" set "access_version"'),
     ]);

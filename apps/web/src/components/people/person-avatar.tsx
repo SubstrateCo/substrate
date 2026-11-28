@@ -8,9 +8,7 @@ const personAvatarVariants = cva("", {
   variants: {
     size: {
       sm: "size-6",
-      // `Avatar` sets `data-[size=sm]:size-6`, which outranks a plain size class. The same
-      // variant replaces it.
-      xs: "size-5 data-[size=sm]:size-5",
+      xs: "size-5",
       md: "size-8",
       lg: "size-9",
       xl: "size-10",
@@ -21,12 +19,6 @@ const personAvatarVariants = cva("", {
 
 export type PersonAvatarSize = "xs" | "sm" | "md" | "lg" | "xl";
 
-/**
- * A person: 24px in rows, chips, and pickers, or 20px for `xs`; `md`, `lg`, and `xl` are heads
- * (32px, a message author's 36px, a person card's 40px), the sizes of `AgentAvatarView`. A person
- * is a circle with initials on the neutral fill. No name, such as an unassigned task, shows an
- * empty dashed circle. Show someone who may be an agent with `ActorAvatar`.
- */
 export function PersonAvatar({
   name,
   image,
@@ -52,7 +44,7 @@ export function PersonAvatar({
   return (
     <Avatar
       aria-hidden="true"
-      size={size === "sm" || size === "xs" ? "sm" : "default"}
+      size={size === "sm" || size === "xs" ? size : "default"}
       className={cn(personAvatarVariants({ size }), className)}
     >
       {image && <AvatarImage src={image} alt="" />}

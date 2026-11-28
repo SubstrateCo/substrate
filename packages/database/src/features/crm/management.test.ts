@@ -23,7 +23,6 @@ test("CRM people are canonical active same-organization humans, never inferred o
   expect(outside).toEqual([{ entityId: f.outsider, userId: "outsider", type: "human" }]);
   for (const hidden of [agent.actorId, agent.agentId, "Private sales assistant", f.outsider])
     expect(JSON.stringify(people)).not.toContain(hidden);
-  // A session in an organization the person does not belong to is refused.
   expect(await rejection(f.forSession("alice", f.orgB))).toMatchObject({
     name: "AccessDeniedError",
   });

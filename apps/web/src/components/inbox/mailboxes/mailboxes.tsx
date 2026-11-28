@@ -35,7 +35,6 @@ export type MailboxNav = {
   colors: ReadonlyMap<string, MailColor>;
   connected: readonly Mailbox[];
   scope: Mailbox | null;
-  /** All inboxes of more than one mailbox: views and labels are grouped by mailbox. */
   unified: boolean;
   onSelect: (box: Mailbox | null) => void;
   onConnect: () => void;
@@ -118,7 +117,6 @@ function mailboxSwitchLabel(scope: Mailbox | null) {
   return `Switch mailbox: ${scope ? mailboxName(scope) : "All inboxes"}`;
 }
 
-/** The sidebar's mailbox switch, which names the chosen mailbox. */
 function MailboxPicker(nav: MailboxNav) {
   const { scope, colors } = nav;
   return (
@@ -146,7 +144,6 @@ function MailboxPicker(nav: MailboxNav) {
   );
 }
 
-/** The header's icon-only mailbox switch, shown without the sidebar. */
 export function CompactMailboxPicker(nav: MailboxNav) {
   const label = mailboxSwitchLabel(nav.scope);
   return (

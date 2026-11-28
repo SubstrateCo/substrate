@@ -44,7 +44,6 @@ type Panel =
   | { kind: "delete" }
   | { kind: "appearance"; agentId: string };
 
-/** Members, agents, sharing and management for one conversation. */
 export function ConversationDetailsSheet({
   organizationId,
   conversation,

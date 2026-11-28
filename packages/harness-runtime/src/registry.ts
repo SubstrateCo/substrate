@@ -10,16 +10,7 @@ import { join } from "node:path";
 export interface HarnessDefinition {
   instructions: string;
   skills: string;
-  /**
-   * Where the managed prefix goes: systemPrompt through ACP session setup, or instructions at the
-   * start of the instructions file.
-   */
   prefixChannel: AcpPrefixChannel;
-  /**
-   * For a session that works in another folder: launch environment that makes the harness load
-   * its own folder's instructions file and skills. Without it, the instructions go in the system
-   * prompt and the harness finds the skills under the folder as an extra root.
-   */
   managedEnvironment?: (folder: string) => Record<string, string>;
 }
 
@@ -50,7 +41,6 @@ export const harnessDefinitions = {
   },
 } satisfies Record<HarnessKind, HarnessDefinition>;
 
-/** Detects the harness's ACP agent and connects an adapter over it. */
 export async function connectHarness(
   harness: HarnessKind,
   context: AdapterContext,

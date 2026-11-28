@@ -3,10 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { cropImage, type CropArea } from "@/components/upload/crop-image";
 import type { ImageCropDialogProps } from "@/components/upload/image-crop-dialog";
 
-/**
- * Crops the picture, then hands the PNG to the caller's upload mutation. Both steps share one
- * abort signal, so the dialog's Cancel stops either one until the upload commits.
- */
 export function usePictureUpload({
   file,
   area,
@@ -24,7 +20,6 @@ export function usePictureUpload({
   const [crop, setCrop] = useState<
     { status: "idle" | "cropping" } | { status: "failed" | "handed-off"; signal: AbortSignal }
   >({ status: "idle" });
-  // The dialog closes without asking while an upload runs only when its page goes away.
   const attempt = useRef<{
     controller: AbortController;
     cropping: boolean;
@@ -38,7 +33,6 @@ export function usePictureUpload({
     [],
   );
   const pending = crop.status === "cropping" || uploading;
-  // An upload error belongs to this dialog only after its crop was handed off.
   let error: string | null = null;
   if (crop.status === "failed" || (crop.status === "handed-off" && uploadError))
     error = crop.signal.aborted

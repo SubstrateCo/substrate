@@ -13,24 +13,24 @@ export type ReferenceQuery = {
   query: string;
 };
 
+const triggerThenUpToFourWords = /(?:^|\s)([@#])((?:[^\s@#[\]]+(?: [^\s@#[\]]+){0,3} ?)?)$/;
+
+function endsInsideMarkdownCode(text: string) {
+  return (
+    (text.match(/```|~~~/g)?.length ?? 0) % 2 === 1 ||
+    (text.split("\n").at(-1)!.match(/`/g)?.length ?? 0) % 2 === 1
+  );
+}
+
 /** The `@` or `#` query that ends at the caret, or null when the caret is not in one. */
 export function referenceQuery(draft: string, caret: number): ReferenceQuery | null {
   if (caret < 0) return null;
   const before = draft.slice(0, caret);
-  // Markdown code is literal, not a place to insert references.
-  if (
-    (before.match(/```|~~~/g)?.length ?? 0) % 2 ||
-    (before.split("\n").at(-1)!.match(/`/g)?.length ?? 0) % 2
-  )
-    return null;
-  // Up to four words joined by single spaces, such as a full name or a task title. A space at the
-  // start, two spaces in a row, or a line break ends the query. Words need a space between them,
-  // so the pattern cannot backtrack through ways of splitting one long word.
-  const match = /(?:^|\s)([@#])((?:[^\s@#[\]]+(?: [^\s@#[\]]+){0,3} ?)?)$/.exec(before);
+  if (endsInsideMarkdownCode(before)) return null;
+  const match = triggerThenUpToFourWords.exec(before);
   if (!match) return null;
   const trigger = match[1] === "#" ? "#" : "@";
   const text = match[2]!;
-  // Channel names have no spaces, so a space ends a "#" query.
   if (trigger === "#" && text.includes(" ")) return null;
   const prefix = (
     trigger === "#" ? /^(channel|thread)s?:/i : /^(user|agent|task|project)s?:/i

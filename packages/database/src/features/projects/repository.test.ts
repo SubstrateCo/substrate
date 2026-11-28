@@ -114,7 +114,6 @@ test("project sharing claims the project once and keeps grant rules", async () =
   const shared = await repos.transaction((tx) =>
     tx.projects.share(project.entityId, f.bob, "edit"),
   );
-  // Access, structural claim, archive check, target actor, existing grant, upsert.
   expect(queries).toHaveLength(6);
   expect(shared.hints).toEqual(
     expect.arrayContaining([
@@ -202,8 +201,6 @@ test("project revocation keeps assignments, claims once, and protects the last o
   const { db, queries } = recordQueries();
   const repos = new ActorRepositories(db, { organizationId: f.orgA, actorEntityId: f.alice });
   const revoked = await repos.transaction((tx) => tx.projects.revoke(project.entityId, f.bob));
-  // Access, structural claim, archive check, assignments, fresh owner check, existing grant,
-  // delete.
   expect(queries).toHaveLength(7);
   expect(revoked.hints).toContainEqual({
     audience: realtimeKeys.actor(f.orgA, f.bob),
@@ -214,7 +211,6 @@ test("project revocation keeps assignments, claims once, and protects the last o
   );
   queries.length = 0;
   const missing = await repos.transaction((tx) => tx.projects.revoke(project.entityId, f.bob));
-  // The structural claim is the only write: no grant changes.
   expect(queries.filter((query) => /^(insert|update|delete)\b/i.test(query))).toEqual([
     expect.stringContaining('"access_version"'),
   ]);
@@ -236,7 +232,6 @@ test("project revocation denies an admin demoted after the assignment check", as
   const grants = () =>
     f.db.select().from(entityGrants).where(eq(entityGrants.entityId, project.entityId));
   const before = await grants();
-  // Alice reaches the project only through her organization owner role.
   expect(before.map((grant) => grant.actorEntityId)).not.toContain(f.alice);
   const original = assignment.requireUnassignedProjectActor;
   const guard = spyOn(assignment, "requireUnassignedProjectActor").mockImplementation(

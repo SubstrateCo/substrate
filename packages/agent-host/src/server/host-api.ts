@@ -13,7 +13,6 @@ import type { HostApi, HostFinish, HostProgress } from "../ports.ts";
 import type { ServerCall } from "./agent-work-server.ts";
 import type { z } from "zod";
 
-/** The control-plane client over `/agent-work/host/*`. */
 export function createHostApi(options: { call: ServerCall; installationId: string }): HostApi {
   const { call } = options;
   const device = (organizationId: string) => ({

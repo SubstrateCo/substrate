@@ -14,7 +14,6 @@ export type BodySegment =
   | { type: "text"; text: string }
   | { type: "reference"; kind: ReferenceKind; id: string };
 
-/** Splits a stored body into text and reference tokens, in order. */
 export function bodySegments(body: string): BodySegment[] {
   const segments: BodySegment[] = [];
   let offset = 0;

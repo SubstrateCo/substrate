@@ -11,7 +11,6 @@ import { readFileSync } from "node:fs";
 
 function readReleaseRepository() {
   try {
-    // Packaged builds bundle this module into main.js, beside the file that build.ts writes.
     return releaseRepositorySchema.parse(
       JSON.parse(readFileSync(new URL("./update-config.json", import.meta.url), "utf8")),
     );
@@ -44,7 +43,6 @@ export function setupDesktopUpdates(options: {
     onChange: (status) =>
       emitToRenderer(options.getWindow(), updatesIPC.statusChannel, status, options.rendererURL),
     onAttention: (state) => {
-      // The renderer shows its own notice in a focused window.
       if (!Notification.isSupported() || options.getWindow()?.isFocused()) return;
       const notification = new Notification(
         state.status === "ready"

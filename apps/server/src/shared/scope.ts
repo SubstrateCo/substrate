@@ -51,7 +51,6 @@ export function createScopes(deps: ScopeDependencies) {
       installationId,
     };
   }
-  // The request comes from the desktop that the input names.
   function requireInstallation(scope: IdentityScope, expected: string | undefined) {
     if (!scope.installationId || scope.installationId !== expected)
       throw new ServiceError("FORBIDDEN", "Invalid desktop installation.");
@@ -74,7 +73,6 @@ export function createScopes(deps: ScopeDependencies) {
       expected ?? scope.organizationId ?? "",
       scope.organizationId,
     );
-    // forSession verifies membership before constructing any domain repository, including sharing.
     const repositories = await deps.repositories.forSession({
       userId: scope.userId,
       organizationId,
@@ -114,10 +112,8 @@ export function createScopes(deps: ScopeDependencies) {
             : null;
         return { session, role };
       }),
-    /** A verified session, without repositories: for user-level actions such as account links. */
     identity: () => middleware(async (headers, _input, session) => identity(headers, session)),
     user: () => middleware((headers, _input, session) => user(identity(headers, session))),
-    /** A user scope from the desktop installation that the input names. */
     installation: (target: keyof ValidationTargets) =>
       middleware(async (headers, input, session) => {
         const scope = identity(headers, session);

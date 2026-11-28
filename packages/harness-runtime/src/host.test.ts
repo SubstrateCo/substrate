@@ -54,7 +54,6 @@ function agent(overrides: Partial<HarnessAgent> = {}): HarnessAgent {
   };
 }
 
-/** The latest native session the fake opened. */
 interface FakeNative {
   context?: AdapterContext;
   finish?: (result: TurnResult) => void;
@@ -113,7 +112,6 @@ async function host(
   return { host: created, native, events, calls: provider.calls };
 }
 
-/** Resolves with the next host event that matches. Call it before the action that emits it. */
 function nextEvent(
   f: { host: Awaited<ReturnType<typeof createHarnessHost>> },
   predicate: (event: HarnessEvent) => boolean,
@@ -127,7 +125,6 @@ function nextEvent(
   });
 }
 
-/** For negative checks only: lets every queued promise job run before asserting nothing happened. */
 function flushMicrotasks() {
   return new Promise<void>((resolve) => setImmediate(resolve));
 }
@@ -358,7 +355,6 @@ test("an open of a session that closes after its live turn waits with session-cl
 test("open rewrites the instructions file with the managed prefix and reports failed resumes", async () => {
   const f = await host();
   try {
-    // OpenCode takes the managed prefix through its instructions file.
     await f.host.configure({ organizationId: "org-a", agents: [agent({ harness: "opencode" })] });
     const ref = await f.host.execute({ ...open, nativeSessionId: "lost" });
     expect(ref).toMatchObject({ nativeSessionId: "native-new", resumed: false });
@@ -405,10 +401,8 @@ test("a session with a working folder works there and keeps its own folder as an
       directory: await realpath(project),
       managedDirectory: folder,
     });
-    // The project's own instructions file is left alone; the agent's stays in its folder.
     await rejects(readFile(join(project, "AGENTS.md"), "utf8"), { code: "ENOENT" });
     expect(await readFile(join(folder, "AGENTS.md"), "utf8")).toContain("Work locally");
-    // A system-prompt harness reads no instructions file from the extra root.
     expect(f.native.state.prefix).toBe("# Managed policy\n\nWork locally");
   } finally {
     await f.host.dispose();
@@ -462,7 +456,6 @@ test("the reaper closes idle sessions but keeps sessions with a live turn", asyn
     await f.host.execute({ ...open, sessionId: "session-b" });
     await f.host.execute({ ...turn, sessionId: "session-b" });
     const reaped = nextEvent(f, (event) => event.type === "session.closed");
-    // The reaper runs every 10 ms for a 30 ms keep-alive; step well past it.
     for (let step = 0; step < 12; step++) clock.advance(10);
     await reaped;
     await flushMicrotasks();
@@ -583,7 +576,6 @@ test("closeOrganization ends and closes that organization's sessions, whatever i
         ? [[event.type, event.sessionId]]
         : [],
     );
-    // The turn ends before its session closes; the other organization keeps its session.
     expect(ends).toEqual([
       ["turn.completed", "session-a"],
       ["session.closed", "session-a"],
@@ -620,7 +612,6 @@ test("an interrupt the harness never confirms still ends the turn as interrupted
     const terminal = f.events.filter((event) => event.type === "turn.completed");
     expect(terminal).toHaveLength(1);
     expect(terminal[0]).toMatchObject({ turnId, result: { status: "interrupted" } });
-    // The native state is unknown after an unconfirmed interrupt, so the session closes.
     expect(closedEvents(f.events)).toEqual([["session-a", "closed"]]);
   } finally {
     await f.host.dispose();

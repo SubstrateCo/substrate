@@ -180,7 +180,6 @@ test("recreates the host and synchronizes edited actors without replacing local 
       "claude-agent",
       "CLAUDE.md",
     );
-    // Sync seeds files once; later instruction edits apply only on reset.
     expect(await readFile(claudePrompt, "utf8")).toContain("Initial Claude instructions");
     await second.resetDefaults({
       organizationId: configuration.organizationId,

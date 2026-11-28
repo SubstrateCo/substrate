@@ -23,7 +23,6 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-// Dedicated sharing boundary. These records never grant access to ordinary entities.
 export const messagingConversations = pgTable(
   "messaging_conversations",
   {
@@ -40,8 +39,6 @@ export const messagingConversations = pgTable(
       .notNull()
       .references(() => user.id),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-    // Counts membership, ownership, sharing and lifecycle changes. Each one claims the next
-    // version by compare-and-set, so they run one at a time without row locks.
     version: integer("version").default(0).notNull(),
   },
   (table) => [
@@ -70,9 +67,6 @@ export const messagingConversations = pgTable(
   ],
 );
 
-// People and agents are members through their actor. The actor's organization is the member's
-// organization, so partner members keep their own workspace identity. An agent's membership makes
-// it addressable in the conversation; it reads with its owner's access, never through this row.
 export const messagingParticipants = pgTable(
   "messaging_participants",
   {
@@ -84,11 +78,8 @@ export const messagingParticipants = pgTable(
       .references(() => organization.id),
     actorEntityId: uuid("actor_entity_id").notNull(),
     actorType: actorType("actor_type").notNull(),
-    // Existing external participants stay unapproved until they accept a new invitation.
     consentedAt: timestamp("consented_at", { withTimezone: true }),
-    // Set when the member leaves. The row stays because messages and reactions reference it.
     leftAt: timestamp("left_at", { withTimezone: true }),
-    // The member's own alert level. Null follows the default for the conversation kind.
     notificationLevel: text("notification_level").$type<NotificationLevel>(),
     notificationsMutedUntil: timestamp("notifications_muted_until", { withTimezone: true }),
   },
@@ -98,7 +89,6 @@ export const messagingParticipants = pgTable(
       columns: [table.organizationId, table.actorEntityId, table.actorType],
       foreignColumns: [actors.organizationId, actors.entityId, actors.type],
     }),
-    // Keep authorship history after departure. The facade checks live membership on every call.
     index("messaging_participants_actor_idx").on(table.actorEntityId),
   ],
 );
@@ -110,7 +100,6 @@ export const messagingMessages = pgTable(
     conversationId: uuid("conversation_id")
       .notNull()
       .references(() => messagingConversations.id, { onDelete: "cascade" }),
-    // A person's user is the author actor's user_id. Membership is checked through that actor.
     authorActorEntityId: uuid("author_actor_entity_id").notNull(),
     authorOrganizationId: text("author_organization_id").notNull(),
     body: text("body").notNull(),
@@ -118,7 +107,6 @@ export const messagingMessages = pgTable(
     threadId: uuid("thread_id"),
     isRoot: boolean("is_root").generatedAlwaysAs(sql`thread_id IS NULL`),
     threadRoot: boolean("thread_root").default(true).notNull(),
-    // The local agent turn that published this reply. Provenance only; it grants no access.
     originTurnId: uuid("origin_turn_id"),
     editedAt: timestamp("edited_at", { withTimezone: true }),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
@@ -150,9 +138,7 @@ export const messagingMessages = pgTable(
     check("messaging_thread_root_check", sql`${table.threadRoot}`),
     check("messaging_body_check", sql`length(${table.body}) <= 20000`),
     check("messaging_deleted_body_check", sql`${table.deletedAt} IS NULL OR ${table.body} = ''`),
-    // Message search matches words and word prefixes, not substrings inside words.
     index("messaging_messages_search_idx").using("gin", searchDocument(table.body)),
-    // Root and thread pages, and the thread root foreign key on root deletion.
     index("messaging_message_thread_idx").on(
       table.conversationId,
       table.threadId,
@@ -162,9 +148,7 @@ export const messagingMessages = pgTable(
     index("messaging_message_origin_turn_idx")
       .on(table.originTurnId)
       .where(sql`${table.originTurnId} IS NOT NULL`),
-    // A conversation's latest activity, which does not filter by thread.
     index("messaging_message_conversation_created_idx").on(table.conversationId, table.createdAt),
-    // Cover unread counts without fetching message bodies or tombstones.
     index("messaging_message_unread_idx")
       .on(table.conversationId, table.createdAt, table.id, table.authorActorEntityId)
       .where(sql`${table.deletedAt} IS NULL`),
@@ -190,7 +174,6 @@ export const messagingReactions = pgTable(
       foreignColumns: [messagingParticipants.conversationId, messagingParticipants.actorEntityId],
     }),
     check("messaging_emoji_check", sql`length(trim(${table.emoji})) BETWEEN 1 AND 64`),
-    // The participant foreign key on participant removal.
     index("messaging_reactions_participant_idx").on(table.conversationId, table.actorEntityId),
   ],
 );

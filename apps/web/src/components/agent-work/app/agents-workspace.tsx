@@ -33,7 +33,6 @@ type AgentsSearch = {
   settings?: AgentSettingsPage;
 };
 
-/** The pane for an agent the catalog doesn't list: still loading, gone, or failed to load. */
 function MissingAgent({
   catalogState,
   onRetry,
@@ -53,7 +52,6 @@ function MissingAgent({
   return <PaneState label="Couldn’t load agent" error={catalogState.error} onRetry={onRetry} />;
 }
 
-/** Needs you or the first-agent prompt without a selection; otherwise the selected agent. */
 function AgentsContent({
   agentId,
   firstAgent,
@@ -68,20 +66,13 @@ function AgentsContent({
   catalogState: ResourceState<unknown>;
   onRetryCatalog: () => void;
   onCreate: () => void;
-  /** Shown without a selection once the owner has an agent. */
   needsYou: ReactNode;
-  /** The page of the agent `agentId` names, when the catalog lists it. */
   agent: ReactNode;
 }) {
   if (!agentId) return firstAgent ? <FirstAgentView onCreate={onCreate} /> : needsYou;
   return agent || <MissingAgent catalogState={catalogState} onRetry={onRetryCatalog} />;
 }
 
-/**
- * The Agents app. Needs you, work, and routines come from the server, so they work on every
- * device. Transcripts come from the agent's home desktop. An agent's settings open in a sheet over
- * its page, so the conversation stays in place.
- */
 export function AgentsWorkspace({
   agentId,
   turnId,
@@ -147,7 +138,6 @@ export function AgentsWorkspace({
             }
             onViewChange={(next) => go({ agentId: selected.id, view: next, settings })}
             onSettingsChange={(open) => changeSettings(open ? "overview" : undefined)}
-            // The transcript opens beside the work, so it takes the place of the settings.
             onTranscript={(id) => go({ agentId: selected.id, view: "work", turnId: id })}
           />
         )
@@ -197,7 +187,6 @@ export function AgentsWorkspace({
       content={content}
       sheet={sheet}
       aside={
-        // A selected agent is the one agentId names. In Messages, the conversation opens its own.
         view === "work" &&
         selected &&
         turnId && (

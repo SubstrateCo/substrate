@@ -18,7 +18,6 @@ import {
   timestamp,
 } from "drizzle-orm/pg-core";
 
-// One row per account, written on its first change. A missing row means the defaults.
 export const notificationPreferences = pgTable(
   "notification_preferences",
   {
@@ -27,7 +26,6 @@ export const notificationPreferences = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     alertsEnabled: boolean("alerts_enabled").default(true).notNull(),
     pausedUntil: timestamp("paused_until", { withTimezone: true }),
-    // Bit n set allows weekday n, from 0 (Sunday) to 6. All schedule columns are set or all null.
     scheduleDays: smallint("schedule_days"),
     scheduleStart: smallint("schedule_start"),
     scheduleEnd: smallint("schedule_end"),
@@ -49,7 +47,6 @@ export const notificationPreferences = pgTable(
   ],
 );
 
-// One row per workspace membership, written on its first change. Leaving the workspace drops it.
 export const notificationWorkspacePreferences = pgTable(
   "notification_workspace_preferences",
   {

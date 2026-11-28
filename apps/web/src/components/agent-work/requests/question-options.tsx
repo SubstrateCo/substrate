@@ -32,7 +32,6 @@ function OptionShortcut({ index }: { index: number }) {
   );
 }
 
-/** The options of one question: checkboxes when the owner may pick many, radios otherwise. */
 export function QuestionOptions({
   question,
   selected,
@@ -43,7 +42,6 @@ export function QuestionOptions({
 }: {
   question: Question;
   selected: string[] | undefined;
-  /** Prefix for option IDs, unique to this question. */
   idPrefix: string;
   labelledBy: string;
   pending: boolean;

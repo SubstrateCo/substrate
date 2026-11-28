@@ -32,7 +32,6 @@ function ConnectionLink({ connection }: { connection: InteractionConnection }) {
           profileId: connection.entityId,
           recordId: undefined,
           tab: undefined,
-          // The linked record can be older than the current period.
           days: "all",
         })}
         className="min-w-0 font-medium wrap-anywhere underline-offset-4 hover:underline"
@@ -60,7 +59,6 @@ function ConnectionLink({ connection }: { connection: InteractionConnection }) {
   );
 }
 
-/** A linked meeting opens on its day. The event read is the one the calendar pane reuses. */
 function MeetingLink({ connection }: { connection: InteractionConnection }) {
   const { organizationId } = useWorkspaceScope();
   const event = useQuery(calendarEventOptions(organizationId, connection.entityId)).data;

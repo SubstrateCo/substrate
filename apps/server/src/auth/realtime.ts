@@ -11,7 +11,6 @@ export function createAuthPublisher(db: Database, publish: CommittedPublisher) {
     try {
       resolved = await hints;
     } catch {
-      // A failed hint lookup must not fail the auth request. Clients resync on reconnect.
       console.warn("Realtime publish failed; clients will resync");
       return;
     }

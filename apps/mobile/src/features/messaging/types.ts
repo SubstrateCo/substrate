@@ -24,7 +24,6 @@ export type SharingDetails = Awaited<ReturnType<typeof getSharingDetails>>;
 export type SharingRequest = Awaited<ReturnType<typeof listSharingInbox>>[number];
 export type SharingInvitation = Awaited<ReturnType<typeof getSharingInvitation>>;
 
-/** Another conversation, or a thread in it, that a `#` reference leads to. */
 export type MessagingConversationTarget = { conversationId: string; threadId?: string };
 
 export type MessagingProfileTarget = {
@@ -33,10 +32,6 @@ export type MessagingProfileTarget = {
   actorId: string;
 };
 
-/**
- * A message to start a record from. `kind` is what the person chose: a task, a CRM record, or an
- * interaction logged on a contact. The source form keeps the message as the record's source.
- */
 export type MessageSource = {
   kind: "task" | "crm" | "interaction";
   organizationId: string;
