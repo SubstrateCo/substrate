@@ -11,6 +11,7 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace/interact
       .default("dashboard"),
     days: z.enum(["7", "30", "all"]).optional().default("30"),
     loggedBy: z.enum(["me", "anyone"]).optional().default("me"),
+    sourceCalendarEntityId: z.uuid().optional(),
     profileId: z.uuid().optional(),
     recordId: z.uuid().optional(),
     tab: z.enum(["activity", "map"]).optional(),
@@ -19,12 +20,14 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace/interact
 });
 
 function InteractionsRoute() {
-  const { section, days, loggedBy, profileId, recordId, tab } = Route.useSearch();
+  const { section, days, loggedBy, sourceCalendarEntityId, profileId, recordId, tab } =
+    Route.useSearch();
   return (
     <InteractionsWorkspace
       section={section}
       days={days}
       loggedBy={loggedBy}
+      sourceCalendarEntityId={sourceCalendarEntityId}
       profileId={profileId}
       recordId={recordId}
       tab={tab}

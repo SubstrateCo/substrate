@@ -28,9 +28,9 @@ export const readableInteractionPeriod = (
 export function interactionWorkspaceRepository(context: RepositoryContext) {
   const { db } = context;
   return {
-    async workspaceActivity(input: InteractionPeriod) {
+    async workspaceActivity(input: InteractionPeriod, extraCondition?: SQL) {
       const value = parseInput(interactionPeriod, input);
-      const condition = readableInteractionPeriod(context, value);
+      const condition = and(readableInteractionPeriod(context, value), extraCondition);
       const [summary] = await db
         .select({
           total: sql<number>`count(*)`.mapWith(Number),

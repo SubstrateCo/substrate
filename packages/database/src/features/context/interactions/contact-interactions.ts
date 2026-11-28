@@ -10,6 +10,7 @@ import { presentInteraction, presentInteractions } from "../../crm/activity/acto
 import { interactionScope } from "../../crm/activity/timeline";
 import { crmContactProfiles } from "../../crm/schema";
 import { contextInteractionActions } from "./interaction-actions";
+import { interactionCalendarFilter } from "./interaction-calendar-filter";
 import { interactionDirectoryPage } from "./interaction-directory";
 import { publishInteraction } from "./interaction-publication";
 import { interactionProfileDetail, interactionRecordDetail } from "./interaction-records";
@@ -19,6 +20,13 @@ export function contextContactInteractionRepository(context: RepositoryContext) 
   return {
     ...contactInteractionRepository(context),
     ...contextInteractionActions(context),
+    workspaceActivity: (
+      input: Parameters<ReturnType<typeof interactionWorkspaceRepository>["workspaceActivity"]>[0],
+    ) =>
+      interactionWorkspaceRepository(context).workspaceActivity(
+        input,
+        interactionCalendarFilter(context, input.sourceCalendarEntityId),
+      ),
     workspaceDirectory: (input: Parameters<typeof interactionDirectoryPage>[1]) =>
       interactionDirectoryPage(context, input),
     workspaceRecord: (id: string) => interactionRecordDetail(context, id),
@@ -41,7 +49,7 @@ export function contextContactInteractionRepository(context: RepositoryContext) 
       }
       const page = await interactionWorkspaceRepository(context).workspaceTimeline(
         input,
-        condition,
+        and(condition, interactionCalendarFilter(context, input.sourceCalendarEntityId)),
       );
       return { ...page, items: await presentInteractions(context, page.items) };
     },

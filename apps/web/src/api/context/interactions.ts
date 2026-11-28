@@ -24,7 +24,15 @@ export const getInteractionTimeline = ({ data, signal }: ApiInput<InteractionTim
 export const getInteractionDirectory = ({ data, signal }: ApiInput<InteractionDirectory>) =>
   readResult(
     api.context.interactions.directory.$get(
-      { query: { ...data, offset: data.offset?.toString(), pageSize: data.pageSize?.toString() } },
+      {
+        query: {
+          ...data,
+          offset: data.offset?.toString(),
+          pageSize: data.pageSize?.toString(),
+          count: data.count?.toString(),
+          countUntil: data.countUntil?.toString(),
+        },
+      },
       { init: { signal } },
     ),
   );

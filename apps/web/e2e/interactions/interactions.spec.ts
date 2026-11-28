@@ -1,7 +1,9 @@
 import type { InteractionKind } from "@substrate/contracts/context/interactions";
 
 import { createCrm, type CrmMutation } from "../../../server/integration/test-support/crm";
+import { seedCalendar } from "../test-support/calendar";
 import { conversation, post, visit, type Actor } from "../test-support/fixtures";
+import { captureScreenshot } from "../test-support/screenshots";
 import { test } from "../test-support/workspace-fixtures";
 import { expect, type Page } from "@playwright/test";
 
@@ -79,6 +81,105 @@ async function changeFilter(page: Page, field: string, current: string, option: 
     page.getByRole("group", { name: `${field} is ${option}`, exact: true }),
   ).toBeVisible();
 }
+
+test("source calendar and editable people interaction counts filter real records", async ({
+  account,
+  client,
+}) => {
+  test.setTimeout(60_000);
+  const response = await account.request.patch("/api/v1/organizations/apps", {
+    data: {
+      organizationId: account.organizationId,
+      enabledApps: ["messages", "agents", "tasks", "crm", "calendar"],
+    },
+  });
+  expect(response.ok()).toBe(true);
+  await seedCalendar(account);
+  for (const count of [1, 2, 3]) {
+    const contact = await createCrm(account, {
+      action: "createContact",
+      displayName: `Customer ${count}`,
+    });
+    await seedInteractions(
+      account,
+      Array.from({ length: count }, () => ({
+        action: "createInteraction",
+        contactEntityId: contact.entityId,
+        kind: "note",
+        occurredAt: new Date().toISOString(),
+        summary: "Discussed the rollout plan.",
+      })),
+    );
+  }
+  const user = await client(account);
+  const { page } = user;
+  await visit(user, undefined, "/interactions", {
+    section: "timeline",
+    days: "all",
+    loggedBy: "anyone",
+  });
+  await page.getByRole("button", { name: "Filter", exact: true }).click();
+  await page.getByRole("option", { name: "Source calendar", exact: true }).click();
+  await page.getByRole("button", { name: "Back to filters", exact: true }).click();
+  await page
+    .getByRole("combobox", { name: "Search filters", exact: true })
+    .fill("Customer meetings");
+  await expect(page.getByRole("option", { name: /Customer meetings/ })).toBeVisible();
+  await captureScreenshot(page, "filter-value-search");
+  await page.getByRole("option", { name: /Customer meetings/ }).click();
+  await expect(
+    page.getByRole("group", { name: "Source calendar is Customer meetings", exact: true }),
+  ).toBeVisible();
+  const list = page.getByRole("list", { name: "Interactions", exact: true });
+  await expect(list.getByRole("listitem")).toHaveCount(1);
+  await expect(list.getByText("Jordan Lee", { exact: true })).toBeVisible();
+  await captureScreenshot(page, "interactions-source-calendar");
+  await page.reload();
+  await expect(list.getByRole("listitem")).toHaveCount(1);
+  await page.getByRole("link", { name: "People", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Jordan Lee", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Remove Source calendar filter", exact: true }).click();
+  await page.getByRole("button", { name: "Filter", exact: true }).click();
+  await page.getByRole("option", { name: "Interaction count", exact: true }).click();
+  await page.getByRole("combobox", { name: "Interaction count comparison" }).click();
+  await page.getByRole("option", { name: "Between", exact: true }).click();
+  await page.getByRole("spinbutton", { name: "Minimum count", exact: true }).fill("2");
+  await page.getByRole("spinbutton", { name: "Maximum count", exact: true }).fill("3");
+  await captureScreenshot(page, "people-interaction-count-editor");
+  await page.getByRole("button", { name: "Apply filter", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Customer 1", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Customer 2", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Customer 3", exact: true })).toBeVisible();
+  await captureScreenshot(page, "people-interaction-count");
+  await page
+    .getByRole("button", { name: "Interaction count operator: between", exact: true })
+    .click();
+  await page.getByRole("menuitemradio", { name: "less than", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Customer 1", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Customer 2", exact: true })).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Interaction count operator: less than", exact: true })
+    .click();
+  await page.getByRole("menuitemradio", { name: "greater than", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Customer 3", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Customer 2", exact: true })).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Interaction count operator: greater than", exact: true })
+    .click();
+  await page.getByRole("menuitemradio", { name: "equal to", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Customer 2", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Customer 3", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Interaction count: 2", exact: true }).click();
+  await page.getByRole("spinbutton", { name: "Count", exact: true }).fill("3");
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Customer 2", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Interaction count: 2", exact: true }).click();
+  await expect(page.getByRole("spinbutton", { name: "Count", exact: true })).toHaveValue("2");
+  await page.getByRole("spinbutton", { name: "Count", exact: true }).fill("3");
+  await page.getByRole("button", { name: "Apply filter", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Customer 3", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Customer 2", exact: true })).toHaveCount(0);
+});
 
 test("dashboard and timeline use real sample records in dark mode", async ({ account, client }) => {
   test.setTimeout(30_000);

@@ -25,27 +25,30 @@ export function FilterBar<Id extends string>({
   const setClause = (id: Id, clause: FilterClause | undefined) =>
     onValueChange(withClause(value, id, clause));
   return (
-    <div role="group" aria-label={label} className="flex min-w-0 flex-wrap items-center gap-2">
-      {canAddFilter(fields, value) && (
-        <FilterPicker fields={fields} value={value} onClauseChange={setClause} />
-      )}
-      {fields.map((field) => {
-        const clause = value[field.id];
-        if (!clause?.values.length) return null;
-        return (
-          <FilterPill
-            key={field.id}
-            field={field}
-            clause={clause}
-            onChange={(next) => setClause(field.id, next)}
-          />
-        );
-      })}
+    <div role="group" aria-label={label} className="flex min-w-0 items-start gap-2">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+        {canAddFilter(fields, value) && (
+          <FilterPicker fields={fields} value={value} onClauseChange={setClause} />
+        )}
+        {fields.map((field) => {
+          const clause = value[field.id];
+          if (!clause?.values.length) return null;
+          return (
+            <FilterPill
+              key={field.id}
+              field={field}
+              clause={clause}
+              onChange={(next) => setClause(field.id, next)}
+            />
+          );
+        })}
+      </div>
       {clearable && hasClearableFilters(fields, value) && (
         <Button
           type="button"
           variant="disclosure"
           size="sm"
+          aria-label={clearLabel}
           onClick={() => {
             onValueChange(clearFilterValue(fields, value));
             onClear?.();

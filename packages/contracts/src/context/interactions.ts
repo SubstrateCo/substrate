@@ -46,6 +46,7 @@ export const interactionPeriod = workspace
       }),
     /** Only interactions the signed-in actor logged. The server derives the actor. */
     loggedBy: z.literal("me").optional(),
+    sourceCalendarEntityId: z.uuid().optional(),
   })
   .refine(({ from, until }) => {
     const duration = Date.parse(until) - Date.parse(from);
@@ -70,13 +71,27 @@ export const interactionTimeline = interactionPeriod
 export type InteractionPeriod = z.output<typeof interactionPeriod>;
 export type InteractionTimeline = z.output<typeof interactionTimeline>;
 export const interactionProfile = interactionRecord.extend({ type: z.enum(["person", "account"]) });
-export const interactionDirectory = interactionPeriod.safeExtend({
-  type: z.enum(["people", "accounts"]),
-  search: z.string().trim().max(200).optional(),
-  repeat: z.literal("true").optional(),
-  allTime: z.literal("true").optional(),
-  sort: z.enum(["latest", "name", "count"]).optional(),
-  offset: z.coerce.number().int().min(0).max(1_000_000).optional(),
-  pageSize: z.coerce.number().int().min(1).max(100).optional(),
-});
+export const interactionDirectory = interactionPeriod
+  .safeExtend({
+    type: z.enum(["people", "accounts"]),
+    search: z.string().trim().max(200).optional(),
+    repeat: z.literal("true").optional(),
+    countOperator: z.enum(["less than", "equal to", "greater than", "between"]).optional(),
+    count: z.coerce.number().int().min(0).max(1_000_000).optional(),
+    countUntil: z.coerce.number().int().min(0).max(1_000_000).optional(),
+    allTime: z.literal("true").optional(),
+    sort: z.enum(["latest", "name", "count"]).optional(),
+    offset: z.coerce.number().int().min(0).max(1_000_000).optional(),
+    pageSize: z.coerce.number().int().min(1).max(100).optional(),
+  })
+  .refine(
+    (input) =>
+      input.countOperator
+        ? input.count !== undefined &&
+          (input.countOperator === "between"
+            ? input.countUntil !== undefined && input.countUntil >= input.count
+            : input.countUntil === undefined)
+        : input.count === undefined && input.countUntil === undefined,
+    "Enter a valid interaction count or range.",
+  );
 export type InteractionDirectory = z.output<typeof interactionDirectory>;

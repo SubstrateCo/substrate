@@ -25,6 +25,7 @@ import {
 } from "./interaction-filters";
 import { InteractionList } from "./interaction-list";
 import { OwnInteractionsNotice } from "./own-interactions-notice";
+import { useSourceCalendarField } from "./use-source-calendar-field";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
@@ -48,6 +49,7 @@ export function InteractionTimeline({
   onScopeChange,
   loggedBy,
   onLoggedByChange,
+  onSourceCalendarChange,
 }: {
   period: TimelineInput;
   days: InteractionDays;
@@ -56,16 +58,25 @@ export function InteractionTimeline({
   onScopeChange?: (scope: InteractionScope) => void;
   loggedBy?: InteractionLoggedBy;
   onLoggedByChange?: (loggedBy: InteractionLoggedBy) => void;
+  onSourceCalendarChange?: (value?: string) => void;
 }) {
   const apps = useOrganizationApps();
+  const calendarFields = useSourceCalendarField();
   const [search, setSearch] = useState("");
   const [kind, setKind] = useState<InteractionKind>();
   const [origin, setOrigin] = useState<InteractionOrigin>();
   const debounced = useSearchDebounce(search, `${kind}:${origin}`);
-  const filters: InteractionFilters = { days, loggedBy, kind, origin, scope };
+  const filters: InteractionFilters = {
+    days,
+    loggedBy,
+    kind,
+    origin,
+    scope,
+    sourceCalendarEntityId: period.sourceCalendarEntityId,
+  };
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
+      <div className="flex min-w-0 shrink-0 flex-col gap-2">
         <Input
           type="search"
           aria-label="Search interactions"
@@ -83,12 +94,15 @@ export function InteractionTimeline({
             typeField,
             originField({ calendar: apps.enabled("calendar") }),
             ...(scope ? [scopeField] : []),
+            ...(onSourceCalendarChange ? calendarFields : []),
           ]}
           value={interactionFilterValue(filters)}
           onValueChange={(value) => {
             const next = interactionFiltersFrom(value, filters);
             setKind(next.kind);
             setOrigin(next.origin);
+            if (next.sourceCalendarEntityId !== period.sourceCalendarEntityId)
+              onSourceCalendarChange?.(next.sourceCalendarEntityId);
             if (next.days !== days) onDaysChange(next.days);
             if (next.scope && next.scope !== scope) onScopeChange?.(next.scope);
             if (next.loggedBy && next.loggedBy !== loggedBy) onLoggedByChange?.(next.loggedBy);
@@ -140,7 +154,7 @@ function TimelinePage({
     return <ErrorState title="Couldn’t load interactions" onRetry={() => void query.refetch()} />;
   if (!query.data) return <LoadingState label="Loading interactions" rows={5} />;
   const { items, nextCursor } = query.data;
-  const filtered = search || kind || origin;
+  const filtered = search || kind || origin || period.sourceCalendarEntityId;
   const empty =
     !filtered && period.loggedBy === "me" && onShowEveryone ? (
       <OwnInteractionsNotice onShowEveryone={onShowEveryone} />
@@ -150,7 +164,7 @@ function TimelinePage({
         icon={Activity}
         description={
           filtered
-            ? "Try another search, type, or origin."
+            ? "Try another search or filter."
             : "Interactions logged on contacts or published from messages will appear here."
         }
       />

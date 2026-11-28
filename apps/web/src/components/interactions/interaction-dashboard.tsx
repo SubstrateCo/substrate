@@ -106,6 +106,7 @@ export function InteractionDashboard({
                     section: "timeline",
                     days,
                     loggedBy: period.loggedBy === "me" ? "me" : "anyone",
+                    sourceCalendarEntityId: period.sourceCalendarEntityId,
                   }}
                 >
                   View timeline

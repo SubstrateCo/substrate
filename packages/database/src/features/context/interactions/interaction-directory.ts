@@ -11,6 +11,7 @@ import { contacts } from "../../../core/contacts/schema";
 import type { RepositoryContext } from "../../../core/repository-context";
 import { interactionScope } from "../../crm/activity/timeline";
 import { crmAccounts } from "../../crm/schema";
+import { interactionCalendarFilter } from "./interaction-calendar-filter";
 import { and, asc, desc, eq, ilike, sql } from "drizzle-orm";
 
 export async function interactionDirectoryPage(
@@ -29,6 +30,12 @@ export async function interactionDirectoryPage(
   if (value.sort === "name") order = asc(name);
   if (value.sort === "count") order = desc(count);
   if (value.type === "accounts") await requireAppEnabled(context, "crm");
+  let countCondition;
+  if (value.countOperator === "less than") countCondition = sql`${count} < ${value.count}`;
+  if (value.countOperator === "equal to") countCondition = sql`${count} = ${value.count}`;
+  if (value.countOperator === "greater than") countCondition = sql`${count} > ${value.count}`;
+  if (value.countOperator === "between")
+    countCondition = sql`${count} between ${value.count} and ${value.countUntil}`;
   const rows = await db
     .select({
       entityId: table.entityId,
@@ -49,11 +56,12 @@ export async function interactionDirectoryPage(
         eq(table.organizationId, context.scope.organizationId),
         context.readable(table.entityId),
         readableInteractionPeriod(context, value),
+        interactionCalendarFilter(context, value.sourceCalendarEntityId),
         pattern ? ilike(name, pattern) : undefined,
       ),
     )
     .groupBy(table.entityId, name)
-    .having(value.repeat ? sql`count(distinct ${contactInteractions.entityId}) >= 2` : undefined)
+    .having(and(countCondition, value.repeat ? sql`${count} >= 2` : undefined))
     .orderBy(order, asc(table.entityId))
     .offset(value.offset ?? 0)
     .limit(pageSize + 1);

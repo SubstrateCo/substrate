@@ -54,6 +54,7 @@ export function InteractionProfile({
   days,
   onDaysChange,
   createAction,
+  onSourceCalendarChange,
 }: {
   entityId: string;
   type: "person" | "account";
@@ -62,6 +63,7 @@ export function InteractionProfile({
   days: InteractionDays;
   onDaysChange: (days: InteractionDays) => void;
   createAction?: ReactNode;
+  onSourceCalendarChange: (value?: string) => void;
 }) {
   const { organizationId } = useWorkspaceScope();
   const profile = useQuery(interactionProfileOptions(organizationId, entityId, type));
@@ -140,6 +142,7 @@ export function InteractionProfile({
             onDaysChange={onDaysChange}
             scope={kind.scoped ? scope : undefined}
             onScopeChange={setScope}
+            onSourceCalendarChange={onSourceCalendarChange}
           />
         </TabsContent>
         <TabsContent value="map" className="flex min-h-0 flex-col">

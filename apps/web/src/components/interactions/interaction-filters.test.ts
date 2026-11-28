@@ -58,3 +58,33 @@ describe("interactionFiltersFrom", () => {
     });
   });
 });
+
+test("calendar and numeric count clauses preserve zero and inclusive range bounds", () => {
+  const filters = {
+    days: "all" as const,
+    sourceCalendarEntityId: "calendar",
+    countOperator: "between" as const,
+    count: 0,
+    countUntil: 3,
+  };
+  const value = interactionFilterValue(filters);
+  expect(value.sourceCalendar).toEqual({ operator: "is", values: ["calendar"] });
+  expect(value.count).toEqual({ operator: "between", values: ["0", "3"] });
+  expect(interactionFiltersFrom(value, filters)).toMatchObject(filters);
+});
+
+test("removing optional filters clears their query parameters", () => {
+  const next = interactionFiltersFrom(
+    { period: { operator: "is", values: ["30"] } },
+    {
+      days: "30",
+      sourceCalendarEntityId: "calendar",
+      countOperator: "equal to",
+      count: 2,
+    },
+  );
+  expect(next.sourceCalendarEntityId).toBeUndefined();
+  expect(next.countOperator).toBeUndefined();
+  expect(next.count).toBeUndefined();
+  expect(next.countUntil).toBeUndefined();
+});

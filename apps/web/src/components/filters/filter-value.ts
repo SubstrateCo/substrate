@@ -11,6 +11,8 @@ import type {
 import { formatShortDate, parseDateOnly } from "@/lib/format/date";
 
 export function fieldOperators(field: FilterField): readonly FilterOperator[] {
+  if (field.kind === "number")
+    return field.operators ?? ["equal to", "less than", "greater than", "between"];
   return field.operators?.length ? field.operators : ["is"];
 }
 
@@ -91,6 +93,10 @@ export function summarizeClause(
   clause: FilterClause,
   now: Date | number = Date.now(),
 ): ClauseSummary {
+  if (field.kind === "number") {
+    const text = clause.values.join(" and ");
+    return { text, labels: [...clause.values], icons: [] };
+  }
   if (field.kind === "date") {
     const day = clause.values[0];
     const date = day ? parseDateOnly(day) : undefined;

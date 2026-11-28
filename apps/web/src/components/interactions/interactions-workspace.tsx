@@ -18,6 +18,7 @@ import { InteractionProfile } from "./interaction-profile";
 import { InteractionTimeline } from "./interaction-timeline";
 import type { InteractionSection } from "./interaction-types";
 import { NewInteraction } from "./new-interaction";
+import { useSourceCalendarField } from "./use-source-calendar-field";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { FilterBar } from "@/components/filters";
 import { PageHeader } from "@/components/layout/page-header";
@@ -64,6 +65,7 @@ export function InteractionsWorkspace({
   section,
   days,
   loggedBy,
+  sourceCalendarEntityId,
   profileId,
   recordId,
   tab,
@@ -71,6 +73,7 @@ export function InteractionsWorkspace({
   section: InteractionSection;
   days: InteractionDays;
   loggedBy: InteractionLoggedBy;
+  sourceCalendarEntityId?: string;
   profileId?: string;
   recordId?: string;
   tab?: "activity" | "map";
@@ -99,6 +102,11 @@ export function InteractionsWorkspace({
       to: "/interactions",
       search: (previous) => ({ ...previous, loggedBy: value }),
     });
+  const setSourceCalendar = (value?: string) =>
+    void navigate({
+      to: "/interactions",
+      search: (previous) => ({ ...previous, sourceCalendarEntityId: value }),
+    });
   return (
     <PageLayout id="interactions" aria-label="Interactions workspace">
       <PageSidebar aria-label="Interactions">
@@ -120,6 +128,7 @@ export function InteractionsWorkspace({
                         section: value,
                         days: sectionDays(value, days),
                         loggedBy,
+                        sourceCalendarEntityId,
                       },
                     },
                     current: directorySectionOf(section) === value,
@@ -142,6 +151,8 @@ export function InteractionsWorkspace({
               section={section}
               activeDays={activeDays}
               loggedBy={loggedBy}
+              sourceCalendarEntityId={sourceCalendarEntityId}
+              onSourceCalendarChange={setSourceCalendar}
               profileId={profileId}
               tab={tab}
               onDaysChange={setDays}
@@ -166,6 +177,8 @@ function InteractionsContent({
   section,
   activeDays,
   loggedBy,
+  sourceCalendarEntityId,
+  onSourceCalendarChange,
   profileId,
   tab,
   onDaysChange,
@@ -175,6 +188,8 @@ function InteractionsContent({
   section: InteractionSection;
   activeDays: InteractionDays;
   loggedBy: InteractionLoggedBy;
+  sourceCalendarEntityId?: string;
+  onSourceCalendarChange: (value?: string) => void;
   profileId?: string;
   tab?: "activity" | "map";
   onDaysChange: (days: InteractionDays) => void;
@@ -182,31 +197,35 @@ function InteractionsContent({
   createButton: ReactNode;
 }) {
   const { organizationId } = useWorkspaceScope();
+  const calendarFields = useSourceCalendarField();
   const { period, dates } = interactionWindow(
     organizationId,
     activeDays === "all" ? 30 : Number(activeDays),
   );
-  const filter = { ...period, allTime: activeDays === "all" ? ("true" as const) : undefined };
+  const sourcePeriod = { ...period, sourceCalendarEntityId };
+  const filter = { ...sourcePeriod, allTime: activeDays === "all" ? ("true" as const) : undefined };
   const mine = loggedBy === "me" ? ("me" as const) : undefined;
   if (section === "dashboard") {
-    const current = { days: activeDays, loggedBy };
+    const current = { days: activeDays, loggedBy, sourceCalendarEntityId };
     return (
       <div className="flex flex-col gap-4 md:min-h-0 md:flex-1">
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <FilterBar
             aria-label="Dashboard filters"
-            fields={[periodField({ allTime: false }), loggedByField]}
+            fields={[periodField({ allTime: false }), loggedByField, ...calendarFields]}
             value={interactionFilterValue(current)}
             onValueChange={(value) => {
               const next = interactionFiltersFrom(value, current);
               if (next.days !== activeDays) onDaysChange(next.days);
               else if (next.loggedBy && next.loggedBy !== loggedBy) onLoggedByChange(next.loggedBy);
+              else if (next.sourceCalendarEntityId !== sourceCalendarEntityId)
+                onSourceCalendarChange(next.sourceCalendarEntityId);
             }}
           />
         </div>
         <InteractionDashboard
-          key={`${activeDays}:${loggedBy}`}
-          period={{ ...period, loggedBy: mine }}
+          key={`${activeDays}:${loggedBy}:${sourceCalendarEntityId}`}
+          period={{ ...sourcePeriod, loggedBy: mine }}
           dates={dates}
           days={activeDays === "7" ? "7" : "30"}
           onShowEveryone={() => onLoggedByChange("anyone")}
@@ -222,6 +241,7 @@ function InteractionsContent({
         days={activeDays}
         onDaysChange={onDaysChange}
         loggedBy={loggedBy}
+        onSourceCalendarChange={onSourceCalendarChange}
         onLoggedByChange={onLoggedByChange}
       />
     );
@@ -233,6 +253,7 @@ function InteractionsContent({
         days={activeDays}
         onDaysChange={onDaysChange}
         type={section}
+        onSourceCalendarChange={onSourceCalendarChange}
       />
     );
   if (!profileId)
@@ -252,6 +273,7 @@ function InteractionsContent({
       days={activeDays}
       onDaysChange={onDaysChange}
       createAction={createButton}
+      onSourceCalendarChange={onSourceCalendarChange}
     />
   );
 }

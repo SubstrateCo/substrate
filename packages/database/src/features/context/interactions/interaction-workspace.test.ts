@@ -11,6 +11,60 @@ const period = {
   timeZone: "UTC",
 };
 
+test("people interaction counts support editable comparisons and inclusive ranges", async () => {
+  const repo = f.forActor(f.alice);
+  for (const count of [1, 2, 3]) {
+    const contact = await repo.contacts.create({ displayName: `Contact ${count}` });
+    for (let index = 0; index < count; index++)
+      await repo.contactInteractions.createManual({
+        contactEntityId: contact.entityId,
+        kind: "note",
+        occurredAt: new Date("2026-11-10T12:00:00Z"),
+        summary: "Follow up",
+      });
+  }
+  for (const [countOperator, count, countUntil, expected] of [
+    ["less than", 2, undefined, [1]],
+    ["equal to", 2, undefined, [2]],
+    ["greater than", 2, undefined, [3]],
+    ["between", 1, 2, [1, 2]],
+    ["equal to", 0, undefined, []],
+  ] as const) {
+    const result = await repo.contactInteractions.workspaceDirectory({
+      ...period,
+      type: "people",
+      countOperator,
+      count,
+      countUntil,
+      sort: "count",
+    });
+    expect(result.items.map((row) => row.count).sort((a, b) => a - b)).toEqual([...expected]);
+  }
+  await rejection(
+    repo.contactInteractions.workspaceDirectory({
+      ...period,
+      type: "people",
+      countOperator: "between",
+      count: 3,
+      countUntil: 1,
+    }),
+  );
+  for (const invalid of [
+    { countOperator: "equal to" as const, count: -1 },
+    { countOperator: "equal to" as const, count: 1.5 },
+    { countOperator: "equal to" as const },
+    { countOperator: "between" as const, count: 1 },
+    { count: 2 },
+  ])
+    await rejection(
+      repo.contactInteractions.workspaceDirectory({
+        ...period,
+        type: "people",
+        ...invalid,
+      }),
+    );
+});
+
 test("interaction directories and profiles use readable affiliations and do not duplicate explicit links", async () => {
   const owner = f.forActor(f.alice),
     member = f.forActor(f.bob);

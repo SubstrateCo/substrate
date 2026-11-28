@@ -1,6 +1,8 @@
 import { useState } from "react";
 
 import { FieldEditor } from "./editors/field-editor";
+import { matchingFilterOptions } from "./filter-search";
+import { fieldOperators } from "./filter-value";
 import type { FilterClause, FilterField, FilterValue } from "./types";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { Button } from "@/components/ui/button";
@@ -12,7 +14,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ListFilter } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ListFilter } from "lucide-react";
 
 export function FilterPicker<Id extends string>({
   fields,
@@ -31,6 +33,7 @@ export function FilterPicker<Id extends string>({
   const matches = fields.filter(
     (candidate) => !search || candidate.label.toLocaleLowerCase().includes(search),
   );
+  const optionMatches = matchingFilterOptions(fields, query);
   return (
     <Popover
       open={open}
@@ -59,13 +62,28 @@ export function FilterPicker<Id extends string>({
         }
       >
         {field ? (
-          <FieldEditor
-            key={field.id}
-            field={field}
-            clause={value[field.id]}
-            onChange={(clause) => onClauseChange(field.id, clause)}
-            onDone={() => setOpen(false)}
-          />
+          <>
+            <div className="flex items-center gap-2 border-b p-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label="Back to filters"
+                onClick={() => setFieldId(null)}
+              >
+                <ArrowLeft aria-hidden="true" />
+                Filters
+              </Button>
+              <span className="min-w-0 truncate text-xs text-muted-foreground">{field.label}</span>
+            </div>
+            <FieldEditor
+              key={field.id}
+              field={field}
+              clause={value[field.id]}
+              onChange={(clause) => onClauseChange(field.id, clause)}
+              onDone={() => setOpen(false)}
+            />
+          </>
         ) : (
           <Command shouldFilter={false} loop>
             <div className="border-b p-2">
@@ -77,8 +95,8 @@ export function FilterPicker<Id extends string>({
               />
             </div>
             <CommandList aria-label="Filter by">
-              {matches.length ? (
-                <CommandGroup>
+              {matches.length > 0 && (
+                <CommandGroup heading="Filter by">
                   {matches.map((candidate) => {
                     const Icon = candidate.icon;
                     return (
@@ -89,11 +107,44 @@ export function FilterPicker<Id extends string>({
                       >
                         <Icon aria-hidden="true" className="text-muted-foreground" />
                         <span className="min-w-0 flex-1 truncate">{candidate.label}</span>
+                        {value[candidate.id]?.values.length ? (
+                          <Check aria-hidden="true" className="text-muted-foreground" />
+                        ) : (
+                          <ArrowRight aria-hidden="true" className="text-muted-foreground" />
+                        )}
                       </CommandItem>
                     );
                   })}
                 </CommandGroup>
-              ) : (
+              )}
+              {optionMatches.length > 0 && (
+                <CommandGroup heading="Matching values">
+                  {optionMatches.map(({ field: candidate, option }) => (
+                    <CommandItem
+                      key={`${candidate.id}:${option.value}`}
+                      value={`${candidate.id}:${option.value}`}
+                      onSelect={() => {
+                        const current = value[candidate.id];
+                        const values = candidate.multiple
+                          ? [...new Set([...(current?.values ?? []), option.value])]
+                          : [option.value];
+                        onClauseChange(candidate.id, {
+                          operator: current?.operator ?? fieldOperators(candidate)[0],
+                          values,
+                        });
+                        setOpen(false);
+                      }}
+                    >
+                      <candidate.icon aria-hidden="true" className="text-muted-foreground" />
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate">{option.label}</span>
+                        <span className="text-xs text-muted-foreground">{candidate.label}</span>
+                      </span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+              {!matches.length && !optionMatches.length && (
                 <div className="px-3 py-2">
                   <ContentNotice variant="inline" title="No matches." />
                 </div>

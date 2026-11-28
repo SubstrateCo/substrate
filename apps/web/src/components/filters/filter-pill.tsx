@@ -41,8 +41,8 @@ export function FilterPill({
       aria-label={clauseLabel(field, clause)}
       className="flex h-7 max-w-full min-w-0 items-stretch overflow-hidden rounded-md border border-control-border bg-card text-xs"
     >
-      <span className="flex shrink-0 items-center gap-1 px-2 text-muted-foreground">
-        <Icon aria-hidden="true" className="size-3.5" />
+      <span className="flex shrink-0 items-center gap-1 px-2 font-medium">
+        <Icon aria-hidden="true" className="size-3.5 text-muted-foreground" />
         {field.label}
       </span>
       <Separator orientation="vertical" />
@@ -62,7 +62,14 @@ export function FilterPill({
               value={clause.operator}
               onValueChange={(next) => {
                 const chosen = operators.find((candidate) => candidate === next);
-                if (chosen) onChange({ ...clause, operator: chosen });
+                if (!chosen) return;
+                let values = clause.values;
+                if (field.kind === "number") {
+                  values = clause.values.slice(0, 1);
+                  if (chosen === "between")
+                    values = [clause.values[0]!, clause.values[1] ?? clause.values[0]!];
+                }
+                onChange({ operator: chosen, values });
               }}
             >
               {operators.map((candidate) => (
@@ -83,7 +90,7 @@ export function FilterPill({
             focus="inset"
             aria-label={`${field.label}: ${summary.text}`}
             title={count > 1 ? summary.labels.join(", ") : undefined}
-            className={`${segmentClassName} font-medium`}
+            className={segmentClassName}
           >
             {summary.icons.length > 0 && (
               <span

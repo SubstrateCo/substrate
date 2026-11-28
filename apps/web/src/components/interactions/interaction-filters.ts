@@ -1,5 +1,6 @@
 import type {
   InteractionKind,
+  InteractionDirectory,
   InteractionTimeline,
 } from "@substrate/contracts/context/interactions";
 
@@ -10,7 +11,15 @@ export type InteractionDays = "7" | "30" | "all";
 export type InteractionOrigin = NonNullable<InteractionTimeline["origin"]>;
 export type InteractionScope = NonNullable<InteractionTimeline["scope"]>;
 export type InteractionLoggedBy = "me" | "anyone";
-export type InteractionFilterId = "period" | "loggedBy" | "type" | "origin" | "frequency" | "scope";
+export type InteractionFilterId =
+  | "period"
+  | "loggedBy"
+  | "type"
+  | "origin"
+  | "frequency"
+  | "scope"
+  | "sourceCalendar"
+  | "count";
 
 export type InteractionFilters = {
   days: InteractionDays;
@@ -19,12 +28,17 @@ export type InteractionFilters = {
   origin?: InteractionOrigin;
   repeat?: boolean;
   scope?: InteractionScope;
+  sourceCalendarEntityId?: string;
+  countOperator?: InteractionDirectory["countOperator"];
+  count?: number;
+  countUntil?: number;
 };
 
 const interactionDays = ["7", "30", "all"] as const;
 const interactionLoggedBy = ["me", "anyone"] as const;
 const interactionOriginValues = ["manual", "message_publication", "calendar_event"] as const;
 const interactionScopes = ["related", "linked"] as const;
+const countOperators = ["less than", "equal to", "greater than", "between"] as const;
 
 function choice<T extends string>(
   value: FilterValue<InteractionFilterId>,
@@ -45,6 +59,20 @@ export function interactionFilterValue(
   value = withClause(value, "type", is(filters.kind));
   value = withClause(value, "origin", is(filters.origin));
   value = withClause(value, "frequency", is(filters.repeat ? "repeat" : undefined));
+  value = withClause(value, "sourceCalendar", is(filters.sourceCalendarEntityId));
+  value = withClause(
+    value,
+    "count",
+    filters.countOperator && filters.count !== undefined
+      ? {
+          operator: filters.countOperator,
+          values: [
+            String(filters.count),
+            ...(filters.countUntil !== undefined ? [String(filters.countUntil)] : []),
+          ],
+        }
+      : undefined,
+  );
   return withClause(value, "scope", is(filters.scope));
 }
 
@@ -59,5 +87,9 @@ export function interactionFiltersFrom(
     origin: choice(value, "origin", interactionOriginValues),
     repeat: value.frequency?.values[0] === "repeat",
     scope: choice(value, "scope", interactionScopes) ?? current.scope,
+    sourceCalendarEntityId: value.sourceCalendar?.values[0],
+    countOperator: countOperators.find((operator) => operator === value.count?.operator),
+    count: value.count ? Number(value.count.values[0]) : undefined,
+    countUntil: value.count?.operator === "between" ? Number(value.count.values[1]) : undefined,
   };
 }
