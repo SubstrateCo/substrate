@@ -1,4 +1,4 @@
-import { createContext, useContext, useLayoutEffect, useSyncExternalStore } from "react";
+import { createContext, useContext, useLayoutEffect } from "react";
 
 type Draft = { key: string };
 
@@ -27,8 +27,6 @@ export function createDrafts() {
 }
 
 export const Drafts = createContext<ReturnType<typeof createDrafts> | null>(null);
-/** Forms outside a provider, such as a create dialog, see no other drafts. */
-const noDrafts = createDrafts();
 
 /** Registers a dirty draft. */
 export function useRegisterDraft(key: string, dirty: boolean) {
@@ -36,9 +34,4 @@ export function useRegisterDraft(key: string, dirty: boolean) {
   useLayoutEffect(() => {
     if (dirty) return drafts?.register({ key });
   }, [drafts, key, dirty]);
-}
-
-export function useDraftKeys() {
-  const drafts = useContext(Drafts) ?? noDrafts;
-  return useSyncExternalStore(drafts.subscribe, drafts.snapshot, drafts.snapshot);
 }

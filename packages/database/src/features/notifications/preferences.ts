@@ -113,7 +113,7 @@ export function workspaceJoin(identity: SessionIdentity) {
   );
 }
 
-export async function readAccountPreferences(db: DatabaseExecutor, userId: string) {
+async function readAccountPreferences(db: DatabaseExecutor, userId: string) {
   const [row] = await db
     .select(accountColumns)
     .from(notificationPreferences)
@@ -121,7 +121,7 @@ export async function readAccountPreferences(db: DatabaseExecutor, userId: strin
   return toAccount(row);
 }
 
-export async function readWorkspacePreferences(
+async function readWorkspacePreferences(
   db: DatabaseExecutor,
   identity: SessionIdentity,
 ): Promise<WorkspaceNotificationPreferences> {
@@ -133,7 +133,7 @@ export async function readWorkspacePreferences(
 }
 
 /** The actor's own settings for each conversation they are a live member of. */
-export async function readConversationPreferences(
+async function readConversationPreferences(
   db: DatabaseExecutor,
   actorEntityId: string,
   conversationIds: string[],
