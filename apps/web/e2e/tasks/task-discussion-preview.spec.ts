@@ -66,3 +66,37 @@ test("task discussion previews only the latest five root messages and opens the 
   expect(new URL(owner.page.url()).searchParams.get("conversationId")).toBe(conversationId);
   await expect(owner.page.getByText(bodies[0]!, { exact: true })).toBeVisible();
 });
+
+test("task discussion preview shows message references by name", async ({ actors, client }) => {
+  const actor = actors.sender;
+  const created = await post<{ id: string }>(actor, "tasks/mutations", {
+    action: "createProject",
+    organizationId: actor.organizationId,
+    name: "Release train",
+  });
+  const [target, referenced] = await Promise.all(
+    ["Validate the release", "Close the release"].map((title) =>
+      post<{ id: string }>(actor, "tasks/mutations", {
+        action: "createTask",
+        organizationId: actor.organizationId,
+        projectEntityId: created.id,
+        title,
+      }),
+    ),
+  );
+  const { conversationId } = await post<{ conversationId: string }>(actor, "tasks/discussion", {
+    organizationId: actor.organizationId,
+    projectEntityId: created.id,
+    taskEntityId: target!.id,
+  });
+  await post(actor, "messaging/messages", {
+    organizationId: actor.organizationId,
+    conversationId,
+    body: `@[task:${referenced!.id}] validate and close this`,
+  });
+  const owner = await client(actor);
+  await visit(owner, undefined, "/tasks", { projectId: created.id, taskId: target!.id });
+  const preview = owner.page.getByRole("region", { name: "Discussion", exact: true });
+  await expect(preview.getByRole("link", { name: "Close the release", exact: true })).toBeVisible();
+  await expect(preview.getByText("[Reference]")).toHaveCount(0);
+});

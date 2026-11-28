@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { Message } from "@/api/messaging/requests";
+import { useRecordReferences } from "@/components/context/references/use-record-references";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { ListBody } from "@/components/feedback/list-body";
@@ -13,7 +14,6 @@ import { DeletedMessageBody } from "@/components/messaging/messages/message-plac
 import { ActorAvatar } from "@/components/people/actor-avatar";
 import { Timestamp } from "@/components/time/timestamp";
 import { Skeleton } from "@/components/ui/skeleton";
-import { plainReferenceText } from "@/lib/messaging/reference-token";
 import { listPhase } from "@/lib/resource-state";
 
 const previewLimit = 5;
@@ -79,14 +79,11 @@ export function DiscussionPreview({
                   message.deletedAt ? (
                     <DeletedMessageBody />
                   ) : (
-                    <div className="line-clamp-3 max-h-16 overflow-hidden wrap-anywhere">
-                      <MessageMarkdown
-                        body={plainReferenceText(
-                          message.body ||
-                            (message.attachments.length ? "Shared an attachment" : ""),
-                        )}
-                      />
-                    </div>
+                    <DiscussionBody
+                      body={
+                        message.body || (message.attachments.length ? "Shared an attachment" : "")
+                      }
+                    />
                   )
                 }
               />
@@ -96,6 +93,16 @@ export function DiscussionPreview({
       </ListBody>
       {conversationLink}
     </RecordSection>
+  );
+}
+
+/** Shows references by name, as far as the viewer can open them. */
+function DiscussionBody({ body }: { body: string }) {
+  const { references, loading } = useRecordReferences(body);
+  return (
+    <div className="line-clamp-3 max-h-16 overflow-hidden wrap-anywhere">
+      <MessageMarkdown body={body} references={references} referencesLoading={loading} />
+    </div>
   );
 }
 
