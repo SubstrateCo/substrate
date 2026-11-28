@@ -16,8 +16,12 @@ import {
 import type { ScreenNotifications } from "../notifications/screen-notifications.ts";
 import { DesktopSessionAuthority } from "../session/desktop-session-authority.ts";
 import { readCalendarFeed } from "../transport/calendar-feed.ts";
-import { createMessageNotifications } from "../transport/message-notifications.ts";
-import { readNotificationFeed } from "../transport/notification-feed.ts";
+import {
+  createMessageNotifications,
+  type NativeAlert,
+  type NoticeTarget,
+} from "../transport/message-notifications.ts";
+import { readAlertPreferences, readNotificationFeed } from "../transport/notification-feed.ts";
 import { createRealtimeController } from "../transport/realtime-controller.ts";
 import { createLifecycle } from "./lifecycle.ts";
 import { utilityProcess } from "electron";
@@ -33,12 +37,8 @@ export function composeDesktop(options: {
   migrationsDirectory?: string;
   mailListWorkerEntry?: string;
   emit(channel: string, value: AgentWorkChange | RealtimeUpdate): void;
-  showMessageNotification?: (onClick: () => Promise<void>) => () => void;
-  openMessage?: (target: {
-    organizationId: string;
-    conversationId: string;
-    messageId: string;
-  }) => void;
+  showNotification?: (alert: NativeAlert, onClick: () => Promise<void>) => () => void;
+  openNotification?: (target: NoticeTarget) => void;
   screenNotifications?: Pick<ScreenNotifications, "center" | "store" | "activate" | "deactivate">;
   openExternal?: (url: string) => void;
   openCalendarEvent?: (target: CalendarEventTarget) => void;
@@ -84,9 +84,10 @@ export function composeDesktop(options: {
   let notificationOrganization: string | null = null;
   const notifications = createMessageNotifications({
     read: (organizationId) => readNotificationFeed(options, organizationId),
+    readPreferences: () => readAlertPreferences(options),
     sessionKey: () => options.getCookie(),
-    show: options.showMessageNotification ?? (() => () => {}),
-    open: options.openMessage ?? (() => {}),
+    show: options.showNotification ?? (() => () => {}),
+    open: options.openNotification ?? (() => {}),
   });
   const screen = options.screenNotifications;
   const meetingReminders =

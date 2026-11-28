@@ -72,6 +72,10 @@ export function realtimeQueryTargets(
     case "agents":
       targets.push({ queryKey: queryKeys.agents(userId) });
       break;
+    case "notification-preferences":
+      // Covers the account, workspace, and conversation settings of this user.
+      targets.push({ queryKey: queryKeys.notificationPreferences(userId) });
+      break;
     case "agent-work":
       // Dataless hints refresh the owner's work, a private, user- and workspace-scoped key.
       targets.push({ queryKey: queryKeys.agentWork(userId, organizationId ?? undefined) });

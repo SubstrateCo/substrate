@@ -20,6 +20,7 @@ import { createMcpRoutes } from "./v1/mcp/routes";
 import { createReadRoutes } from "./v1/messaging/read-routes";
 import { createMessagingRoutes } from "./v1/messaging/routes";
 import { createSharingRoutes } from "./v1/messaging/sharing-routes";
+import { createNotificationPreferencesRoutes } from "./v1/notifications/routes";
 import { createOrganizationRoutes } from "./v1/organizations/routes";
 import { createTasksRoutes } from "./v1/tasks/routes";
 import { Hono } from "hono";
@@ -28,6 +29,10 @@ export function createProductRoutes(services: Services, scopes: Scopes) {
   return new Hono()
     .route("/attention", createAttentionRoutes(services.attention, scopes))
     .route("/organizations", createOrganizationRoutes(services.organizations, scopes))
+    .route(
+      "/notifications",
+      createNotificationPreferencesRoutes(services.notificationPreferences, scopes),
+    )
     .route("/files/pictures", createPictureRoutes(services.pictures, scopes))
     .route("/files/attachments", createAttachmentRoutes(services.attachments, scopes))
     .route("/files", createFilesRoutes(services.files, scopes))

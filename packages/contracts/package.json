@@ -54,6 +54,8 @@
     "./tasks/project-access": "./src/tasks/project-access.ts",
     "./context/input": "./src/context/input.ts",
     "./context/notification-groups": "./src/context/notification-groups.ts",
+    "./notifications/alerts": "./src/notifications/alerts.ts",
+    "./notifications/preferences": "./src/notifications/preferences.ts",
     "./messaging/input": "./src/messaging/input.ts",
     "./messaging/drafts": "./src/messaging/drafts.ts",
     "./messaging/emoji": "./src/messaging/emoji.ts",

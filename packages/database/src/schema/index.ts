@@ -21,6 +21,7 @@ export * from "../features/tasks/tasks.schema";
 export * from "../features/context/schema";
 export * from "../features/activity/schema";
 export * from "../features/notifications/schema";
+export * from "../features/notifications/preferences.schema";
 export * from "../features/mcp/schema";
 export * from "../features/agents/triggers.schema";
 export * from "../features/agent-work/sessions.schema";

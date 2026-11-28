@@ -1,3 +1,4 @@
+import { shouldAlert } from "@substrate/contracts/notifications/alerts";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { joinedActorAvatar } from "../../core/actors/avatar";
@@ -17,12 +18,26 @@ import { taskActivity } from "../activity/schema";
 import { messageExcerpts } from "../context/message-references/message-excerpt";
 import { visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
-import { messagingConversations, messagingMessages } from "../messaging/schema";
+import {
+  messagingConversations,
+  messagingMessages,
+  messagingParticipants,
+} from "../messaging/schema";
 import { projects } from "../projects/schema";
 import { taskRepository } from "../tasks/repository";
 import { tasks } from "../tasks/tasks.schema";
 import { toFeedItem } from "./feed-item";
 import { createNotificationGroups } from "./groups";
+import {
+  accountColumns,
+  accountJoin,
+  toAccount,
+  toConversation,
+  toWorkspace,
+  workspaceColumns,
+  workspaceJoin,
+} from "./preferences";
+import { notificationPreferences, notificationWorkspacePreferences } from "./preferences.schema";
 import { notifications } from "./schema";
 import { readableMessageTargets } from "./targets";
 import { and, desc, eq, inArray, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
@@ -113,6 +128,7 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
       // Who acted: the message author, or whoever recorded the assignment event.
       const actor = alias(actors, "notice_actor");
       const noticeProject = alias(projects, "notice_project");
+      const ownParticipant = alias(messagingParticipants, "own_participant");
       const notices = db
         .select({
           id: notifications.id,
@@ -136,8 +152,17 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
           actorName: sql<string | null>`${joinedActorName(actor)}`,
           actorImage: joinedActorPicture(actor),
           actorAvatar: joinedActorAvatar(actor),
+          // The recipient's settings decide the alert flag. Each join matches at most one row.
+          accountPreferences: accountColumns,
+          workspacePreferences: workspaceColumns,
+          conversationPreferences: {
+            level: ownParticipant.notificationLevel,
+            mutedUntil: ownParticipant.notificationsMutedUntil,
+          },
         })
         .from(notifications)
+        .leftJoin(notificationPreferences, accountJoin(scope.userId))
+        .leftJoin(notificationWorkspacePreferences, workspaceJoin(scope))
         .leftJoin(
           tasks,
           and(
@@ -166,6 +191,14 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
         .leftJoin(
           messagingConversations,
           eq(messagingConversations.id, messagingMessages.conversationId),
+        )
+        .leftJoin(
+          ownParticipant,
+          and(
+            eq(ownParticipant.conversationId, messagingConversations.id),
+            eq(ownParticipant.actorEntityId, ctx.scope.actorEntityId),
+            isNull(ownParticipant.leftAt),
+          ),
         )
         .leftJoin(
           taskActivity,
@@ -216,6 +249,9 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
             : [],
         ),
       );
+      const account = toAccount(rows[0]?.accountPreferences);
+      const workspace = toWorkspace(rows[0]?.workspacePreferences);
+      const now = new Date();
       return rows.flatMap(
         ({
           title,
@@ -224,10 +260,21 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
           conversationName,
           conversationKind,
           conversationPrivate,
+          accountPreferences: _account,
+          workspacePreferences: _workspace,
+          conversationPreferences,
           ...row
         }) =>
           toFeedItem({
             ...row,
+            alert: shouldAlert({
+              kind: row.kind,
+              conversationKind: row.entityId ? null : conversationKind,
+              conversation: toConversation(conversationPreferences),
+              workspace,
+              account,
+              now,
+            }),
             work:
               title !== null && projectEntityId !== null
                 ? { title, projectEntityId, projectName: projectName ?? title }

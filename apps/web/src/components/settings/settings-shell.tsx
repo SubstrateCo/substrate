@@ -8,6 +8,7 @@ import { PageContent, PageLayout } from "@/components/layout/page-layout";
 import { SettingsNav, type SettingsNavGroup } from "@/components/settings/settings-nav";
 import { currentOrganizationQueryOptions } from "@/queries/organizations/options";
 import {
+  Bell,
   Building2,
   Blocks,
   CalendarDays,
@@ -25,6 +26,7 @@ const accountGroup: SettingsNavGroup = {
   items: [
     { to: "/settings/user", label: "Profile", icon: UserRound },
     { to: "/settings/user/preferences", label: "Preferences", icon: SlidersHorizontal },
+    { to: "/settings/user/notifications", label: "Notifications", icon: Bell },
     { to: "/settings/user/calendars", label: "Calendars", icon: CalendarDays },
     { to: "/settings/user/invitations", label: "Your invitations", icon: Mail },
   ],

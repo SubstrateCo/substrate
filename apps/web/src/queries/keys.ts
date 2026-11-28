@@ -18,6 +18,23 @@ export const queryKeys = {
   mail: (userId: string, organizationId: string) =>
     [...queryKeys.user(userId), "mail", organizationId] as const,
   agents: (userId: string) => [...queryKeys.user(userId), "agents"] as const,
+  // Account-wide alert settings. Workspace and conversation settings sit under it, so one
+  // preference hint refreshes all of them.
+  notificationPreferences: (userId: string) =>
+    [...queryKeys.user(userId), "notification-preferences"] as const,
+  workspaceNotificationPreferences: (userId: string, organizationId: string) =>
+    [...queryKeys.notificationPreferences(userId), organizationId, "workspace"] as const,
+  conversationNotificationPreferences: (
+    userId: string,
+    organizationId: string,
+    conversationId: string,
+  ) =>
+    [
+      ...queryKeys.notificationPreferences(userId),
+      organizationId,
+      "conversation",
+      conversationId,
+    ] as const,
   // Harness reads go through the desktop bridge. Each kind is a prefix, so isHarnessKey can match.
   allHarnessModels: (userId: string) => [...queryKeys.user(userId), "harness-models"] as const,
   harnessModels: (userId: string, organizationId: string, harness: string, agentId?: string) =>

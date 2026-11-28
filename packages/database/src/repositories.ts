@@ -35,6 +35,10 @@ import {
   createSharingService,
   createSharingRepository,
 } from "./features/messaging/sharing/service";
+import {
+  accountNotificationRepository,
+  notificationPreferencesRepository,
+} from "./features/notifications/preferences";
 import { createFeedRepository } from "./features/notifications/service";
 import { projectRepository } from "./features/projects/repository";
 import { taskRepository } from "./features/tasks/repository";
@@ -92,6 +96,7 @@ class WorkspaceRepositories extends ActorRepositories {
   readonly context;
   readonly sharing;
   readonly feed;
+  readonly notificationPreferences;
   readonly files;
   readonly agentWork;
   readonly organizations;
@@ -107,6 +112,7 @@ class WorkspaceRepositories extends ActorRepositories {
     this.context = createContextRepository(context, identity);
     this.sharing = createSharingRepository(context.db, identity, resolved);
     this.feed = createFeedRepository(context, identity);
+    this.notificationPreferences = notificationPreferencesRepository(context, identity);
     this.files = createAttachmentRepository(context);
     this.agentWork = createAgentWorkReadRepository(context, identity);
     this.organizations = organizationRepository(context, identity);
@@ -161,6 +167,7 @@ function standalone(
       | "context"
       | "sharing"
       | "feed"
+      | "notificationPreferences"
       | "files"
       | "organizations"
       | "agentWork",
@@ -244,6 +251,7 @@ function standalone(
     ]),
     sharing: domain("sharing", ["list", "listConversations", "inbox"]),
     feed: domain("feed", ["activity", "list", "groups", "groupEvents", "hasUnread"]),
+    notificationPreferences: domain("notificationPreferences", ["workspace", "conversation"]),
     files: domain("files", ["listTask", "listTaskSource", "taskContent", "messageContent"]),
     organizations: domain("organizations", ["summary", "people", "pendingInvitation", "apps"]),
     agentWork: domain("agentWork", [
@@ -288,6 +296,15 @@ export function createRepositories(db: DatabaseExecutor) {
       };
       return {
         attention: () => accountAttention(db, owner.userId),
+        notifications: commitWrites(
+          accountNotificationRepository(db, owner.userId),
+          ["get"],
+          (work) =>
+            commit(db, async (tx) => {
+              await ownerSession(tx, identity);
+              return work(accountNotificationRepository(tx, owner.userId));
+            }),
+        ),
         agents: commitWrites(agents, ["list"], (work) =>
           commit(db, async (tx) => {
             await ownerSession(tx, identity);

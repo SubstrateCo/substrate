@@ -1,8 +1,13 @@
 import { canLeave, isOwner, ownerCandidates } from "@substrate/contracts/messaging/permissions";
+import { conversationLevel } from "@substrate/contracts/notifications/alerts";
+import { defaultWorkspaceNotificationPreferences } from "@substrate/contracts/notifications/preferences";
 
 import { useQuery } from "@tanstack/react-query";
 
-import { ConversationActionsMenu } from "./actions/conversation-actions-menu";
+import {
+  ConversationActionsMenu,
+  type ConversationNotificationMenu,
+} from "./actions/conversation-actions-menu";
 import { DeleteConversationDialog } from "./actions/delete-conversation-dialog";
 import { LeaveConversationDialog } from "./actions/leave-conversation-dialog";
 import { OwnerDialog } from "./actions/owner-dialog";
@@ -15,8 +20,14 @@ import {
   humanMembers,
   type Conversation,
 } from "@/lib/messaging/conversations";
+import { muteState, muteUntil } from "@/lib/notifications/mute";
 import { useConversationManagement } from "@/queries/messaging/management";
 import { deleteImpactQueryOptions } from "@/queries/messaging/options";
+import {
+  conversationNotificationPreferencesOptions,
+  useUpdateConversationNotificationPreferences,
+  workspaceNotificationPreferencesOptions,
+} from "@/queries/notifications/preferences";
 import { toast } from "sonner";
 
 type Dialog = "leave" | "transfer" | "delete" | "sharing";
@@ -53,11 +64,14 @@ export function ConversationActions({
     ? { onTransfer: () => open("transfer"), onDelete: () => open("delete") }
     : undefined;
 
+  const notifications = useConversationNotifications(conversation);
+
   return (
     <>
       <ConversationActionsMenu
         leaveLabel={leaveLabel}
         deleteLabel={deleteLabel}
+        notifications={notifications}
         onSharing={conversation.canShare ? () => open("sharing") : undefined}
         onLeave={canLeave(conversation) ? () => open("leave") : undefined}
         {...ownershipActions}
@@ -128,6 +142,40 @@ export function ConversationActions({
       )}
     </>
   );
+}
+
+const settingError = () => toast.error("We couldn’t change this setting. Try again.");
+
+/** The viewer's alert settings for a conversation they are a member of. Others get none. */
+function useConversationNotifications(
+  conversation: Conversation,
+): ConversationNotificationMenu | undefined {
+  const { organizationId, userId } = useWorkspaceScope();
+  const member = conversation.joined;
+  const own = useQuery({
+    ...conversationNotificationPreferencesOptions(userId, organizationId, conversation.id),
+    enabled: member,
+  });
+  // Channels follow the workspace level; DMs and groups always default to all.
+  const workspace = useQuery({
+    ...workspaceNotificationPreferencesOptions(userId, organizationId),
+    enabled: member && conversation.kind === "channel",
+  });
+  const update = useUpdateConversationNotificationPreferences(
+    userId,
+    organizationId,
+    conversation.id,
+  );
+  if (!member) return undefined;
+  const channels = workspace.data?.channels ?? defaultWorkspaceNotificationPreferences.channels;
+  return {
+    defaultLevel: conversationLevel(conversation.kind, null, channels),
+    level: own.data?.level,
+    mute: own.data ? muteState(own.data.mutedUntil) : undefined,
+    pending: update.isPending,
+    onLevel: (level) => update.mutate({ level }, { onError: settingError }),
+    onMute: (choice) => update.mutate({ mutedUntil: muteUntil(choice) }, { onError: settingError }),
+  };
 }
 
 function LeaveConversation({

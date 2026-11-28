@@ -1,4 +1,5 @@
 import type { ConversationKind } from "@substrate/contracts/messaging/input";
+import type { NotificationLevel } from "@substrate/contracts/notifications/preferences";
 
 import { actors, actorType } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
@@ -87,6 +88,9 @@ export const messagingParticipants = pgTable(
     consentedAt: timestamp("consented_at", { withTimezone: true }),
     // Set when the member leaves. The row stays because messages and reactions reference it.
     leftAt: timestamp("left_at", { withTimezone: true }),
+    // The member's own alert level. Null follows the default for the conversation kind.
+    notificationLevel: text("notification_level").$type<NotificationLevel>(),
+    notificationsMutedUntil: timestamp("notifications_muted_until", { withTimezone: true }),
   },
   (table) => [
     primaryKey({ columns: [table.conversationId, table.actorEntityId] }),

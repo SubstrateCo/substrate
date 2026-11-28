@@ -26,6 +26,8 @@ export interface FeedRow {
   actorImage: string | null;
   /** Set when the actor is an agent. */
   actorAvatar: AgentAvatarCode | null;
+  /** Whether the recipient's settings allow an operating system alert now. */
+  alert: boolean;
 }
 
 /** A feed row as the recipient sees it, or null when its target is no longer readable. */
@@ -38,6 +40,7 @@ export function toFeedItem(row: FeedRow) {
     actorName: row.actorName,
     actorImage: row.actorImage,
     actorAvatar: row.actorAvatar,
+    alert: row.alert,
   };
   if (row.entityId) {
     if (!row.work) return null;

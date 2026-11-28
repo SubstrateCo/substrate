@@ -29,6 +29,7 @@ export const realtimeDomain = z.enum([
   "tasks",
   "context",
   "notifications",
+  "notification-preferences",
   "access",
   "organization",
   "apps",

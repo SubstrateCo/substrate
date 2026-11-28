@@ -44,6 +44,36 @@ for (const domain of ["messaging", "notifications", "agent-work", "access"] as c
   });
 }
 
+test("a preference hint refreshes every notification setting of this user only", async () => {
+  const client = new QueryClient();
+  const refreshed = [
+    queryKeys.notificationPreferences("user"),
+    queryKeys.workspaceNotificationPreferences("user", "org"),
+    queryKeys.conversationNotificationPreferences("user", "org", "conversation"),
+  ];
+  const untouched = [
+    queryKeys.notificationPreferences("other"),
+    queryKeys.conversations("org"),
+    queryKeys.agents("user"),
+  ];
+  for (const key of [...refreshed, ...untouched]) client.setQueryData(key, {});
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {},
+  });
+  try {
+    await cache.receive(change("notification-preferences"));
+    await advanceTimersAsync(100);
+    for (const key of refreshed) expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+    for (const key of untouched) expect(client.getQueryState(key)?.isInvalidated).toBe(false);
+  } finally {
+    cache.dispose();
+    client.clear();
+  }
+});
+
 test("a task hint during an in-flight read stays stale when its panel becomes hidden", async () => {
   const client = new QueryClient();
   const key = queryKeys.taskAttachments("org", "project", "task");

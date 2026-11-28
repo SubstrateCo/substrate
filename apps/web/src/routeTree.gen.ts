@@ -47,6 +47,7 @@ import { Route as AuthenticatedFrameSettingsOrganizationSharingRouteImport } fro
 import { Route as AuthenticatedFrameSettingsUserIndexRouteImport } from './routes/_authenticated/_frame/settings/user/index'
 import { Route as AuthenticatedFrameSettingsUserCalendarsRouteImport } from './routes/_authenticated/_frame/settings/user/calendars'
 import { Route as AuthenticatedFrameSettingsUserInvitationsRouteImport } from './routes/_authenticated/_frame/settings/user/invitations'
+import { Route as AuthenticatedFrameSettingsUserNotificationsRouteImport } from './routes/_authenticated/_frame/settings/user/notifications'
 import { Route as AuthenticatedFrameSettingsUserPreferencesRouteImport } from './routes/_authenticated/_frame/settings/user/preferences'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -260,6 +261,12 @@ const AuthenticatedFrameSettingsUserInvitationsRoute =
     path: '/user/invitations',
     getParentRoute: () => AuthenticatedFrameSettingsRouteRoute,
   } as any)
+const AuthenticatedFrameSettingsUserNotificationsRoute =
+  AuthenticatedFrameSettingsUserNotificationsRouteImport.update({
+    id: '/user/notifications',
+    path: '/user/notifications',
+    getParentRoute: () => AuthenticatedFrameSettingsRouteRoute,
+  } as any)
 const AuthenticatedFrameSettingsUserPreferencesRoute =
   AuthenticatedFrameSettingsUserPreferencesRouteImport.update({
     id: '/user/preferences',
@@ -292,6 +299,7 @@ export interface FileRoutesByFullPath {
   '/settings/organization/sharing': typeof AuthenticatedFrameSettingsOrganizationSharingRoute
   '/settings/user/calendars': typeof AuthenticatedFrameSettingsUserCalendarsRoute
   '/settings/user/invitations': typeof AuthenticatedFrameSettingsUserInvitationsRoute
+  '/settings/user/notifications': typeof AuthenticatedFrameSettingsUserNotificationsRoute
   '/settings/user/preferences': typeof AuthenticatedFrameSettingsUserPreferencesRoute
   '/calendar/': typeof AuthenticatedFrameWorkspaceCalendarIndexRoute
   '/contacts/': typeof AuthenticatedFrameWorkspaceContactsIndexRoute
@@ -326,6 +334,7 @@ export interface FileRoutesByTo {
   '/settings/organization/sharing': typeof AuthenticatedFrameSettingsOrganizationSharingRoute
   '/settings/user/calendars': typeof AuthenticatedFrameSettingsUserCalendarsRoute
   '/settings/user/invitations': typeof AuthenticatedFrameSettingsUserInvitationsRoute
+  '/settings/user/notifications': typeof AuthenticatedFrameSettingsUserNotificationsRoute
   '/settings/user/preferences': typeof AuthenticatedFrameSettingsUserPreferencesRoute
   '/calendar': typeof AuthenticatedFrameWorkspaceCalendarIndexRoute
   '/contacts': typeof AuthenticatedFrameWorkspaceContactsIndexRoute
@@ -368,6 +377,7 @@ export interface FileRoutesById {
   '/_authenticated/_frame/settings/organization/sharing': typeof AuthenticatedFrameSettingsOrganizationSharingRoute
   '/_authenticated/_frame/settings/user/calendars': typeof AuthenticatedFrameSettingsUserCalendarsRoute
   '/_authenticated/_frame/settings/user/invitations': typeof AuthenticatedFrameSettingsUserInvitationsRoute
+  '/_authenticated/_frame/settings/user/notifications': typeof AuthenticatedFrameSettingsUserNotificationsRoute
   '/_authenticated/_frame/settings/user/preferences': typeof AuthenticatedFrameSettingsUserPreferencesRoute
   '/_authenticated/_frame/_workspace/calendar/': typeof AuthenticatedFrameWorkspaceCalendarIndexRoute
   '/_authenticated/_frame/_workspace/contacts/': typeof AuthenticatedFrameWorkspaceContactsIndexRoute
@@ -405,6 +415,7 @@ export interface FileRouteTypes {
     | '/settings/organization/sharing'
     | '/settings/user/calendars'
     | '/settings/user/invitations'
+    | '/settings/user/notifications'
     | '/settings/user/preferences'
     | '/calendar/'
     | '/contacts/'
@@ -439,6 +450,7 @@ export interface FileRouteTypes {
     | '/settings/organization/sharing'
     | '/settings/user/calendars'
     | '/settings/user/invitations'
+    | '/settings/user/notifications'
     | '/settings/user/preferences'
     | '/calendar'
     | '/contacts'
@@ -480,6 +492,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_frame/settings/organization/sharing'
     | '/_authenticated/_frame/settings/user/calendars'
     | '/_authenticated/_frame/settings/user/invitations'
+    | '/_authenticated/_frame/settings/user/notifications'
     | '/_authenticated/_frame/settings/user/preferences'
     | '/_authenticated/_frame/_workspace/calendar/'
     | '/_authenticated/_frame/_workspace/contacts/'
@@ -764,6 +777,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFrameSettingsUserInvitationsRouteImport
       parentRoute: typeof AuthenticatedFrameSettingsRouteRoute
     }
+    '/_authenticated/_frame/settings/user/notifications': {
+      id: '/_authenticated/_frame/settings/user/notifications'
+      path: '/user/notifications'
+      fullPath: '/settings/user/notifications'
+      preLoaderRoute: typeof AuthenticatedFrameSettingsUserNotificationsRouteImport
+      parentRoute: typeof AuthenticatedFrameSettingsRouteRoute
+    }
     '/_authenticated/_frame/settings/user/preferences': {
       id: '/_authenticated/_frame/settings/user/preferences'
       path: '/user/preferences'
@@ -847,6 +867,7 @@ interface AuthenticatedFrameSettingsRouteRouteChildren {
   AuthenticatedFrameSettingsOrganizationRouteRoute: typeof AuthenticatedFrameSettingsOrganizationRouteRouteWithChildren
   AuthenticatedFrameSettingsUserCalendarsRoute: typeof AuthenticatedFrameSettingsUserCalendarsRoute
   AuthenticatedFrameSettingsUserInvitationsRoute: typeof AuthenticatedFrameSettingsUserInvitationsRoute
+  AuthenticatedFrameSettingsUserNotificationsRoute: typeof AuthenticatedFrameSettingsUserNotificationsRoute
   AuthenticatedFrameSettingsUserPreferencesRoute: typeof AuthenticatedFrameSettingsUserPreferencesRoute
   AuthenticatedFrameSettingsUserIndexRoute: typeof AuthenticatedFrameSettingsUserIndexRoute
 }
@@ -859,6 +880,8 @@ const AuthenticatedFrameSettingsRouteRouteChildren: AuthenticatedFrameSettingsRo
       AuthenticatedFrameSettingsUserCalendarsRoute,
     AuthenticatedFrameSettingsUserInvitationsRoute:
       AuthenticatedFrameSettingsUserInvitationsRoute,
+    AuthenticatedFrameSettingsUserNotificationsRoute:
+      AuthenticatedFrameSettingsUserNotificationsRoute,
     AuthenticatedFrameSettingsUserPreferencesRoute:
       AuthenticatedFrameSettingsUserPreferencesRoute,
     AuthenticatedFrameSettingsUserIndexRoute:

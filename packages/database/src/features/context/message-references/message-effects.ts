@@ -15,6 +15,7 @@ import {
   messagingParticipants,
 } from "../../messaging/schema";
 import { notify } from "../../notifications/effects";
+import { notificationWorkspacePreferences } from "../../notifications/preferences.schema";
 import { readableWorkTargets } from "../../notifications/targets";
 import { messageEntityReferences } from "../schema";
 import { checkMessagingReferences } from "./messaging-references";
@@ -152,12 +153,12 @@ export async function applyMessageEffects(
     for (const author of authors)
       if (author.userId && !recipients.has(author.userId)) recipients.set(author.userId, "reply");
   }
-  // Group thread replies reach only the thread's people, above; every reply in a direct message
-  // reaches the other person.
+  // Group and channel thread replies reach only the thread's people, above; every reply in a
+  // direct message reaches the other person. Channel members opt in to every top-level post with
+  // the "all" level: their own for the channel, else their workspace's channel level.
+  const channel = conversation.kind === "channel";
   const ordinaryRecipients =
-    conversation.kind === "channel" ||
-    conversation.taskEntityId ||
-    (message.threadId && conversation.kind === "group")
+    conversation.taskEntityId || (message.threadId && (channel || conversation.kind === "group"))
       ? []
       : await db
           .selectDistinct({ userId: actors.userId })
@@ -167,10 +168,19 @@ export async function applyMessageEffects(
             messagingConversations,
             eq(messagingConversations.id, messagingParticipants.conversationId),
           )
+          .leftJoin(
+            notificationWorkspacePreferences,
+            and(
+              eq(notificationWorkspacePreferences.organizationId, actors.organizationId),
+              eq(notificationWorkspacePreferences.userId, actors.userId),
+            ),
+          )
           .where(
             and(
               eq(messagingConversations.id, message.conversationId),
-              inArray(messagingConversations.kind, ["dm", "agent_dm", "group"]),
+              channel
+                ? sql`coalesce(${messagingParticipants.notificationLevel}, ${notificationWorkspacePreferences.channels}) = 'all'`
+                : inArray(messagingConversations.kind, ["dm", "agent_dm", "group"]),
               eq(actors.type, "human"),
               liveApprovedParticipant(db),
             ),

@@ -179,6 +179,7 @@ export function realtimeTargets(
     // Mobile does not show notifications. Session and access changes recheck
     // everything.
     case "notifications":
+    case "notification-preferences":
     case "session":
     case "access":
       return [];

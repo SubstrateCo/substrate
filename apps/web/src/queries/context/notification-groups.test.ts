@@ -23,6 +23,7 @@ function group(groupKey: string, newestCursor = earlier): NotificationGroup {
     actorName: "Maya",
     actorImage: null,
     actorAvatar: null,
+    alert: true,
     title: "New thread reply",
     entityId: null,
     projectEntityId: null,

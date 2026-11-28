@@ -30,6 +30,7 @@ import { createMcpService } from "./v1/mcp/service";
 import { createReadService } from "./v1/messaging/read-service";
 import { createMessagingService } from "./v1/messaging/service";
 import { createSharingService } from "./v1/messaging/sharing-service";
+import { createNotificationPreferencesService } from "./v1/notifications/service";
 import { createOrganizationService } from "./v1/organizations/service";
 import { createTasksService } from "./v1/tasks/service";
 
@@ -81,6 +82,7 @@ export function createServices(deps: {
     work: createWorkService(deps),
     mcp: createMcpService(deps),
     organizations: createOrganizationService(deps),
+    notificationPreferences: createNotificationPreferencesService(deps),
   };
 }
 export type Services = ReturnType<typeof createServices>;

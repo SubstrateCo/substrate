@@ -26,9 +26,9 @@ test("send and replay reuse the authenticated identity", async () => {
   expect(sent).toMatchObject({ authorName: "Alice", body: "hello", replyCount: 0, reactions: [] });
   const redundant = () => queries.filter((query) => query.startsWith('select "name" from "user"'));
   expect(redundant()).toEqual([]);
-  // Includes the lookup for the author's own agents that the message may trigger, and the read for
-  // people viewing the channel.
-  expect(queries).toHaveLength(7);
+  // Includes the lookup for the author's own agents that the message may trigger, the read for
+  // people viewing the channel, and the read for members who follow every post.
+  expect(queries).toHaveLength(8);
   queries.length = 0;
   expect(await chat.sendMessage(channel.id, "hello", undefined, requestId)).toEqual(sent);
   expect(redundant()).toEqual([]);

@@ -28,6 +28,7 @@ import { registerWindowBridge } from "./shell/title-bar.ts";
 import { trustedSender } from "./shell/trusted-sender.ts";
 import { createShellWindow, configurePermissions } from "./shell/window.ts";
 import { desktopAPITransport } from "./transport/api-transport.ts";
+import { noticeURL } from "./transport/message-notifications.ts";
 import { configureProtocols } from "./transport/protocols.ts";
 import { publicConfigSchema, resolvePublicConfig } from "./transport/public-config.ts";
 import { emitToRenderer } from "./transport/realtime-events.ts";
@@ -39,6 +40,7 @@ import {
   Menu,
   nativeImage,
   Notification,
+  powerMonitor,
   session,
   shell,
   Tray,
@@ -333,26 +335,27 @@ function main() {
             ? join(process.resourcesPath, "app.asar.unpacked", "mail-list-worker.mjs")
             : undefined,
           emit: (channel, value) => emitToRenderer(mainWindow, channel, value, rendererURL),
-          showMessageNotification: (onClick) => {
+          showNotification: ({ title, body, silent, flash }, onClick) => {
             if (!Notification.isSupported() || mainWindow?.isFocused()) return () => {};
-            // Keep private message content out of the operating system's notification history.
-            const notification = new Notification({
-              title: "New message",
-              body: "Open Substrate to read it.",
-            });
+            // The text follows the account's preview setting. Hidden, the default, keeps private
+            // content out of the operating system's notification history.
+            const notification = new Notification({ title, body, silent });
             notification.on("click", () => {
               void onClick().catch(() => {});
             });
             notification.show();
+            // Flash the taskbar or bounce the dock. "idle" waits until the user is away.
+            const away = powerMonitor.getSystemIdleTime() >= 10;
+            const frame = mainWindow;
+            if (frame && (flash === "always" || (flash === "idle" && away))) {
+              frame.flashFrame(true);
+              frame.once("focus", () => frame.flashFrame(false));
+            }
             return () => notification.close();
           },
-          openMessage: ({ organizationId, conversationId, messageId }) => {
-            const destination = new URL("/messages", rendererURL);
-            destination.searchParams.set("workspaceId", organizationId);
-            destination.searchParams.set("conversationId", conversationId);
-            destination.searchParams.set("messageId", messageId);
+          openNotification: (target) => {
             showWindow();
-            void mainWindow?.loadURL(destination.href).catch(() => {});
+            void mainWindow?.loadURL(noticeURL(target, rendererURL)).catch(() => {});
           },
           screenNotifications,
           openExternal: (url) => void shell.openExternal(url).catch(console.error),

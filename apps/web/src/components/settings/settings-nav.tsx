@@ -22,6 +22,7 @@ import type { LucideIcon } from "lucide-react";
 type SettingsPath =
   | "/settings/user"
   | "/settings/user/preferences"
+  | "/settings/user/notifications"
   | "/settings/user/invitations"
   | "/settings/user/calendars"
   | "/settings/organization"

@@ -57,10 +57,10 @@ test("five person mentions and five task references resolve in set-based stateme
     ...taskIds.map((id) => `@[task:${id}]`),
   ].join(" ");
   const sent = await sender.sendMessage(channel.id, body);
-  // Five of each cost what one of each costs. Includes the lookup for the author's own agents and
-  // the read for people viewing the channel.
+  // Five of each cost what one of each costs. Includes the lookup for the author's own agents, the
+  // read for people viewing the channel, and the read for members who follow every post.
   expect(queries).toHaveLength(single);
-  expect(queries).toHaveLength(10);
+  expect(queries).toHaveLength(11);
   expect(
     (
       await f.db
