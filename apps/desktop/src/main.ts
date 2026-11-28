@@ -425,6 +425,13 @@ function main() {
           disconnect: () => composed.shutdown(),
           listModels: (input) => composed.harness.run("listModels", input),
           scanConfiguration: (input) => composed.harness.run("scanConfiguration", input),
+          scanSkillPackages: (input) => composed.harness.run("scanSkillPackages", input),
+          previewSkillSource: (input) => composed.harness.run("previewSkillSource", input),
+          installSkillPackage: (input) => composed.harness.run("installSkillPackage", input),
+          removeSkillPackage: (input) => composed.harness.run("removeSkillPackage", input),
+          updateSkillPackages: (input) => composed.harness.run("updateSkillPackages", input),
+          setSkillUpdateFrequency: (input) =>
+            composed.harness.run("setSkillUpdateFrequency", input),
           saveSkill: (input) => composed.harness.run("saveSkill", input),
           deleteSkill: (input) => composed.harness.run("deleteSkill", input),
           resetDefaults: (input) => composed.harness.run("resetDefaults", input),

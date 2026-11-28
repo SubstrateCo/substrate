@@ -4,6 +4,13 @@ import { harnessIdSchema } from "../harness-runtime/local.ts";
 import { harnessMcpServerSchema, harnessSkillSchema } from "../harness-runtime/local.ts";
 import type { HarnessInspection, HarnessLocalConfiguration } from "../harness-runtime/local.ts";
 import type { HarnessModelCatalog, HarnessSignInState } from "../harness-runtime/models.ts";
+import {
+  skillRepositorySchema,
+  packageSkillNameSchema,
+  skillUpdateFrequencySchema,
+  skillPackagesSchema,
+  skillSourcePreviewSchema,
+} from "../harness-runtime/skill-packages.ts";
 import { z } from "zod";
 
 export const channel = "substrate:harness";
@@ -12,6 +19,25 @@ const harness = z.enum(harnessKinds);
 export const rendererLocalSchemas = {
   listModels: z.strictObject({ harness, agentId: id.optional() }),
   scanConfiguration: z.strictObject({ harness, agentId: id }),
+  scanSkillPackages: z.strictObject({ harness, agentId: id }),
+  previewSkillSource: z.strictObject({ harness, agentId: id, source: skillRepositorySchema }),
+  installSkillPackage: z.strictObject({
+    harness,
+    agentId: id,
+    source: skillRepositorySchema,
+    name: packageSkillNameSchema,
+  }),
+  removeSkillPackage: z.strictObject({ harness, agentId: id, name: packageSkillNameSchema }),
+  updateSkillPackages: z.strictObject({
+    harness,
+    agentId: id,
+    scheduled: z.boolean().default(false),
+  }),
+  setSkillUpdateFrequency: z.strictObject({
+    harness,
+    agentId: id,
+    frequency: skillUpdateFrequencySchema,
+  }),
   saveSkill: harnessSkillSchema.extend({ harness, agentId: id, id: id.optional() }),
   deleteSkill: z.strictObject({ harness, agentId: id, id }),
   resetDefaults: z.strictObject({ harness, agentId: id }),
@@ -68,6 +94,15 @@ export const methods = {
     input: rendererLocalSchemas.scanConfiguration,
     output: bridgeOutput<HarnessLocalConfiguration>(),
   },
+  scanSkillPackages: { input: rendererLocalSchemas.scanSkillPackages, output: skillPackagesSchema },
+  previewSkillSource: {
+    input: rendererLocalSchemas.previewSkillSource,
+    output: skillSourcePreviewSchema,
+  },
+  installSkillPackage: { input: rendererLocalSchemas.installSkillPackage },
+  removeSkillPackage: { input: rendererLocalSchemas.removeSkillPackage },
+  updateSkillPackages: { input: rendererLocalSchemas.updateSkillPackages },
+  setSkillUpdateFrequency: { input: rendererLocalSchemas.setSkillUpdateFrequency },
   saveSkill: { input: rendererLocalSchemas.saveSkill },
   deleteSkill: { input: rendererLocalSchemas.deleteSkill },
   resetDefaults: { input: rendererLocalSchemas.resetDefaults },

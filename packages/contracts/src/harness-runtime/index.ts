@@ -1,5 +1,17 @@
 export { harnessInstructionsFiles, harnessKinds, type HarnessKind } from "./kinds.ts";
 export {
+  skillRepositorySchema,
+  packageSkillNameSchema,
+  skillUpdateFrequencySchema,
+  skillPackageStateSchema,
+  installedSkillPackageSchema,
+  skillPackagesSchema,
+  skillSourcePreviewSchema,
+  type SkillUpdateFrequency,
+  type SkillPackages,
+  type SkillSourcePreview,
+} from "./skill-packages.ts";
+export {
   harnessErrors,
   harnessErrorCodes,
   harnessCodesWithClassification,

@@ -12,6 +12,7 @@ const harnessWorkerExternals = [
   "@modelcontextprotocol/server",
   "@agentclientprotocol/claude-agent-acp",
   "@agentclientprotocol/codex-acp",
+  "skills",
 ] as const;
 
 // The adapters' bundled agent CLIs. Substrate always launches an adapter with its cliEnv set to

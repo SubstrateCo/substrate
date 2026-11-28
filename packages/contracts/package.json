@@ -37,6 +37,7 @@
     "./desktop/updates-ipc": "./src/desktop/updates-ipc.ts",
     "./realtime/ipc": "./src/realtime/ipc.ts",
     "./agents": "./src/agents/index.ts",
+    "./agents/skill-catalog": "./src/agents/skill-catalog.ts",
     "./agent-work": "./src/agent-work/index.ts",
     "./agent-work/needs-you": "./src/agent-work/needs-you.ts",
     "./attention": "./src/attention.ts",

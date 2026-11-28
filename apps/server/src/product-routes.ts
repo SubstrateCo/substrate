@@ -54,7 +54,7 @@ export function createProductRoutes(services: Services, scopes: Scopes) {
     .route("/messaging/sharing", createSharingRoutes(services.sharing, scopes))
     .route("/mcp", createMcpRoutes(services.mcp, scopes))
     .route("/context", createContextRoutes(services.context, scopes))
-    .route("/agents", createAgentsRoutes(services.agents, scopes))
+    .route("/agents", createAgentsRoutes(services.agents, scopes, services.skillCatalog))
     .route(
       "/agent-work",
       createAgentWorkRoutes(

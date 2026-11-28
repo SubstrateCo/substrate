@@ -21,6 +21,69 @@ const agent: AgentConfiguration = {
 };
 
 describe("desktop harness local configuration", () => {
+  test("catalog installs use the verified organization and reject renderer paths", async () => {
+    const f = fixture(undefined, [], { agents: [agent] });
+    try {
+      await f.controller.run("synchronize");
+      await f.controller.run("installSkillPackage", {
+        agentId: agent.id,
+        harness: "opencode",
+        source: "owner/repository",
+        name: "review",
+      });
+      expect(f.calls.at(-1)).toEqual({
+        method: "installSkillPackage",
+        value: {
+          organizationId: "org-1",
+          agentId: agent.id,
+          harness: "opencode",
+          source: "owner/repository",
+          name: "review",
+        },
+      });
+      for (const source of ["../../private", "https://github.com/owner/repo", "C:/private"]) {
+        await rejects(
+          f.controller.run("installSkillPackage", {
+            agentId: agent.id,
+            harness: "opencode",
+            source,
+            name: "review",
+          }),
+        );
+      }
+      expect(f.calls.filter((call) => call.method === "installSkillPackage")).toHaveLength(1);
+    } finally {
+      f.controller.disconnect();
+    }
+  });
+
+  test("catalog mutations cannot run for an agent homed on another desktop", async () => {
+    const f = fixture(undefined, [], { agents: [agent], homedElsewhere: [agent.id] });
+    try {
+      await f.controller.run("synchronize");
+      await rejects(
+        f.controller.run("installSkillPackage", {
+          agentId: agent.id,
+          harness: "opencode",
+          source: "owner/repository",
+          name: "review",
+        }),
+        { code: "agent-not-home" },
+      );
+      await rejects(
+        f.controller.run("updateSkillPackages", {
+          agentId: agent.id,
+          harness: "opencode",
+          scheduled: false,
+        }),
+        { code: "agent-not-home" },
+      );
+      expect(f.calls.some((call) => call.method === "installSkillPackage")).toBe(false);
+      expect(f.calls.some((call) => call.method === "updateSkillPackages")).toBe(false);
+    } finally {
+      f.controller.disconnect();
+    }
+  });
   test("local configuration rejects paths, traversal, organization selection, and embedded credentials", () => {
     for (const [method, value] of [
       ["scanConfiguration", { harness: "codex" }],

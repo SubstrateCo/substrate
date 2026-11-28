@@ -8,6 +8,7 @@ export const serviceErrorCodes = [
   "NOT_FOUND",
   "CONFLICT",
   "PAYLOAD_TOO_LARGE",
+  "RATE_LIMITED",
   "INTERNAL_ERROR",
 ] as const;
 
@@ -23,6 +24,7 @@ export const serviceErrorKinds = {
   NOT_FOUND: "access",
   CONFLICT: "conflict",
   PAYLOAD_TOO_LARGE: "validation",
+  RATE_LIMITED: "server",
   INTERNAL_ERROR: "server",
 } as const satisfies Record<ServiceErrorCode, ServiceErrorKind>;
 

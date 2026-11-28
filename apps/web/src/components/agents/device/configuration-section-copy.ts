@@ -6,8 +6,8 @@ export const configurationSections: Record<
   { listTitle: string; description: string }
 > = {
   skills: {
-    listTitle: "Your skills",
-    description: "Instructions the agent loads when a task calls for them.",
+    listTitle: "Custom skills",
+    description: "Your own instructions. Catalog updates never change these.",
   },
   mcps: {
     listTitle: "Your servers",

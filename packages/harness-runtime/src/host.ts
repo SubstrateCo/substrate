@@ -32,6 +32,7 @@ import {
   type NativeSessionState,
 } from "./session-machine.ts";
 import { createSignIns, type SignInOptions, type SignIns } from "./sign-in.ts";
+import * as skillPackages from "./skill-packages.ts";
 import { mkdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -126,6 +127,7 @@ interface SessionLifecycle {
 interface OpeningSession {
   lifecycle: SessionLifecycle;
   organizationId: string;
+  agentId: string;
   promise: Promise<HarnessSessionRef>;
 }
 
@@ -194,6 +196,7 @@ export async function createHarnessHost<Binding = unknown>(
   const listeners = new Set<(event: HarnessEvent) => void>();
   const sessions = new Map<string, LiveSession>();
   const opening = new Map<string, OpeningSession>();
+  const changingFiles = new Set<string>();
   let disposed = false;
   let disposal: Promise<void> | undefined;
   const modelDiscovery = new AbortController();
@@ -251,6 +254,43 @@ export async function createHarnessHost<Binding = unknown>(
     return path;
   }
 
+  async function packageDirectory(scope: HarnessLocalScope) {
+    const root = await directory(scope);
+    if (
+      !configurations
+        .get(scope.organizationId)
+        ?.agents.some((agent) => agent.id === scope.agentId && agent.harness === scope.harness)
+    )
+      throw new HarnessError("invalid-harness", "Use this agent's configured harness.");
+    return root;
+  }
+
+  async function changeFiles<T>(scope: HarnessLocalScope, action: (root: string) => Promise<T>) {
+    const key = `${scope.organizationId}/${scope.agentId}`;
+    if (changingFiles.has(key)) throw new HarnessError("session-closing", "Skill files are busy.");
+    changingFiles.add(key);
+    try {
+      const root = await packageDirectory(scope);
+      const live = [...sessions.values()].filter(
+        (session) =>
+          session.ref.organizationId === scope.organizationId &&
+          session.ref.agentId === scope.agentId,
+      );
+      if (
+        live.some((session) => session.turn) ||
+        [...opening.values()].some(
+          (session) =>
+            session.organizationId === scope.organizationId && session.agentId === scope.agentId,
+        )
+      )
+        throw new HarnessError("turn-active", "Wait until this agent is idle to change skills.");
+      await Promise.all(live.map((session) => closeSession(session, "configuration")));
+      return await action(root);
+    } finally {
+      changingFiles.delete(key);
+    }
+  }
+
   /** Closes a session once. Callers during the close wait for the same close. */
   async function closeSession(live: LiveSession, reason: CloseReason) {
     if (live.closed) return live.closed;
@@ -280,6 +320,8 @@ export async function createHarnessHost<Binding = unknown>(
     command: Extract<HarnessCommand, { type: "open" }>,
     lifecycle: SessionLifecycle,
   ) {
+    if (changingFiles.has(`${command.organizationId}/${command.agentId}`))
+      throw new HarnessError("session-closing", "Skill files are being updated.");
     const configuration = configurations.get(command.organizationId);
     if (!configuration)
       throw new HarnessError(
@@ -393,6 +435,8 @@ export async function createHarnessHost<Binding = unknown>(
   }
 
   function startTurn(live: LiveSession, command: Extract<HarnessCommand, { type: "turn" }>) {
+    if (changingFiles.has(`${live.ref.organizationId}/${live.ref.agentId}`))
+      throw new HarnessError("session-closing", "Skill files are being updated.");
     if (live.turn) throw new HarnessError("turn-active", "A turn is already running.");
     if (!nativeSessionMachine.canFire(live.state, "startTurn"))
       throw new HarnessError("not-connected", "The session is closing.");
@@ -501,6 +545,7 @@ export async function createHarnessHost<Binding = unknown>(
       })
       .finally(() => opening.delete(command.sessionId));
     opening.set(command.sessionId, {
+      agentId: command.agentId,
       lifecycle,
       organizationId: command.organizationId,
       promise: started,
@@ -637,11 +682,64 @@ export async function createHarnessHost<Binding = unknown>(
         skills: await scanNativeSkills(root, scope.harness),
       };
     },
+    async scanSkillPackages(scope) {
+      return skillPackages.scanSkillPackages(await packageDirectory(scope));
+    },
+    async previewSkillSource(input) {
+      return skillPackages.previewSkillSource(await packageDirectory(input), input.source);
+    },
+    async installSkillPackage(input) {
+      const reserved = configurations
+        .get(input.organizationId)
+        ?.agents.find((agent) => agent.id === input.agentId)
+        ?.managedSkills.some((skill) => skill.id === input.name);
+      if (reserved)
+        throw new HarnessError("invalid-skill", "This name is reserved for a managed skill.");
+      return changeFiles(input, (root) =>
+        skillPackages.installSkillPackage(root, input.harness, input.source, input.name),
+      );
+    },
+    async removeSkillPackage(input) {
+      return changeFiles(input, (root) =>
+        skillPackages.removeSkillPackage(root, input.harness, input.name),
+      );
+    },
+    async updateSkillPackages(input) {
+      const state = await skillPackages.scanSkillPackages(await packageDirectory(input));
+      if (
+        !state.skills.length ||
+        (input.scheduled && !skillPackages.skillUpdateDue(state.updates, clock.now()))
+      )
+        return;
+      return changeFiles(input, (root) =>
+        skillPackages.updateSkillPackages(root, input.harness, input.scheduled, clock.now()),
+      );
+    },
+    async setSkillUpdateFrequency(input) {
+      return skillPackages.setSkillUpdateFrequency(await packageDirectory(input), input.frequency);
+    },
     async saveSkill(input) {
-      await saveNativeSkill(await directory(input), input.harness, input.skill);
+      const root = await directory(input);
+      if (
+        (await skillPackages.scanSkillPackages(root)).skills.some(
+          (skill) => skill.name === input.skill.id,
+        )
+      )
+        throw new HarnessError(
+          "invalid-skill",
+          "Catalog skills cannot be edited. Create a custom skill instead.",
+        );
+      await saveNativeSkill(root, input.harness, input.skill);
     },
     async deleteSkill(input) {
-      await deleteNativeSkill(await directory(input), input.harness, input.id);
+      const root = await directory(input);
+      if (
+        (await skillPackages.scanSkillPackages(root)).skills.some(
+          (skill) => skill.name === input.id,
+        )
+      )
+        throw new HarnessError("invalid-skill", "Remove catalog skills through the catalog.");
+      await deleteNativeSkill(root, input.harness, input.id);
     },
     async resetDefaults(scope) {
       const root = await directory(scope);

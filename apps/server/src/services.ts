@@ -14,6 +14,7 @@ import { createHostService } from "./v1/agent-work/host-service";
 import { createAgentWorkService } from "./v1/agent-work/service";
 import { createWorkService } from "./v1/agent-work/work-service";
 import { createAgentService } from "./v1/agents/service";
+import { createSkillCatalogService } from "./v1/agents/skill-catalog-service";
 import { createAttentionService } from "./v1/attention/service";
 import { createCalendarService, type CalendarServiceDependencies } from "./v1/calendar/service";
 import { createContactsService } from "./v1/contacts/service";
@@ -76,6 +77,7 @@ export function createServices(deps: {
     }),
     context: createContextService(deps),
     agents: createAgentService(deps),
+    skillCatalog: createSkillCatalogService(),
     agentWork: createAgentWorkService(deps),
     devices: createDeviceService(deps),
     host: createHostService(deps),

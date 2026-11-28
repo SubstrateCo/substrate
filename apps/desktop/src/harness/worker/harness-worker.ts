@@ -133,6 +133,18 @@ port.on(
             return host.inspect();
           case "scanConfiguration":
             return host.scanConfiguration(data.value);
+          case "scanSkillPackages":
+            return host.scanSkillPackages(data.value);
+          case "previewSkillSource":
+            return host.previewSkillSource(data.value);
+          case "installSkillPackage":
+            return host.installSkillPackage(data.value);
+          case "removeSkillPackage":
+            return host.removeSkillPackage(data.value);
+          case "updateSkillPackages":
+            return host.updateSkillPackages(data.value);
+          case "setSkillUpdateFrequency":
+            return host.setSkillUpdateFrequency(data.value);
           case "saveSkill":
             return host.saveSkill(data.value);
           case "deleteSkill":

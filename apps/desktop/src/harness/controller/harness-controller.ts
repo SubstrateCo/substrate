@@ -16,6 +16,8 @@ import {
   harnessSessionRefSchema,
   harnessSignInStateSchema,
   commandSchema,
+  skillPackagesSchema,
+  skillSourcePreviewSchema,
   type HarnessCommand,
   type HarnessCommandResult,
   type HarnessErrorCode,
@@ -109,12 +111,16 @@ export function createHarnessController(options: {
   let generation = 0;
   let queue = Promise.resolve();
   let syncing: Promise<HarnessResult<"synchronize">> | undefined;
+  let updateTimer: ReturnType<typeof setInterval> | undefined;
+  let updatesRunning = false;
   const localToolHandler = options.localToolHandler;
   authority.onChange(() => {
     syncing = undefined;
   });
 
   function disconnect() {
+    if (updateTimer) clearInterval(updateTimer);
+    updateTimer = undefined;
     generation++;
     syncing = undefined;
     worker?.dispose();
@@ -174,6 +180,19 @@ export function createHarnessController(options: {
   ) {
     const { organizationId } = auth;
     switch (method) {
+      case "scanSkillPackages":
+      case "previewSkillSource":
+      case "installSkillPackage":
+      case "removeSkillPackage":
+      case "updateSkillPackages":
+      case "setSkillUpdateFrequency": {
+        const input = rendererLocalSchemas[method].parse(value);
+        await requireAgent(input.agentId);
+        const result = await target.request(method, { ...input, organizationId });
+        if (method === "scanSkillPackages") return skillPackagesSchema.parse(result);
+        if (method === "previewSkillSource") return skillSourcePreviewSchema.parse(result);
+        return;
+      }
       case "chooseWorkspace": {
         const { agentId } = rendererLocalSchemas.chooseWorkspace.parse(value);
         await requireAgent(agentId);
@@ -302,6 +321,10 @@ export function createHarnessController(options: {
           harnessConfiguration({ agents, enabledApps, organizationId: auth.organizationId }),
         );
         sync.assertCurrent(auth.identity);
+        if (!updateTimer) {
+          updateTimer = setInterval(() => void scheduledUpdates(), 60_000);
+          updateTimer.unref();
+        }
         return { connected: true, organizationId: auth.organizationId };
       }
       const signInMethod = signInMethodSchema.safeParse(method);
@@ -350,6 +373,37 @@ export function createHarnessController(options: {
         "harness-unavailable",
         "Harness unavailable. Verify your session and synchronize again.",
       );
+    }
+  }
+
+  async function scheduledUpdates() {
+    if (updatesRunning || !worker) return;
+    updatesRunning = true;
+    try {
+      const session = capture();
+      const auth = await authority.verify();
+      const catalog = await authority.catalog();
+      session.assertCurrent(auth.identity);
+      for (const agent of catalog.agents) {
+        if (
+          !agent.enabled ||
+          !catalog.runSettings.some(
+            (setting) => setting.agentId === agent.id && setting.homeDevice?.current,
+          )
+        )
+          continue;
+        // perform rechecks identity and home ownership. Busy agents retry on the next tick.
+        await perform("updateSkillPackages", {
+          agentId: agent.id,
+          harness: agent.harness,
+          scheduled: true,
+        }).catch(() => {});
+        session.assertCurrent(auth.identity);
+      }
+    } catch {
+      // Offline, signed out, or switched account: no maintenance until authorization returns.
+    } finally {
+      updatesRunning = false;
     }
   }
 

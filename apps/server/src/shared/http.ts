@@ -19,6 +19,7 @@ const statuses = {
   NOT_FOUND: 404,
   CONFLICT: 409,
   PAYLOAD_TOO_LARGE: 413,
+  RATE_LIMITED: 429,
   INTERNAL_ERROR: 500,
 } as const satisfies Record<ServiceErrorCode, number>;
 

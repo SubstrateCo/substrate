@@ -153,6 +153,87 @@ const turn = {
   context,
 };
 
+test("catalog installs and removals cannot change files during a live turn", async () => {
+  const f = await host();
+  const scope = { organizationId: "org-a", agentId, harness: "codex" as const };
+  try {
+    await f.host.execute(open);
+    await f.host.execute(turn);
+    await rejects(
+      f.host.installSkillPackage({
+        ...scope,
+        source: "owner/repo",
+        name: "review",
+      }),
+      { code: "turn-active" },
+    );
+    await rejects(f.host.removeSkillPackage({ ...scope, name: "review" }), { code: "turn-active" });
+    expect(f.events.filter((event) => event.type === "session.closed")).toHaveLength(0);
+    const completed = nextEvent(f, (event) => event.type === "turn.completed");
+    f.native.state.finish!({ status: "completed" });
+    await completed;
+    expect(f.events.find((event) => event.type === "turn.completed")).toMatchObject({
+      result: { status: "completed" },
+    });
+  } finally {
+    await f.host.dispose();
+  }
+});
+
+test("catalog configuration rejects a different harness before touching its files", async () => {
+  const f = await host();
+  try {
+    await rejects(
+      f.host.scanSkillPackages({
+        organizationId: "org-a",
+        agentId,
+        harness: "claude",
+      }),
+      { code: "invalid-harness" },
+    );
+  } finally {
+    await f.host.dispose();
+  }
+});
+
+test("catalog packages cannot take a managed skill name even while it is disabled", async () => {
+  const f = await host();
+  try {
+    await f.host.configure({
+      organizationId: "org-a",
+      agents: [
+        agent({
+          managedSkills: [
+            {
+              id: "reserved-guide",
+              name: "reserved-guide",
+              description: "",
+              content: "",
+              installed: false,
+            },
+          ],
+        }),
+      ],
+    });
+    await rejects(
+      f.host.installSkillPackage({
+        organizationId: "org-a",
+        agentId,
+        harness: "codex",
+        source: "owner/repo",
+        name: "reserved-guide",
+      }),
+      { code: "invalid-skill" },
+    );
+    expect(
+      (await f.host.scanConfiguration({ organizationId: "org-a", agentId, harness: "codex" }))
+        .skills,
+    ).toEqual([]);
+  } finally {
+    await f.host.dispose();
+  }
+});
+
 test("MCP calls are accepted only while a turn is bound to the session", async () => {
   const f = await host();
   const client = new Client({ name: "host-test", version: "1" });

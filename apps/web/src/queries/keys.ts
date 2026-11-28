@@ -18,6 +18,15 @@ export const queryKeys = {
   mail: (userId: string, organizationId: string) =>
     [...queryKeys.user(userId), "mail", organizationId] as const,
   agents: (userId: string) => [...queryKeys.user(userId), "agents"] as const,
+  skillCatalog: (userId: string, query: string) =>
+    [...queryKeys.agents(userId), "skill-catalog", query] as const,
+  skillPackages: (userId: string, organizationId: string, agentId: string, harness: string) =>
+    [
+      ...queryKeys.localAgentConfiguration(userId, organizationId, agentId, harness),
+      "packages",
+    ] as const,
+  skillSource: (userId: string, organizationId: string, agentId: string, source: string) =>
+    [...queryKeys.agents(userId), organizationId, agentId, "skill-source", source] as const,
   // Account-wide alert settings. Workspace and conversation settings sit under it, so one
   // preference hint refreshes all of them.
   notificationPreferences: (userId: string) =>

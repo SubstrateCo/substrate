@@ -4,16 +4,15 @@ import { useState, type ReactNode } from "react";
 
 import { CatalogRow } from "../catalog/catalog-row";
 import { openingName } from "../editors/skill-name";
-import {
-  BuiltInGroup,
-  ConfigurationList,
-  ConfigurationPage,
-  ConfigurationSearch,
-} from "./configuration-page";
-import { configurationSections, matchesSearch } from "./configuration-section-copy";
+import { BuiltInGroup, ConfigurationList, ConfigurationSearch } from "./configuration-page";
+import { matchesSearch } from "./configuration-section-copy";
 import { StartupSkills } from "./startup-configuration";
+import { GroupTitle } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, RotateCcw } from "lucide-react";
+
+export type SkillCatalogView = "installed" | "discover" | "updates";
 
 function SkillList({
   skills,
@@ -28,11 +27,10 @@ function SkillList({
   onEdit: (id: string) => void;
   onDelete: (skill: { id: string; name: string }) => void;
 }) {
-  let empty = "No skills yet. Add one to teach the agent a repeatable task.";
+  let empty = "No custom skills yet.";
   if (searching) empty = "No skills match.";
-  const copy = configurationSections.skills;
   return (
-    <ConfigurationList title={copy.listTitle} description={copy.description}>
+    <ConfigurationList label="Custom skills">
       {skills.length ? (
         skills.map((item) => {
           // The list, the editor and the delete prompt all name the skill by its file name.
@@ -70,6 +68,7 @@ export function SkillsSection({
   onCreate,
   onEdit,
   onDelete,
+  renderCatalog,
 }: {
   skills: readonly HarnessSkill[];
   managedSkills: HarnessSkill[];
@@ -86,65 +85,94 @@ export function SkillsSection({
   onCreate: () => void;
   onEdit: (id: string) => void;
   onDelete: (skill: { id: string; name: string }) => void;
+  renderCatalog: (view: SkillCatalogView, onBrowse: () => void) => ReactNode;
 }) {
+  const [view, setView] = useState<SkillCatalogView>("installed");
   const [query, setQuery] = useState("");
   const shown = skills.filter((skill) =>
     matchesSearch(query, openingName(skill), skill.description),
   );
   return (
-    <ConfigurationPage
-      toolbar={
-        <>
-          {scanned && skills.length > 0 && (
-            <ConfigurationSearch
-              label="skills"
-              count={skills.length}
-              value={query}
-              onChange={setQuery}
-            />
-          )}
-          <div className="ml-auto flex items-center gap-2">
-            {refresh}
-            <Button type="button" size="sm" disabled={!available || fetching} onClick={onCreate}>
-              <Plus />
-              New skill
-            </Button>
-          </div>
-        </>
-      }
+    <Tabs
+      value={view}
+      onValueChange={(value) => {
+        if (value === "installed" || value === "discover" || value === "updates") setView(value);
+      }}
     >
-      {status}
-      {scanned && (
-        <SkillList
-          skills={shown}
-          searching={!!query.trim()}
-          removing={removing}
-          onEdit={onEdit}
-          onDelete={onDelete}
-        />
-      )}
-      {(managedSkills.length > 0 || available) && (
-        <BuiltInGroup
-          title="Substrate skills"
-          description="Substrate adds these and keeps them up to date. Reset restores them if they were edited on this desktop."
-          count={managedSkills.length}
-          noun="skill"
-          actions={
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={!available || resetting}
-              onClick={onReset}
+      <div className="border-b pb-1">
+        <TabsList variant="line" aria-label="Skills views">
+          <TabsTrigger value="installed">Installed</TabsTrigger>
+          <TabsTrigger value="discover">Browse skills</TabsTrigger>
+          <TabsTrigger value="updates">Updates</TabsTrigger>
+        </TabsList>
+      </div>
+      <TabsContent value={view}>
+        <div className="grid min-w-0 gap-8 pt-6">
+          {view === "installed" && status}
+          {renderCatalog(view, () => setView("discover"))}
+          {view === "installed" && scanned && (
+            <section className="grid min-w-0 gap-4" aria-label="Custom skills">
+              <GroupTitle
+                title="Custom skills"
+                description="Written by you, for this agent."
+                actions={
+                  <>
+                    {refresh}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={!available || fetching}
+                      onClick={onCreate}
+                    >
+                      <Plus /> New skill
+                    </Button>
+                  </>
+                }
+              />
+              {(skills.length > 5 || !!query.trim()) && (
+                <ConfigurationSearch
+                  label="custom skills"
+                  count={skills.length}
+                  value={query}
+                  onChange={setQuery}
+                />
+              )}
+              <SkillList
+                skills={shown}
+                searching={!!query.trim()}
+                removing={removing}
+                onEdit={onEdit}
+                onDelete={onDelete}
+              />
+            </section>
+          )}
+          {view === "installed" && (managedSkills.length > 0 || available) && (
+            <BuiltInGroup
+              title="Substrate skills"
+              description="Included with Substrate. Updated with the app."
+              count={managedSkills.length}
+              noun="skill"
             >
-              <RotateCcw />
-              Reset defaults
-            </Button>
-          }
-        >
-          <StartupSkills skills={managedSkills} />
-        </BuiltInGroup>
-      )}
-    </ConfigurationPage>
+              <div className="grid gap-4">
+                <StartupSkills skills={managedSkills} />
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={!available || resetting}
+                    onClick={onReset}
+                  >
+                    <RotateCcw />
+                    Reset defaults
+                  </Button>
+                </div>
+              </div>
+            </BuiltInGroup>
+          )}
+        </div>
+      </TabsContent>
+    </Tabs>
   );
 }

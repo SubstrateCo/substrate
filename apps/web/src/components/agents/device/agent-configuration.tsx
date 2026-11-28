@@ -12,6 +12,7 @@ import { useRef } from "react";
 import type { AgentSection } from "../editors/agent-form";
 import { McpServerEditor } from "../editors/mcp-server-editor";
 import { SkillEditor } from "../editors/skill-editor";
+import { CatalogSkills } from "./catalog-skills";
 import { ConfigurationStatus } from "./configuration-status";
 import { McpServersSection } from "./mcp-servers-section";
 import { SkillsSection } from "./skills-section";
@@ -25,6 +26,7 @@ import {
   localAgentConfiguration,
   localConfigurationOptions,
 } from "@/queries/agents/local-configuration";
+import { skillPackageController, skillPackagesOptions } from "@/queries/agents/skill-catalog";
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -103,6 +105,15 @@ export function AgentConfiguration({
     restoreFocus,
   } = useStateDialog<ConfigurationDialog>(container);
   const configuration = useQuery(localConfigurationOptions(userId, local));
+  const packages = useQuery(
+    skillPackagesOptions(
+      userId,
+      organizationId,
+      agentId ?? "",
+      harness,
+      skillPackageController(agentId, harness, available),
+    ),
+  );
   const { save, remove, reset, saveServer, removeServer } = useAgentConfigurationMutations(local);
   const { skills, managedSkills } = skillLists(configuration.data?.skills, !available);
   const servers = configuration.data?.mcpServers ?? [];
@@ -129,7 +140,21 @@ export function AgentConfiguration({
   const content =
     section === "skills" ? (
       <SkillsSection
-        skills={skills}
+        skills={skills.filter(
+          (skill) => !packages.data?.skills.some((item) => item.name === skill.id),
+        )}
+        renderCatalog={(view, onBrowse) => (
+          <CatalogSkills
+            userId={userId}
+            organizationId={organizationId}
+            agentId={agentId}
+            harness={harness}
+            available={available}
+            packages={packages}
+            view={view}
+            onBrowse={onBrowse}
+          />
+        )}
         managedSkills={managedSkills}
         scanned={!!configuration.data}
         available={available}

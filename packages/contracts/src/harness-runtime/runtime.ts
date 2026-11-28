@@ -3,6 +3,7 @@ import { harnessKinds, type HarnessKind } from "./kinds.ts";
 import type { HarnessInspection, HarnessNativeConfiguration, HarnessSkill } from "./local.ts";
 import { harnessIdSchema, harnessMcpServerSchema, maxHarnessMcpServers } from "./local.ts";
 import type { HarnessModelCatalog } from "./models.ts";
+import type { SkillPackages, SkillSourcePreview, SkillUpdateFrequency } from "./skill-packages.ts";
 import { z } from "zod";
 
 /** unattended turns run with the no-ask profile: every native permission or question is denied. */
@@ -206,6 +207,14 @@ export interface HarnessHost {
   configure(configuration: HarnessConfiguration): Promise<void>;
   /** Skills in the agent folder. MCP servers live in Substrate's local storage, not here. */
   scanConfiguration(scope: HarnessLocalScope): Promise<HarnessNativeConfiguration>;
+  scanSkillPackages(scope: HarnessLocalScope): Promise<SkillPackages>;
+  previewSkillSource(input: HarnessLocalScope & { source: string }): Promise<SkillSourcePreview>;
+  installSkillPackage(input: HarnessLocalScope & { source: string; name: string }): Promise<void>;
+  removeSkillPackage(input: HarnessLocalScope & { name: string }): Promise<void>;
+  updateSkillPackages(input: HarnessLocalScope & { scheduled: boolean }): Promise<void>;
+  setSkillUpdateFrequency(
+    input: HarnessLocalScope & { frequency: SkillUpdateFrequency },
+  ): Promise<void>;
   saveSkill(input: HarnessLocalScope & { skill: HarnessSkill }): Promise<void>;
   deleteSkill(input: HarnessLocalScope & { id: string }): Promise<void>;
   /** Overwrites the Substrate default instructions and skill files. Other files stay. */
