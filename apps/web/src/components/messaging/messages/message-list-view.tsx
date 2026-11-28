@@ -34,7 +34,8 @@ export function MessageList({
   const container = useRef<HTMLDivElement>(null);
   const content = useRef<HTMLDivElement>(null);
   const follow = useRef(true);
-  const measuredSize = useRef({ scrollHeight: 0, clientHeight: 0 });
+  const measuredSize = useRef({ scrollHeight: 0, clientHeight: 0, clientWidth: 0 });
+  const readingAnchor = useRef<{ node: HTMLElement; top: number } | null>(null);
   const positioned = useRef(false);
   const [away, setAway] = useState(false);
   // A newer message arrived while the person was scrolled up.
@@ -43,8 +44,13 @@ export function MessageList({
   const measure = () => {
     const node = container.current;
     if (!node) return;
-    measuredSize.current = { scrollHeight: node.scrollHeight, clientHeight: node.clientHeight };
+    measuredSize.current = {
+      scrollHeight: node.scrollHeight,
+      clientHeight: node.clientHeight,
+      clientWidth: node.clientWidth,
+    };
     follow.current = node.scrollHeight - node.scrollTop - node.clientHeight < 100;
+    readingAnchor.current = follow.current ? null : readAnchor(node, readingAnchor.current);
     setAway(!follow.current);
     if (follow.current) setUnseen(false);
     onLatestVisibleChange?.(follow.current);
@@ -52,17 +58,29 @@ export function MessageList({
   const scrollToLatest = () => {
     if (container.current) container.current.scrollTop = container.current.scrollHeight;
   };
+  const restorePosition = () => {
+    const node = container.current;
+    if (!node) return;
+    if (follow.current) scrollToLatest();
+    else {
+      const anchor = readingAnchor.current;
+      if (anchor && node.contains(anchor.node))
+        node.scrollTop +=
+          anchor.node.getBoundingClientRect().top - node.getBoundingClientRect().top - anchor.top;
+    }
+  };
   const onScroll = () => {
     const node = container.current;
     if (!node) return;
     const previous = measuredSize.current;
     // Browser scroll anchoring can emit a scroll before ResizeObserver sees the new layout.
-    // Do not mistake that layout change for the reader leaving the bottom.
+    // Restore before measuring, so reflow does not replace the reading anchor or follow state.
     if (
-      follow.current &&
-      (previous.scrollHeight !== node.scrollHeight || previous.clientHeight !== node.clientHeight)
+      previous.scrollHeight !== node.scrollHeight ||
+      previous.clientHeight !== node.clientHeight ||
+      previous.clientWidth !== node.clientWidth
     )
-      scrollToLatest();
+      restorePosition();
     measure();
   };
   const position = useEffectEvent(() => {
@@ -99,8 +117,8 @@ export function MessageList({
   }, [sending]);
   const resize = useEffectEvent(() => {
     if (!positioned.current) return;
-    // Keep the pre-resize follow state: measuring the larger content first can lose the bottom.
-    if (follow.current) scrollToLatest();
+    // Use the pre-resize anchor and follow state for pane changes and loaded message images.
+    restorePosition();
     measure();
   });
   useLayoutEffect(() => {
@@ -160,4 +178,25 @@ export function MessageList({
       )}
     </div>
   );
+}
+
+function readAnchor(node: HTMLElement, previous: { node: HTMLElement; top: number } | null) {
+  const viewport = node.getBoundingClientRect();
+  // Reuse the restored anchor after reflow. A deliberate scroll selects a fresh visible row.
+  if (previous && node.contains(previous.node)) {
+    const bounds = previous.node.getBoundingClientRect();
+    const top = bounds.top - viewport.top;
+    if (top >= 0 && bounds.top < viewport.bottom && Math.abs(top - previous.top) < 0.5)
+      return { node: previous.node, top };
+  }
+  let clipped: { node: HTMLElement; top: number } | null = null;
+  // Prefer a row starting in view: anchoring the clipped row above it lets that row's new
+  // wrapping move the message the person is reading. Stop once a visible row is found.
+  for (const row of node.querySelectorAll<HTMLElement>("article")) {
+    const bounds = row.getBoundingClientRect();
+    if (bounds.top >= viewport.bottom) break;
+    if (bounds.top >= viewport.top) return { node: row, top: bounds.top - viewport.top };
+    if (bounds.bottom > viewport.top) clipped = { node: row, top: bounds.top - viewport.top };
+  }
+  return clipped;
 }
